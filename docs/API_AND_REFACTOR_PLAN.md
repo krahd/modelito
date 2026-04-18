@@ -32,6 +32,14 @@ Tests & CI
 - Ensure CI runs the public-API unit tests on multiple Python versions.
 - Add an optional integration job gated by `RUN_OLLAMA_INTEGRATION=1`.
 
+CI & Integration
+----------------
+
+Add a GitHub Actions workflow to run static checks (`mypy`) and unit tests.
+Integration tests that exercise the Ollama lifecycle are gated behind the
+`RUN_OLLAMA_INTEGRATION` environment variable (or via the workflow_dispatch
+input) to avoid accidental runs in CI.
+
 Release plan
 ------------
 1. Cut a 0.1.0 release on TestPyPI for downstream validation.

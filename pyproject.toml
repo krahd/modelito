@@ -5,14 +5,39 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "modelito"
 version = "0.1.1"
-description = "Lightweight LLM provider abstractions and connectors (extracted)."
+description = "Lightweight LLM provider abstractions and connectors."
 readme = "README.md"
 requires-python = ">=3.8"
 authors = [ { name = "mail_summariser" } ]
-license = { text = "MIT" }
+license = { file = "LICENSE" }
+keywords = ["llm", "provider", "tokenizer", "ollama", "openai"]
+classifiers = [
+	"Development Status :: 4 - Beta",
+	"Intended Audience :: Developers",
+	"License :: OSI Approved :: MIT License",
+	"Programming Language :: Python :: 3",
+	"Programming Language :: Python :: 3 :: Only",
+	"Programming Language :: Python :: 3.8",
+	"Programming Language :: Python :: 3.9",
+	"Programming Language :: Python :: 3.10",
+	"Programming Language :: Python :: 3.11",
+	"Topic :: Software Development :: Libraries",
+]
 dependencies = []
 
 [project.optional-dependencies]
 ollama = ["psutil"]
 http = ["httpx"]
 tokenization = ["tiktoken"]
+openai = ["openai"]
+anthropic = ["anthropic"]
+dev = ["mypy"]
+
+[project.urls]
+Homepage = "https://github.com/krahd/modelito"
+Repository = "https://github.com/krahd/modelito"
+Changelog = "https://github.com/krahd/modelito/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["modelito*"]
