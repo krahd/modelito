@@ -32,3 +32,16 @@ Installation
 - Install for development: `pip install -e .`
 - Build artifacts: `python -m build` (requires `build` package)
 - Install from wheel: `pip install dist/modelito-<version>-py3-none-any.whl`
+
+Try the example
+---------------
+
+There is a small example script demonstrating the public API at:
+
+[examples/quickstart.py](examples/quickstart.py)
+
+Run it with:
+
+```sh
+python examples/quickstart.py
+```

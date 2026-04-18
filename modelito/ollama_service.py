@@ -24,6 +24,8 @@ import json
 
 
 ROOT = Path(__file__).resolve().parents[1]
+UNIX_INSTALL_URL = "https://ollama.com/install.sh"
+WINDOWS_INSTALL_URL = "https://ollama.com/install.ps1"
 
 
 def endpoint_url(host: str, port: int, path: str = "/api/generate") -> str:
@@ -439,6 +441,183 @@ def running_model_names(host: str) -> List[str]:
             continue
         names.append(line.split()[0])
     return names
+
+
+def load_llm_config(path: Optional[str] = None) -> Dict[str, Any]:
+    """Load a minimal LLM runtime config from common locations.
+
+    Returns a dict with keys: last_served_model, model, model_timeouts, timeout, url, port
+    """
+    try:
+        from .config import load_config
+    except Exception:
+        load_config = None
+
+    data = {}
+    if path:
+        try:
+            if load_config:
+                data = load_config(path) or {}
+            else:
+                p = Path(path)
+                if p.exists():
+                    data = json.loads(p.read_text(encoding="utf-8")) or {}
+        except Exception:
+            data = {}
+    else:
+        # probe common locations
+        candidates = [
+            Path.home() / ".modelito" / "config.json",
+            Path.home() / ".modelito" / "config.yaml",
+            Path.home() / ".ollama" / "config.json",
+        ]
+        for c in candidates:
+            if c.exists():
+                try:
+                    if load_config:
+                        data = load_config(str(c)) or {}
+                    else:
+                        data = json.loads(c.read_text(encoding="utf-8")) or {}
+                except Exception:
+                    data = {}
+                break
+
+    if not isinstance(data, dict):
+        data = {}
+    llm = data.get("llm") or {}
+    model_timeouts = llm.get("model_timeouts") if isinstance(llm.get("model_timeouts"), dict) else {}
+    return {
+        "last_served_model": str(llm.get("last_served_model") or "").strip(),
+        "model": str(llm.get("model") or "").strip(),
+        "model_timeouts": dict(model_timeouts),
+        "timeout": llm.get("timeout"),
+        "url": str(llm.get("url") or "http://127.0.0.1").strip().rstrip("/"),
+        "port": int(llm.get("port") or 11434),
+    }
+
+
+def preferred_start_model(llm: Dict[str, Any]) -> str:
+    last = str(llm.get("last_served_model") or "").strip()
+    model = str(llm.get("model") or "").strip()
+    return last or model
+
+
+def save_last_served_model(model: str, path: Optional[str] = None) -> bool:
+    try:
+        target = Path(path) if path else (Path.home() / ".modelito" / "config.json")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # load existing data if possible
+        data = {}
+        if target.exists():
+            try:
+                data = json.loads(target.read_text(encoding="utf-8")) or {}
+            except Exception:
+                data = {}
+        llm = data.setdefault("llm", {})
+        llm["last_served_model"] = str(model)
+        target.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        return True
+    except Exception:
+        return False
+
+
+def ollama_version_text(host: Optional[str] = None) -> str:
+    try:
+        proc = run_ollama_command("--version", host=host)
+    except FileNotFoundError:
+        return ""
+    return (proc.stdout or proc.stderr or "").strip()
+
+
+def install_command_for_current_platform(platform_name: Optional[str] = None) -> tuple[list[str], str]:
+    platform_name = platform_name or sys.platform
+    if platform_name.startswith("win"):
+        command = [
+            "powershell.exe",
+            "-NoExit",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            f"irm {WINDOWS_INSTALL_URL} | iex",
+        ]
+        return command, f"irm {WINDOWS_INSTALL_URL} | iex"
+    install_command = f"export OLLAMA_NO_START=1; curl -fsSL {shlex.quote(UNIX_INSTALL_URL)} | sh"
+    return ["/bin/sh", "-lc", install_command], install_command
+
+
+def install_service(reinstall: bool = False) -> tuple[int, str]:
+    action = "reinstall" if reinstall else "install"
+    command, display = install_command_for_current_platform()
+    try:
+        proc = subprocess.run(command, cwd=str(ROOT), text=True, capture_output=True, check=False)
+        combined = ((proc.stdout or "") + (proc.stderr or "")).strip()
+        if proc.returncode == 0:
+            return 0, combined or f"Completed the official Ollama {action} workflow."
+        return proc.returncode, combined or f"Ollama {action} failed."
+    except FileNotFoundError as exc:
+        return 1, f"Unable to launch the Ollama installer command ({display}): {exc}"
+
+
+def inspect_service_state(config_path: Optional[str] = None) -> Dict[str, Any]:
+    llm = load_llm_config(config_path)
+    url = str(llm["url"])
+    port = int(llm["port"])
+    host = f"{url.replace('http://', '').replace('https://', '')}:{port}"
+    return {
+        "installed": ollama_installed(),
+        "version": ollama_version_text(host=host),
+        "running": server_is_up(url, port),
+        "configured_model": str(llm["model"]),
+        "last_served_model": str(llm["last_served_model"]),
+        "startup_model": preferred_start_model(llm),
+        "url": url,
+        "port": port,
+    }
+
+
+def start_service(config_path: Optional[str] = None) -> int:
+    llm = load_llm_config(config_path)
+    model = preferred_start_model(llm)
+    url = str(llm["url"])
+    port = int(llm["port"])
+    host = f"{url.replace('http://', '').replace('https://', '')}:{port}"
+
+    if not model:
+        print(f"No model configured in {config_path}", file=sys.stderr)
+        return 1
+
+    try:
+        version_proc = run_ollama_command("--version", host=host)
+    except FileNotFoundError:
+        print("ollama: command not found", file=sys.stderr)
+        return 1
+
+    if version_proc.returncode != 0 and not (version_proc.stdout or version_proc.stderr):
+        print("ollama CLI failed to start", file=sys.stderr)
+        return 1
+
+    started = False
+    if server_is_up(url, port):
+        print(f"Ollama already serving at {host}")
+    else:
+        print(f"Starting ollama serve at {host} ...")
+        start_detached_ollama_serve(host)
+        wait_until_ready(url, port)
+        started = True
+
+    pull_proc = run_ollama_command("pull", model, host=host)
+    if pull_proc.returncode != 0:
+        sys.stderr.write((pull_proc.stdout or "") + (pull_proc.stderr or ""))
+        return pull_proc.returncode
+
+    preload_model(url, port, model, timeout=120.0)
+    save_last_served_model(model, config_path)
+
+    if started:
+        print(f"Completed: started ollama at {host}, pulled and warmed model '{model}'.")
+    else:
+        print(f"Completed: ollama already running at {host}; pulled and warmed model '{model}'.")
+    return 0
 
 
 def _listener_pids_from_connections(connections, port: int) -> List[int]:
