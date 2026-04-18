@@ -19,12 +19,21 @@ def load_config(path: str) -> Dict[str, Any]:
         return json.loads(text)
     except Exception:
         pass
+    # try YAML if available (dynamic import to avoid static lint errors)
     try:
-        import yaml
+        import importlib
 
-        return yaml.safe_load(text) or {}
+        yaml = importlib.import_module("yaml")
     except Exception:
-        return {}
+        yaml = None
+
+    if yaml is not None:
+        try:
+            return yaml.safe_load(text) or {}
+        except Exception:
+            return {}
+
+    return {}
 
 
 def parse_host_port(host_url: str) -> Tuple[str, int]:

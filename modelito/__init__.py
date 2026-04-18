@@ -10,6 +10,7 @@ from .connector import OllamaConnector
 from .config import load_config, parse_host_port
 from .exceptions import LLMProviderError
 from .ollama_service import server_is_up, endpoint_url
+from .ollama_service import ensure_ollama_running
 
 __all__ = [
     "count_tokens",
@@ -20,4 +21,5 @@ __all__ = [
     "LLMProviderError",
     "server_is_up",
     "endpoint_url",
+    "ensure_ollama_running",
 ]

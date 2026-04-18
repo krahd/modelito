@@ -26,7 +26,8 @@ class OllamaConnector:
         self.provider = provider
         self.shared_history = shared_history
         self.max_history_messages = int(max_history_messages or 20)
-        self.max_history_tokens = int(max_history_tokens) if max_history_tokens is not None else None
+        self.max_history_tokens = int(
+            max_history_tokens) if max_history_tokens is not None else None
         self._histories: Dict[str, List[Dict[str, str]]] = {}
         self._system_message = None
         if system_message_file:
@@ -110,7 +111,8 @@ class OllamaConnector:
         return hist
 
     def send_sync(self, conv_id: Optional[str], new_messages: List[Dict[str, str]], settings: Optional[Dict] = None) -> str:
-        messages = self.build_prompt(conv_id, new_messages=new_messages, include_history=True, max_prompt_tokens=(settings or {}).get("max_prompt_tokens"))
+        messages = self.build_prompt(conv_id, new_messages=new_messages, include_history=True, max_prompt_tokens=(
+            settings or {}).get("max_prompt_tokens"))
         try:
             resp = self.provider.summarize(messages, settings=settings)
         except Exception as exc:
