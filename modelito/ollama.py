@@ -14,11 +14,24 @@ from .ollama_service import endpoint_url, server_is_up
 
 
 class OllamaProvider:
+    """Minimal compatibility shim for Ollama-style providers.
+
+    Provides `list_models()` and `summarize()` with safe defaults for local
+    testing and compatibility with older imports.
+    """
+
     def __init__(self, host: Optional[str] = None):
         self.host = host or endpoint_url('127.0.0.1', 11434)
 
     def list_models(self) -> List[str]:
-        # Best-effort: if server is up, return empty list (no network calls here).
+        """Return a best-effort list of locally available Ollama models.
+
+        This shim avoids making heavy network calls and instead returns an
+        empty list when a local server is reachable or the check fails.
+
+        Returns:
+            A list of model identifiers (often empty for the compatibility shim).
+        """
         try:
             if server_is_up('127.0.0.1', 11434):
                 return []
@@ -27,7 +40,19 @@ class OllamaProvider:
         return []
 
     def summarize(self, messages: Any, settings: Optional[dict] = None) -> str:
-        # Minimal safe summarizer: join user/assistant message text.
+        """Produce a deterministic summary by concatenating message contents.
+
+        This minimal implementation is intended for local testing and
+        compatibility; it does not contact a model service.
+
+        Args:
+            messages: Iterable of message dicts (containing ``content``) or
+                plain strings.
+            settings: Optional settings passed through by callers (ignored).
+
+        Returns:
+            A string containing the joined message contents.
+        """
         try:
             parts = []
             for m in (messages or []):

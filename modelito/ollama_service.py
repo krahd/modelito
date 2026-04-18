@@ -31,6 +31,16 @@ DEFAULT_PORT = 11434
 
 
 def endpoint_url(host: str, port: int, path: str = "/api/generate") -> str:
+    """Return a fully-qualified endpoint URL for the Ollama HTTP API.
+
+    Args:
+        host: Host string; may include scheme (e.g. "http://127.0.0.1").
+        port: TCP port to use when the host does not already include one.
+        path: API path to append (defaults to "/api/generate").
+
+    Returns:
+        A string containing the full URL to the requested API path.
+    """
     h = host.rstrip("/")
     # if host already contains a port, don't append
     if ":" in h.split("/")[2] if "/" in h else ":" in h:
@@ -39,6 +49,21 @@ def endpoint_url(host: str, port: int, path: str = "/api/generate") -> str:
 
 
 def server_is_up(host: str, port: int) -> bool:
+    """Return True if the Ollama HTTP API or TCP port is reachable.
+
+    The function first attempts an HTTP request to the root path. If that
+    fails it will attempt a TCP connect to the provided host/port as a
+    fallback. This avoids depending on an HTTP server response for simple
+    liveness checks.
+
+    Args:
+        host: Host string (may include scheme).
+        port: TCP port number to check.
+
+    Returns:
+        ``True`` if either an HTTP request or TCP connect succeeds, else
+        ``False``.
+    """
     try:
         url = endpoint_url(host, port, "/")
         with urlopen(url, timeout=2) as _:
@@ -64,66 +89,119 @@ def ensure_ollama_running(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, aut
 
     Returns True if the server is reachable, False otherwise.
     """
-    if server_is_up(host, port):
-        return True
+    # Delegate to the verbose variant and return only the boolean result.
+    ok, _msg = ensure_ollama_running_verbose(host=host, port=port, auto_start=auto_start, start_args=start_args, timeout=timeout)
+    return bool(ok)
+
+
+def ensure_ollama_running_verbose(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, auto_start: bool = False, start_args: Optional[list] = None, timeout: float = 10.0) -> tuple[bool, str]:
+    """Ensure an Ollama server is reachable and return (success, message).
+
+    The verbose variant returns a human-readable message describing the
+    outcome which is useful for UI and logging flows.
+    """
+    # Quick check: server already up
+    try:
+        if server_is_up(host, port):
+            return True, f"Ollama already running at {host}:{port}"
+    except Exception:
+        pass
 
     if not auto_start:
-        return False
+        return False, "Ollama not running and auto_start is disabled"
 
-    ollama_bin = shutil.which("ollama")
-    if not ollama_bin:
-        return False
-
-    cmd = [ollama_bin, "serve"]
-    if start_args:
-        cmd.extend(start_args)
-
-    # Start detached process, redirect output to devnull
+    # Ensure we have an executable to start
     try:
-        devnull = subprocess.DEVNULL
-        subprocess.Popen(cmd, stdout=devnull, stderr=devnull)
-    except Exception:
-        return False
+        _ = resolve_ollama_command()
+    except FileNotFoundError:
+        return False, "ollama CLI not found on PATH"
 
-    # wait for the server
+    # Build host env string expected by the CLI
+    host_env = f"{host.replace('http://', '').replace('https://', '')}:{port}"
+
+    # Attempt to start detached serve using the platform helper
+    try:
+        start_detached_ollama_serve(host_env, start_args=start_args)
+    except FileNotFoundError as exc:
+        return False, f"Failed to launch ollama serve: {exc}"
+    except Exception as exc:
+        return False, f"Failed to launch ollama serve: {exc}"
+
+    # Wait for the server to become ready
     deadline = time.time() + float(timeout)
     while time.time() < deadline:
-        if server_is_up(host, port):
-            return True
+        try:
+            if server_is_up(host, port):
+                return True, f"Ollama is ready at {host}:{port}"
+        except Exception:
+            pass
         time.sleep(0.5)
-    return False
+
+    return False, f"Timeout waiting for ollama serve at {host}:{port}"
 
 
 def get_ollama_binary() -> Optional[str]:
-    """Return the path to the `ollama` binary if available on PATH."""
+    """Return the path to the ``ollama`` binary if available on PATH.
+
+    Returns:
+        The path to the executable as a string or ``None`` if not found.
+    """
     return shutil.which("ollama")
 
 
 def install_ollama(allow_install: bool = False, method: Optional[str] = None, timeout: float = 600.0) -> bool:
-    """Attempt to install `ollama` using a supported installer.
+    """Attempt to install the ``ollama`` CLI using a supported installer.
 
-    This is intentionally conservative: the function will only perform an
-    installation if `allow_install` is True. On macOS the default method is
-    Homebrew when available.
+    This helper only performs an installation when ``allow_install`` is
+    ``True``. On macOS the default installer is Homebrew when available.
+
+    Args:
+        allow_install: When ``True`` permit attempting an installation.
+        method: Optional installer method (e.g. ``"brew"``).
+        timeout: Timeout for installer subprocesses in seconds.
+
+    Returns:
+        ``True`` when ``ollama`` is present after the call, else ``False``.
     """
     if get_ollama_binary():
         return True
     if not allow_install:
         return False
+
     try:
         import sys
 
-        if (method == "brew") or (method is None and sys.platform == "darwin"):
-            if shutil.which("brew"):
+        # Prefer platform-specific package manager when appropriate, but
+        # fall back to the official install script which is cross-platform.
+        if sys.platform == "darwin":
+            if method == "brew" or (method is None and shutil.which("brew")):
                 try:
                     subprocess.run(["brew", "install", "ollama"], check=True,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=timeout)
                     return get_ollama_binary() is not None
                 except Exception:
-                    return False
+                    # fall through to script fallback
+                    pass
+            # fallback to the official script installer
+            cmd, _ = install_command_for_current_platform()
+            try:
+                proc = subprocess.run(cmd, cwd=str(ROOT), text=True,
+                                      capture_output=True, check=False, timeout=timeout)
+                return get_ollama_binary() is not None
+            except Exception:
+                return False
+
+        # For other UNIX-like systems prefer the official script; package
+        # managers may not provide an `ollama` package.
+        cmd, _ = install_command_for_current_platform()
+        try:
+            proc = subprocess.run(cmd, cwd=str(ROOT), text=True,
+                                  capture_output=True, check=False, timeout=timeout)
+            return get_ollama_binary() is not None
+        except Exception:
+            return False
     except Exception:
         return False
-    return False
 
 
 def start_ollama(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, start_args: Optional[list] = None, timeout: float = 10.0) -> bool:
@@ -132,10 +210,18 @@ def start_ollama(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, start_args: 
 
 
 def stop_ollama(force: bool = False) -> bool:
-    """Attempt to stop running `ollama` processes.
+    """Attempt to stop running ``ollama`` processes.
 
-    Uses `psutil` when available for a graceful shutdown; falls back to
-    `pkill -f ollama` if `force` is True and `pkill` exists.
+    The function prefers using :mod:`psutil` to find and terminate processes
+    gracefully. If ``psutil`` is not available and ``force`` is True, a
+    platform ``pkill`` may be attempted as a best-effort fallback.
+
+    Args:
+        force: When ``True`` attempt a more forceful kill via ``pkill`` if
+            :mod:`psutil` is unavailable.
+
+    Returns:
+        ``True`` on success, ``False`` otherwise.
     """
     try:
         import psutil
@@ -173,10 +259,17 @@ def stop_ollama(force: bool = False) -> bool:
 
 
 def update_ollama(allow_upgrade: bool = False, timeout: float = 120.0) -> bool:
-    """Try to update the `ollama` installation.
+    """Try to update the installed ``ollama`` CLI.
 
-    Prefer `ollama update` if supported; fall back to Homebrew upgrade when
-    `allow_upgrade` is True and `brew` is available.
+    Attempts ``ollama update`` first. If that fails and ``allow_upgrade`` is
+    True, falls back to ``brew upgrade ollama`` when Homebrew is available.
+
+    Args:
+        allow_upgrade: Permit using Homebrew to attempt an upgrade.
+        timeout: Subprocess timeout in seconds.
+
+    Returns:
+        ``True`` if an update step succeeded, ``False`` otherwise.
     """
     binp = get_ollama_binary()
     if not binp:
@@ -199,7 +292,13 @@ def update_ollama(allow_upgrade: bool = False, timeout: float = 120.0) -> bool:
 
 
 def list_local_models() -> List[str]:
-    """Return a best-effort list of locally installed models (if any)."""
+    """Return a best-effort list of locally installed Ollama models.
+
+    The helper attempts common CLI variants (``ollama list``, ``ollama ls``,
+    etc.) and parses any output into a list of non-empty lines. If the
+    ``ollama`` binary is not present or the calls fail, an empty list is
+    returned.
+    """
     binp = get_ollama_binary()
     if not binp:
         return []
@@ -219,7 +318,12 @@ def list_local_models() -> List[str]:
 
 
 def list_remote_models() -> List[str]:
-    """Return a best-effort list of remote models available for download."""
+    """Return a best-effort list of remote models available to download.
+
+    Similar to :func:`list_local_models` but queries the remote model listing
+    variants of the CLI (``--remote``). Returns an empty list if the CLI is
+    not available or the calls fail.
+    """
     binp = get_ollama_binary()
     if not binp:
         return []
@@ -240,10 +344,17 @@ def list_remote_models() -> List[str]:
 
 
 def download_model(model_name: str, timeout: float = 600.0) -> bool:
-    """Download a remote model into the local Ollama cache.
+    """Download a remote model into the local Ollama cache using the CLI.
 
-    Tries common command names (`pull`, `download`) and returns True on
-    success.
+    Tries common command names (``pull``, ``download``) and returns ``True``
+    when the subprocess exit code indicates success.
+
+    Args:
+        model_name: Name of the model to download.
+        timeout: Subprocess timeout in seconds.
+
+    Returns:
+        ``True`` on success, else ``False``.
     """
     binp = get_ollama_binary()
     if not binp:
@@ -261,7 +372,11 @@ def download_model(model_name: str, timeout: float = 600.0) -> bool:
 
 
 def delete_model(model_name: str) -> bool:
-    """Delete a locally cached model."""
+    """Delete a locally cached model using the Ollama CLI.
+
+    Tries multiple possible subcommands (``rm``, ``remove``, ``delete``) and
+    returns ``True`` when any of them report success.
+    """
     binp = get_ollama_binary()
     if not binp:
         return False
@@ -278,20 +393,26 @@ def delete_model(model_name: str) -> bool:
 
 
 def serve_model(model_name: Optional[str] = None, start_args: Optional[list] = None, timeout: float = 10.0) -> bool:
-    """Serve Ollama (optionally specifying a particular model) and wait until up."""
-    binp = get_ollama_binary()
-    if not binp:
+    """Start ``ollama serve`` and wait until a server is reachable.
+
+    Uses :func:`start_detached_ollama_serve` so environment and detachment
+    semantics are consistent across helpers.
+    """
+    if not ollama_installed():
         return False
-    cmd = [binp, "serve"]
+
+    host_env = f"{DEFAULT_URL.replace('http://', '').replace('https://', '')}:{DEFAULT_PORT}"
+    args: List[str] = []
     if model_name:
-        cmd.extend(["--model", model_name])
+        args.extend(["--model", model_name])
     if start_args:
-        cmd.extend(start_args)
+        args.extend(start_args)
+
     try:
-        devnull = subprocess.DEVNULL
-        subprocess.Popen(cmd, stdout=devnull, stderr=devnull)
+        start_detached_ollama_serve(host_env, start_args=args)
     except Exception:
         return False
+
     deadline = time.time() + timeout
     while time.time() < deadline:
         if server_is_up(DEFAULT_URL, DEFAULT_PORT):
@@ -301,9 +422,17 @@ def serve_model(model_name: Optional[str] = None, start_args: Optional[list] = N
 
 
 def change_ollama_config(config: Dict[str, Any], config_path: Optional[str] = None) -> bool:
-    """Write `config` as JSON to the Ollama configuration file.
+    """Write the provided configuration dictionary to the Ollama config file.
 
-    Default path is `~/.ollama/config.json`.
+    The function writes JSON to the supplied ``config_path`` or falls back to
+    ``~/.ollama/config.json``.
+
+    Args:
+        config: Dictionary to write as JSON.
+        config_path: Optional path override for the config file.
+
+    Returns:
+        ``True`` on success, ``False`` on failure.
     """
     p = Path(config_path) if config_path else (Path.home() / ".ollama" / "config.json")
     try:
@@ -372,10 +501,16 @@ def ollama_installed() -> bool:
 
 
 def run_ollama_command(*args: str, host: Optional[str] = None) -> subprocess.CompletedProcess:
-    """Run an Ollama CLI command and capture the result.
+    """Run an Ollama CLI command and capture the Result.
 
-    `host` when provided should be the host:port string used by the Ollama
-    CLI via the `OLLAMA_HOST` env var (e.g. "127.0.0.1:11434").
+    Args:
+        *args: Arguments to pass to the resolved ``ollama`` binary.
+        host: Optional host string to set as ``OLLAMA_HOST`` in the subprocess
+            environment (e.g. ``"127.0.0.1:11434"``).
+
+    Returns:
+        A :class:`subprocess.CompletedProcess` instance containing stdout/stderr
+        and return code.
     """
     env = os.environ.copy()
     if host:
@@ -384,9 +519,17 @@ def run_ollama_command(*args: str, host: Optional[str] = None) -> subprocess.Com
     return subprocess.run([command, *args], cwd=str(ROOT), text=True, capture_output=True, check=False, env=env)
 
 
-def start_detached_ollama_serve(host: str) -> subprocess.Popen:
-    """Start `ollama serve` in the background for the current platform."""
+def start_detached_ollama_serve(host: str, start_args: Optional[List[str]] = None) -> subprocess.Popen:
+    """Start `ollama serve` in the background for the current platform.
+
+    `start_args` are appended to the serve command and can include options
+    such as `--model <name>`.
+    """
     command = resolve_ollama_command()
+    cmd = [command, "serve"]
+    if start_args:
+        cmd.extend(start_args)
+
     kwargs: Dict[str, object] = {
         "cwd": str(ROOT),
         "stdout": subprocess.DEVNULL,
@@ -403,11 +546,12 @@ def start_detached_ollama_serve(host: str) -> subprocess.Popen:
     else:
         kwargs["start_new_session"] = True
 
-    return subprocess.Popen([command, "serve"], **kwargs)
+    return subprocess.Popen(cmd, **kwargs)
 
 
 def json_post(url: str, payload: dict, timeout: float = 60.0) -> dict:
-    request = Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
+    request = Request(url, data=json.dumps(payload).encode("utf-8"),
+                      headers={"Content-Type": "application/json"}, method="POST")
     with urlopen(request, timeout=timeout) as response:
         body = response.read().decode("utf-8")
     return json.loads(body) if body else {}
@@ -432,7 +576,8 @@ def wait_until_ready(url: str, port: int, timeout_seconds: float = 60.0) -> None
 
 def preload_model(url: str, port: int, model: str, timeout: float = 120.0) -> None:
     """Warm the selected model through the local Ollama API."""
-    json_post(endpoint_url(url, port, "/api/generate"), {"model": model, "keep_alive": "30m"}, timeout=timeout)
+    json_post(endpoint_url(url, port, "/api/generate"),
+              {"model": model, "keep_alive": "30m"}, timeout=timeout)
 
 
 def running_model_names(host: str) -> List[str]:
@@ -494,7 +639,8 @@ def load_llm_config(path: Optional[str] = None) -> Dict[str, Any]:
     if not isinstance(data, dict):
         data = {}
     llm = data.get("llm") or {}
-    model_timeouts = llm.get("model_timeouts") if isinstance(llm.get("model_timeouts"), dict) else {}
+    model_timeouts = llm.get("model_timeouts") if isinstance(
+        llm.get("model_timeouts"), dict) else {}
     return {
         "last_served_model": str(llm.get("last_served_model") or "").strip(),
         "model": str(llm.get("model") or "").strip(),
@@ -611,7 +757,11 @@ def start_service(config_path: Optional[str] = None) -> int:
     else:
         print(f"Starting ollama serve at {host} ...")
         start_detached_ollama_serve(host)
-        wait_until_ready(url, port)
+        try:
+            wait_until_ready(url, port)
+        except Exception as exc:
+            print(f"Failed to start ollama serve: {exc}", file=sys.stderr)
+            return 1
         started = True
 
     pull_proc = run_ollama_command("pull", model, host=host)
@@ -619,7 +769,12 @@ def start_service(config_path: Optional[str] = None) -> int:
         sys.stderr.write((pull_proc.stdout or "") + (pull_proc.stderr or ""))
         return pull_proc.returncode
 
-    preload_model(url, port, model, timeout=120.0)
+    try:
+        preload_model(url, port, model, timeout=120.0)
+    except Exception:
+        # warming the model is best-effort; do not fail the whole start.
+        pass
+
     save_last_served_model(model, config_path)
 
     if started:
@@ -736,7 +891,8 @@ def stop_service(host: str = "http://127.0.0.1", port: int = 11434, verbose: boo
 
         # wait and kill survivors
         try:
-            _gone, alive = psutil.wait_procs([psutil.Process(pid) for pid in pids if psutil.pid_exists(pid)], timeout=3.0)
+            _gone, alive = psutil.wait_procs([psutil.Process(pid)
+                                             for pid in pids if psutil.pid_exists(pid)], timeout=3.0)
             for proc in alive:
                 try:
                     proc.kill()

@@ -21,7 +21,14 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.autosummary",
+    "myst_parser",
 ]
+
+# Allow Markdown sources via MyST
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+}
 
 autosummary_generate = True
 autodoc_default_options = {

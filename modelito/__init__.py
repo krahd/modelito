@@ -86,4 +86,6 @@ __all__ = [
     "running_model_names",
     "find_ollama_listener_pids",
     "stop_service",
+    "install_service",
+    "ensure_ollama_running_verbose",
 ]

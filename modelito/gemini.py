@@ -10,19 +10,40 @@ from typing import Any, List, Optional
 
 
 class GeminiProvider:
+    """Lightweight compatibility shim for Gemini-like providers.
+
+    This class implements `list_models()` and `summarize()` with safe defaults
+    suitable for unit tests and local runs where the external SDK is absent.
+    """
+
     def __init__(self, host: Optional[str] = None):
         # host is informational; default is a placeholder URL
         self.host = host or "https://gemini.local"
 
     def list_models(self) -> List[str]:
-        # Best-effort stub: no network calls here.
+        """Return a stubbed list of available Gemini models.
+
+        This shim intentionally performs no network activity and returns an
+        empty list to keep tests and examples offline-friendly.
+
+        Returns:
+            A list of model identifier strings (often empty in the stub).
+        """
         try:
             return []
         except Exception:
             return []
 
     def summarize(self, messages: Any, settings: Optional[dict] = None) -> str:
-        # Minimal safe summarizer: join message contents
+        """Produce a safe, deterministic summary by joining message texts.
+
+        Args:
+            messages: Iterable of message dicts or strings.
+            settings: Optional provider settings (ignored by stub).
+
+        Returns:
+            Joined message contents as a string.
+        """
         try:
             parts = []
             for m in (messages or []):

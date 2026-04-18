@@ -9,11 +9,29 @@ from typing import Any, List, Optional
 
 
 class OpenAIProvider:
+    """Minimal compatibility shim for the OpenAI provider.
+
+    Provides `list_models()` and `summarize()` with conservative, offline-
+    friendly defaults so downstream projects can import and use the API in
+    tests without requiring the official SDK.
+    """
+
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         self.api_key = api_key
         self.model = model or "gpt-3.5-turbo"
 
     def list_models(self) -> List[str]:
+        """Return a best-effort list of available model identifiers.
+
+        This implementation attempts a non-blocking, runtime import of the
+        official ``openai`` client and inspects the client surface for a
+        ``Model.list()`` API. When the real client is unavailable or the
+        call fails, an empty list is returned to keep the shim offline-
+        friendly and safe for unit tests.
+
+        Returns:
+            A list of model identifier strings, or an empty list on failure.
+        """
         try:
             # best-effort: attempt to import the official client and list models
             import importlib
@@ -33,6 +51,19 @@ class OpenAIProvider:
         return []
 
     def summarize(self, messages: Any, settings: Optional[dict] = None) -> str:
+        """Produce a simple, deterministic summary from ``messages``.
+
+        This shim concatenates message contents in order and is intended to
+        be safe for offline unit tests and examples where a real model
+        invocation is not possible.
+
+        Args:
+            messages: Iterable of message dicts (with ``content``) or strings.
+            settings: Optional provider-specific settings (ignored by stub).
+
+        Returns:
+            A single string containing the joined message contents.
+        """
         try:
             parts = []
             for m in (messages or []):
