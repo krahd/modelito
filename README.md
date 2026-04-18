@@ -24,6 +24,22 @@ Run tests:
 pytest -q
 ```
 
+Build and install
+-----------------
+
+To build a source distribution and wheel locally:
+
+```sh
+python -m pip install --upgrade build
+python -m build
+```
+
+Install from the built wheel:
+
+```sh
+pip install dist/modelito-0.1.1-py3-none-any.whl
+```
+
 See the `docs/` folder for more details on calibration and migration.
 
 Providers

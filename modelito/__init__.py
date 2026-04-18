@@ -3,6 +3,15 @@
 This package is intentionally small and focused on provider/connectors
 utilities used by downstream projects.
 """
+try:
+    from importlib.metadata import version, PackageNotFoundError
+except Exception:
+    __version__ = "0.1.1"
+else:
+    try:
+        __version__ = version("modelito")
+    except PackageNotFoundError:
+        __version__ = "0.1.1"
 
 from .tokenizer import count_tokens
 from .timeout import estimate_remote_timeout
@@ -23,6 +32,16 @@ from .ollama_service import (
     delete_model,
     serve_model,
     change_ollama_config,
+    ollama_binary_candidates,
+    resolve_ollama_command,
+    ollama_installed,
+    run_ollama_command,
+    start_detached_ollama_serve,
+    wait_until_ready,
+    preload_model,
+    running_model_names,
+    find_ollama_listener_pids,
+    stop_service,
 )
 from .ollama import OllamaProvider
 from .gemini import GeminiProvider
@@ -31,6 +50,7 @@ from .openai import OpenAIProvider
 from .claude import ClaudeProvider
 
 __all__ = [
+    "__version__",
     "count_tokens",
     "estimate_remote_timeout",
     "OllamaConnector",
@@ -56,4 +76,14 @@ __all__ = [
     "delete_model",
     "serve_model",
     "change_ollama_config",
+    "ollama_binary_candidates",
+    "resolve_ollama_command",
+    "ollama_installed",
+    "run_ollama_command",
+    "start_detached_ollama_serve",
+    "wait_until_ready",
+    "preload_model",
+    "running_model_names",
+    "find_ollama_listener_pids",
+    "stop_service",
 ]
