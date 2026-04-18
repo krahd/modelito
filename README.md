@@ -22,3 +22,19 @@ pytest -q
 ```
 
 See the `docs/` folder for more details on calibration and migration.
+
+Providers
+---------
+
+This package provides lightweight, compatibility shims for a few common
+provider interfaces (for use in tests and simple local workflows):
+
+- `OllamaProvider` (default compatibility shim)
+- `GeminiProvider` (minimal shim)
+- `GrokProvider` (minimal shim)
+
+License / AS IS
+---------------
+
+This software is provided "AS IS" and without warranties of any kind. See
+the included `LICENSE` file for the full MIT license text.
