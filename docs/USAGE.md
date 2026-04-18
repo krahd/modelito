@@ -1,3 +1,13 @@
+About
+=====
+
+Modelito is a lightweight Python library that provides provider abstractions,
+compatibility shims, and small utilities for interacting with both local and
+cloud LLM runtimes (Ollama, OpenAI, Anthropic/Claude, Gemini). The project
+is intentionally dependency-light: install optional extras when you need the
+real SDKs, otherwise the shims provide deterministic fallbacks suitable for
+testing and offline use.
+
 Usage
 =====
 

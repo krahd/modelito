@@ -1,10 +1,10 @@
 modelito
 =======
 
-Lightweight LLM provider abstractions and connectors extracted from the
-`mail_summariser` project. This repository provides a focused, production-
-ready library of small helpers, compatibility shims, and utilities commonly
-used by downstream projects (for example, BatLLM and mail_summariser).
+Lightweight Python library of provider abstractions and connectors for
+local and cloud LLM runtimes (Ollama, OpenAI, Claude, Gemini). Designed to be
+dependency-light, test-friendly, and easy to integrate into downstream
+projects such as BatLLM and mail_summariser.
 
 [![CI](https://github.com/krahd/modelito/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/krahd/modelito/actions/workflows/ci.yml)
 
