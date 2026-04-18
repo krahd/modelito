@@ -38,3 +38,24 @@ License / AS IS
 
 This software is provided "AS IS" and without warranties of any kind. See
 the included `LICENSE` file for the full MIT license text.
+
+CI / Integration Tests
+----------------------
+
+This repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`.
+The workflow runs `mypy` and the unit test suite on push and pull requests.
+
+Ollama integration tests are intentionally gated and will only run when you
+explicitly enable them. To run integration tests locally or in CI set the
+environment variable `RUN_OLLAMA_INTEGRATION=1`. Additional optional flags:
+
+- `ALLOW_OLLAMA_INSTALL=1` — permit the integration tests to attempt installing Ollama when missing.
+- `ALLOW_OLLAMA_DOWNLOAD=1` — permit downloading remote models during integration tests.
+- `ALLOW_OLLAMA_UPDATE=1` — permit running update flows during integration tests.
+
+Example (local):
+
+```sh
+RUN_OLLAMA_INTEGRATION=1 pytest tests/test_ollama_integration.py -q
+```
+

@@ -104,7 +104,8 @@ def install_ollama(allow_install: bool = False, method: Optional[str] = None, ti
         if (method == "brew") or (method is None and sys.platform == "darwin"):
             if shutil.which("brew"):
                 try:
-                    subprocess.run(["brew", "install", "ollama"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=timeout)
+                    subprocess.run(["brew", "install", "ollama"], check=True,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=timeout)
                     return get_ollama_binary() is not None
                 except Exception:
                     return False
@@ -169,14 +170,16 @@ def update_ollama(allow_upgrade: bool = False, timeout: float = 120.0) -> bool:
     if not binp:
         return False
     try:
-        res = subprocess.run([binp, "update"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout, check=False)
+        res = subprocess.run([binp, "update"], stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, text=True, timeout=timeout, check=False)
         if res.returncode == 0:
             return True
     except Exception:
         pass
     if allow_upgrade and shutil.which("brew"):
         try:
-            subprocess.run(["brew", "upgrade", "ollama"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=timeout)
+            subprocess.run(["brew", "upgrade", "ollama"], check=False,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=timeout)
             return True
         except Exception:
             return False
@@ -191,7 +194,8 @@ def list_local_models() -> List[str]:
     cmds = [[binp, "list"], [binp, "ls"], [binp, "models"]]
     for cmd in cmds:
         try:
-            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=15, check=False)
+            res = subprocess.run(cmd, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, text=True, timeout=15, check=False)
             out = res.stdout or res.stderr
             if out:
                 lines = [l.strip() for l in out.splitlines() if l.strip()]
@@ -207,10 +211,12 @@ def list_remote_models() -> List[str]:
     binp = get_ollama_binary()
     if not binp:
         return []
-    cmds = [[binp, "list", "--remote"], [binp, "ls", "--remote"], [binp, "models", "--remote"], [binp, "llms", "--remote"]]
+    cmds = [[binp, "list", "--remote"], [binp, "ls", "--remote"],
+            [binp, "models", "--remote"], [binp, "llms", "--remote"]]
     for cmd in cmds:
         try:
-            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=20, check=False)
+            res = subprocess.run(cmd, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, text=True, timeout=20, check=False)
             out = res.stdout or res.stderr
             if out:
                 lines = [l.strip() for l in out.splitlines() if l.strip()]
@@ -233,7 +239,8 @@ def download_model(model_name: str, timeout: float = 600.0) -> bool:
     cmds = [[binp, "pull", model_name], [binp, "download", model_name]]
     for cmd in cmds:
         try:
-            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout, check=False)
+            res = subprocess.run(cmd, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, text=True, timeout=timeout, check=False)
             if res.returncode == 0:
                 return True
         except Exception:
@@ -249,7 +256,8 @@ def delete_model(model_name: str) -> bool:
     cmds = [[binp, "rm", model_name], [binp, "remove", model_name], [binp, "delete", model_name]]
     for cmd in cmds:
         try:
-            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60, check=False)
+            res = subprocess.run(cmd, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, text=True, timeout=60, check=False)
             if res.returncode == 0:
                 return True
         except Exception:
