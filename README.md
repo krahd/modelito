@@ -57,7 +57,9 @@ shims provide safe offline-friendly fallbacks suitable for testing.
 Provided shims and utilities:
 
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama
-	HTTP API when available and fall back to a deterministic stub.
+	HTTP API when available. If the HTTP API is unavailable the provider will
+	attempt to use the local Ollama CLI as a best-effort fallback before
+	returning a deterministic stub useful for tests and examples.
 - `GeminiProvider`, `GrokProvider` — lightweight shims.
 - `OpenAIProvider`, `ClaudeProvider` — will use the official SDKs when
 	installed, falling back to deterministic behavior otherwise.

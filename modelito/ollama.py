@@ -10,7 +10,7 @@ the provider API during tests or local runs continue to work.
 from __future__ import annotations
 
 from typing import Any, List, Optional
-from .ollama_service import endpoint_url, server_is_up, json_post, list_local_models
+from .ollama_service import endpoint_url, server_is_up, json_post, list_local_models, list_remote_models, ollama_installed, run_ollama_command, running_model_names
 
 
 class OllamaProvider:
@@ -43,12 +43,34 @@ class OllamaProvider:
         """
         try:
             if server_is_up(self.host, self.port):
-                # prefer the helper that probes CLI/installed models; it's a
-                # best-effort enumeration and will return an empty list when
-                # the CLI is not present or fails.
-                return list_local_models()
+                # Prefer local enumeration via the CLI helper when the HTTP
+                # API is available — this will return a best-effort list and
+                # is resilient when the CLI is missing.
+                models = list_local_models()
+                if models:
+                    return models
+                # if nothing local, try running names reported by `ollama ps`
+                try:
+                    running = running_model_names(self.host.replace("http://", "").replace("https://", ""))
+                    if running:
+                        return running
+                except Exception:
+                    pass
         except Exception:
             pass
+
+        # If the HTTP API isn't reachable try probing the CLI directly
+        try:
+            if ollama_installed():
+                models = list_local_models()
+                if models:
+                    return models
+                remote = list_remote_models()
+                if remote:
+                    return remote
+        except Exception:
+            pass
+
         return []
 
     def summarize(self, messages: Any, settings: Optional[dict] = None) -> str:
@@ -84,6 +106,7 @@ class OllamaProvider:
         # service output. Use the bundled `json_post` helper to avoid adding
         # extra runtime dependencies. Fall back to the deterministic join
         # behavior when the service is not reachable or the call fails.
+        # First attempt: HTTP API
         try:
             if server_is_up(self.host, self.port):
                 payload = {}
@@ -115,9 +138,52 @@ class OllamaProvider:
                         if isinstance(first, dict) and "text" in first:
                             return str(first.get("text") or "")
                         return str(first)
-
         except Exception:
-            # best-effort; fall through to deterministic fallback
+            # best-effort; fall through to CLI and deterministic fallback
             pass
 
+        # Second attempt: invoke Ollama CLI (best-effort). Try several
+        # command shapes and return the first successful textual result.
+        try:
+            host_env = f"{self.host.replace('http://', '').replace('https://', '')}:{self.port}"
+            if ollama_installed():
+                cmd_variants = []
+                if self.model:
+                    cmd_variants = [["run", self.model, "--prompt", prompt], ["generate", self.model, "--prompt", prompt], ["run", self.model, prompt], ["generate", self.model, prompt]]
+                else:
+                    cmd_variants = [["run", "--prompt", prompt], ["generate", "--prompt", prompt], ["run", prompt], ["generate", prompt]]
+
+                for cmd in cmd_variants:
+                    try:
+                        proc = run_ollama_command(*cmd, host=host_env)
+                    except FileNotFoundError:
+                        break
+                    except Exception:
+                        continue
+
+                    if proc and proc.returncode == 0:
+                        out = (proc.stdout or "").strip() or (proc.stderr or "").strip()
+                        if not out:
+                            continue
+                        # attempt to parse JSON first
+                        try:
+                            import json as _json
+
+                            parsed = _json.loads(out)
+                            if isinstance(parsed, dict):
+                                for k in ("text", "output", "result"):
+                                    if k in parsed:
+                                        return str(parsed.get(k) or "")
+                                if "choices" in parsed and parsed["choices"]:
+                                    first = parsed["choices"][0]
+                                    if isinstance(first, dict):
+                                        return str(first.get("text") or first.get("content") or "")
+                                    return str(first)
+                            return str(parsed)
+                        except Exception:
+                            return out
+        except Exception:
+            pass
+
+        # deterministic fallback
         return prompt

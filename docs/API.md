@@ -15,8 +15,11 @@ import *`) are:
 - `estimate_remote_timeout(model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1) -> int` — conservative timeout estimator.
 - `OllamaConnector` — small conversation history manager and prompt builder.
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama HTTP
-  API when available (via the bundled `ollama_service` helpers) and otherwise
-  expose a safe deterministic `summarize()` fallback useful for tests.
+- `OllamaProvider` — HTTP-aware provider that will call a local Ollama HTTP
+  API when available (via the bundled `ollama_service` helpers). If the HTTP
+  API is not reachable it will attempt the Ollama CLI as a best-effort
+  fallback (using `run_ollama_command`) before exposing a safe deterministic
+  `summarize()` fallback useful for tests.
 - `GeminiProvider`, `GrokProvider`, `OpenAIProvider`, `ClaudeProvider` — minimal provider shims with the same `list_models()` / `summarize()` surface.
 - `load_config(path: str) -> dict` — JSON/YAML loader for small config files.
 - `parse_host_port(host_url: str) -> Tuple[str, int]` — parse `host:port` or URL into `(host, port)`.
