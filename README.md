@@ -5,6 +5,9 @@ Lightweight LLM provider abstractions and connectors extracted from the
 `mail_summariser` project. This repository is a minimal scaffold to publish
 `modelito` as a reusable package.
 
+[![CI](https://github.com/krahd/modelito/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/krahd/modelito/actions/workflows/ci.yml)
+
+
 Quick start
 -----------
 
@@ -32,6 +35,8 @@ provider interfaces (for use in tests and simple local workflows):
 - `OllamaProvider` (default compatibility shim)
 - `GeminiProvider` (minimal shim)
 - `GrokProvider` (minimal shim)
+ - `OpenAIProvider` (minimal shim)
+ - `ClaudeProvider` (minimal shim)
 
 License / AS IS
 ---------------

@@ -5,7 +5,8 @@ from modelito import ollama_service as osvc
 
 RUN_INT = os.environ.get("RUN_OLLAMA_INTEGRATION")
 if not RUN_INT:
-    pytest.skip("Ollama integration tests disabled (set RUN_OLLAMA_INTEGRATION=1)", allow_module_level=True)
+    pytest.skip("Ollama integration tests disabled (set RUN_OLLAMA_INTEGRATION=1)",
+                allow_module_level=True)
 
 
 def test_install_and_update_if_needed():
