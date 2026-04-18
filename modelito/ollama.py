@@ -51,7 +51,8 @@ class OllamaProvider:
                     return models
                 # if nothing local, try running names reported by `ollama ps`
                 try:
-                    running = running_model_names(self.host.replace("http://", "").replace("https://", ""))
+                    running = running_model_names(self.host.replace(
+                        "http://", "").replace("https://", ""))
                     if running:
                         return running
                 except Exception:
@@ -149,9 +150,11 @@ class OllamaProvider:
             if ollama_installed():
                 cmd_variants = []
                 if self.model:
-                    cmd_variants = [["run", self.model, "--prompt", prompt], ["generate", self.model, "--prompt", prompt], ["run", self.model, prompt], ["generate", self.model, prompt]]
+                    cmd_variants = [["run", self.model, "--prompt", prompt], ["generate", self.model,
+                                                                              "--prompt", prompt], ["run", self.model, prompt], ["generate", self.model, prompt]]
                 else:
-                    cmd_variants = [["run", "--prompt", prompt], ["generate", "--prompt", prompt], ["run", prompt], ["generate", prompt]]
+                    cmd_variants = [["run", "--prompt", prompt], ["generate",
+                                                                  "--prompt", prompt], ["run", prompt], ["generate", prompt]]
 
                 for cmd in cmd_variants:
                     try:
