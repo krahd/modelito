@@ -3,6 +3,9 @@ import pytest
 
 from modelito import ollama_service as osvc
 
+# mark as integration so CI can easily select/deselect these
+pytestmark = pytest.mark.integration
+
 RUN_INT = os.environ.get("RUN_OLLAMA_INTEGRATION")
 if not RUN_INT:
     pytest.skip("Ollama integration tests disabled (set RUN_OLLAMA_INTEGRATION=1)",
