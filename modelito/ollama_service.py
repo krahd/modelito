@@ -90,7 +90,8 @@ def ensure_ollama_running(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, aut
     Returns True if the server is reachable, False otherwise.
     """
     # Delegate to the verbose variant and return only the boolean result.
-    ok, _msg = ensure_ollama_running_verbose(host=host, port=port, auto_start=auto_start, start_args=start_args, timeout=timeout)
+    ok, _msg = ensure_ollama_running_verbose(
+        host=host, port=port, auto_start=auto_start, start_args=start_args, timeout=timeout)
     return bool(ok)
 
 
