@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.2.0 - Unreleased
+
+- Export fixes and API consistency (`install_service`, `ensure_ollama_running_verbose`).
+- `OllamaProvider` now attempts to use the local Ollama HTTP API when available and falls back to a deterministic shim.
+- CI workflow updated to run package tests only for more stable runs.
+- Documentation and README updated to reflect a production-ready library and optional extras.
+
 ## 0.1.0 - Unreleased
 
 - Initial extraction of core helpers: tokenizer, timeout, connector, config, ollama_service

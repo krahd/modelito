@@ -6,12 +6,12 @@ utilities used by downstream projects.
 try:
     from importlib.metadata import version, PackageNotFoundError
 except Exception:
-    __version__ = "0.1.2"
+    __version__ = "0.2.0"
 else:
     try:
         __version__ = version("modelito")
     except PackageNotFoundError:
-        __version__ = "0.1.2"
+        __version__ = "0.2.0"
 
 from .tokenizer import count_tokens
 from .timeout import estimate_remote_timeout
@@ -42,6 +42,8 @@ from .ollama_service import (
     running_model_names,
     find_ollama_listener_pids,
     stop_service,
+    install_service,
+    ensure_ollama_running_verbose,
 )
 from .ollama import OllamaProvider
 from .gemini import GeminiProvider

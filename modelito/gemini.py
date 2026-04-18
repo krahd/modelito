@@ -1,56 +1,125 @@
-"""Compatibility shim for Gemini provider.
+"""Gemini provider that attempts to use Google generative SDKs when present.
 
-This provides a minimal `GeminiProvider` with safe defaults so downstream
-projects can import and use it during tests or local runs without requiring
-network access or external SDKs.
+The provider performs runtime detection for common Gemini/Generative AI
+Python packages (for example `google.generativeai` or similar client
+shapes). When an SDK is available it will attempt a text generation call;
+otherwise it falls back to joining message contents deterministically.
 """
 from __future__ import annotations
 
+import importlib
 from typing import Any, List, Optional
 
 
 class GeminiProvider:
-    """Lightweight compatibility shim for Gemini-like providers.
+    """Provider for Google Gemini-like APIs with best-effort SDK usage.
 
-    This class implements `list_models()` and `summarize()` with safe defaults
-    suitable for unit tests and local runs where the external SDK is absent.
+    The provider supports multiple client shapes via runtime introspection
+    and falls back to a local deterministic summarizer when calls fail.
     """
 
-    def __init__(self, host: Optional[str] = None):
+    def __init__(self, host: Optional[str] = None, client: Any = None, model: Optional[str] = None):
         # host is informational; default is a placeholder URL
         self.host = host or "https://gemini.local"
+        self.model = model
+        self._client = client
+        # try common module names used by Google/third-party SDKs
+        mod = None
+        for name in ("google.generativeai", "google.ai.generativelanguage", "generativeai"):
+            try:
+                mod = importlib.import_module(name)
+                break
+            except Exception:
+                mod = None
+        self._gemini_mod = mod
+
+        if self._client is None and self._gemini_mod is not None:
+            try:
+                if hasattr(self._gemini_mod, "Client"):
+                    try:
+                        self._client = self._gemini_mod.Client()
+                    except Exception:
+                        self._client = None
+                elif hasattr(self._gemini_mod, "client"):
+                    self._client = getattr(self._gemini_mod, "client")
+            except Exception:
+                self._client = None
 
     def list_models(self) -> List[str]:
-        """Return a stubbed list of available Gemini models.
-
-        This shim intentionally performs no network activity and returns an
-        empty list to keep tests and examples offline-friendly.
-
-        Returns:
-            A list of model identifier strings (often empty in the stub).
-        """
         try:
-            return []
+            if self._gemini_mod is not None:
+                if hasattr(self._gemini_mod, "list_models"):
+                    try:
+                        return list(self._gemini_mod.list_models())
+                    except Exception:
+                        pass
+                if hasattr(self._gemini_mod, "models") and hasattr(self._gemini_mod.models, "list"):
+                    try:
+                        return list(self._gemini_mod.models.list())
+                    except Exception:
+                        pass
         except Exception:
-            return []
+            pass
+        return []
 
     def summarize(self, messages: Any, settings: Optional[dict] = None) -> str:
-        """Produce a safe, deterministic summary by joining message texts.
-
-        Args:
-            messages: Iterable of message dicts or strings.
-            settings: Optional provider settings (ignored by stub).
-
-        Returns:
-            Joined message contents as a string.
-        """
-        try:
-            parts = []
-            for m in (messages or []):
+        def _flatten(msgs: Any) -> str:
+            if not msgs:
+                return ""
+            out = []
+            for m in (msgs or []):
                 if isinstance(m, dict):
-                    parts.append(m.get("content", ""))
+                    out.append(m.get("content", ""))
                 else:
-                    parts.append(str(m))
-            return "\n".join(p for p in parts if p)
-        except Exception:
-            return ""
+                    out.append(str(m))
+            return "\n".join(p for p in out if p)
+
+        prompt = _flatten(messages)
+
+        if self._gemini_mod is not None:
+            try:
+                gen = self._client or self._gemini_mod
+                # preferred shape: generate_text(model=..., prompt=...)
+                if hasattr(gen, "generate_text"):
+                    try:
+                        res = gen.generate_text(model=self.model or "gemini-1.0",
+                                                prompt=prompt, **(settings or {}))
+                        # dict-like responses
+                        if isinstance(res, dict):
+                            if "candidates" in res and isinstance(res["candidates"], list) and res["candidates"]:
+                                first = res["candidates"][0]
+                                if isinstance(first, dict):
+                                    return str(first.get("content") or first.get("output") or "")
+                                return str(first)
+                            if "text" in res:
+                                return str(res.get("text") or "")
+                        else:
+                            text = getattr(res, "text", None) or getattr(res, "content", None)
+                            if text:
+                                return str(text)
+                    except Exception:
+                        pass
+
+                if hasattr(gen, "client") and hasattr(gen.client, "generate_text"):
+                    try:
+                        res = gen.client.generate_text(
+                            model=self.model or "gemini-1.0", prompt=prompt, **(settings or {}))
+                        if isinstance(res, dict):
+                            if "candidates" in res and res["candidates"]:
+                                first = res["candidates"][0]
+                                if isinstance(first, dict):
+                                    return str(first.get("content") or first.get("output") or "")
+                                return str(first)
+                            if "text" in res:
+                                return str(res.get("text") or "")
+                        else:
+                            text = getattr(res, "text", None) or getattr(res, "content", None)
+                            if text:
+                                return str(text)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        # deterministic fallback
+        return prompt

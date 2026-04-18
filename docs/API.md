@@ -14,7 +14,9 @@ import *`) are:
 - `count_tokens(text: str) -> int` — estimate token count (uses `tiktoken` if available).
 - `estimate_remote_timeout(model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1) -> int` — conservative timeout estimator.
 - `OllamaConnector` — small conversation history manager and prompt builder.
-- `OllamaProvider` — minimal, safe shim exposing `list_models()` and `summarize()`.
+- `OllamaProvider` — HTTP-aware provider that will call a local Ollama HTTP
+  API when available (via the bundled `ollama_service` helpers) and otherwise
+  expose a safe deterministic `summarize()` fallback useful for tests.
 - `GeminiProvider`, `GrokProvider`, `OpenAIProvider`, `ClaudeProvider` — minimal provider shims with the same `list_models()` / `summarize()` surface.
 - `load_config(path: str) -> dict` — JSON/YAML loader for small config files.
 - `parse_host_port(host_url: str) -> Tuple[str, int]` — parse `host:port` or URL into `(host, port)`.
@@ -51,8 +53,8 @@ Provider shims
 
 All provider shims (`OllamaProvider`, `GeminiProvider`, `GrokProvider`, `OpenAIProvider`, `ClaudeProvider`) implement two convenience methods:
 
-- `list_models() -> List[str]` — best-effort model enumeration (may be an empty list in offline mode).
-- `summarize(messages, settings: Optional[dict] = None) -> str` — safe default summarizer that joins message content. The shims are intentionally minimal so they can be used in tests or local runs without SDKs or network.
+- `list_models() -> List[str]` — best-effort model enumeration (may be an empty list in offline mode). Where possible the implementation will prefer local runtime discovery (CLI or HTTP API) and otherwise return an empty list.
+- `summarize(messages, settings: Optional[dict] = None) -> str` — attempt a real model invocation when the corresponding SDK/API is available and fall back to a deterministic join of message content for offline tests and examples.
 
 Ollama helpers
 --------------

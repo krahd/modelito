@@ -2,8 +2,9 @@ modelito
 =======
 
 Lightweight LLM provider abstractions and connectors extracted from the
-`mail_summariser` project. This repository is a minimal scaffold to publish
-`modelito` as a reusable package.
+`mail_summariser` project. This repository provides a focused, production-
+ready library of small helpers, compatibility shims, and utilities commonly
+used by downstream projects (for example, BatLLM and mail_summariser).
 
 [![CI](https://github.com/krahd/modelito/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/krahd/modelito/actions/workflows/ci.yml)
 
@@ -11,11 +12,14 @@ Lightweight LLM provider abstractions and connectors extracted from the
 Quick start
 -----------
 
-Install in editable mode for development:
+Install in editable mode for development (install optional extras as needed):
 
 ```sh
-pip install -e .
+pip install -e .[dev]
 pip install -r dev-requirements.txt
+
+# Optional extras
+pip install -e .[ollama,tokenization,openai,anthropic]
 ```
 
 Run tests:
@@ -37,7 +41,7 @@ python -m build
 Install from the built wheel:
 
 ```sh
-pip install dist/modelito-0.1.1-py3-none-any.whl
+pip install dist/modelito-0.2.0-py3-none-any.whl
 ```
 
 See the `docs/` folder for more details on calibration and migration.
@@ -45,14 +49,18 @@ See the `docs/` folder for more details on calibration and migration.
 Providers
 ---------
 
-This package provides lightweight, compatibility shims for a few common
-provider interfaces (for use in tests and simple local workflows):
+This package provides compatibility shims and small, dependency-light
+implementations for common provider interfaces. When optional extras are
+installed the package will attempt to use real SDK clients; otherwise the
+shims provide safe offline-friendly fallbacks suitable for testing.
 
-- `OllamaProvider` (default compatibility shim)
-- `GeminiProvider` (minimal shim)
-- `GrokProvider` (minimal shim)
- - `OpenAIProvider` (minimal shim)
- - `ClaudeProvider` (minimal shim)
+Provided shims and utilities:
+
+- `OllamaProvider` — HTTP-aware provider that will call a local Ollama
+	HTTP API when available and fall back to a deterministic stub.
+- `GeminiProvider`, `GrokProvider` — lightweight shims.
+- `OpenAIProvider`, `ClaudeProvider` — will use the official SDKs when
+	installed, falling back to deterministic behavior otherwise.
 
 License / AS IS
 ---------------
