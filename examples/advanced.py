@@ -22,7 +22,8 @@ def main() -> None:
 
     # provider + connector
     provider = OllamaProvider()
-    conn = OllamaConnector(provider=provider, shared_history=False, max_history_messages=5, max_history_tokens=200)
+    conn = OllamaConnector(provider=provider, shared_history=False,
+                           max_history_messages=5, max_history_tokens=200)
     conn.set_system_message("You are a concise assistant.")
 
     conv = "adv-example"
@@ -36,7 +37,8 @@ def main() -> None:
     resp = conn.send_sync(conv, [new_message])
     print("Response:", resp)
     print("Token estimate:", count_tokens(resp))
-    print("Timeout suggestion:", estimate_remote_timeout("gpt-3.5-turbo", input_tokens=count_tokens(resp), concurrency=1))
+    print("Timeout suggestion:", estimate_remote_timeout(
+        "gpt-3.5-turbo", input_tokens=count_tokens(resp), concurrency=1))
 
 
 if __name__ == "__main__":

@@ -26,6 +26,8 @@ import json
 ROOT = Path(__file__).resolve().parents[1]
 UNIX_INSTALL_URL = "https://ollama.com/install.sh"
 WINDOWS_INSTALL_URL = "https://ollama.com/install.ps1"
+DEFAULT_URL = "http://127.0.0.1"
+DEFAULT_PORT = 11434
 
 
 def endpoint_url(host: str, port: int, path: str = "/api/generate") -> str:
@@ -53,7 +55,7 @@ def server_is_up(host: str, port: int) -> bool:
             return False
 
 
-def ensure_ollama_running(host: str = "http://127.0.0.1", port: int = 11434, auto_start: bool = False, start_args: Optional[list] = None, timeout: float = 10.0) -> bool:
+def ensure_ollama_running(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, auto_start: bool = False, start_args: Optional[list] = None, timeout: float = 10.0) -> bool:
     """Ensure an Ollama server is reachable at `host:port`.
 
     If `auto_start` is True and the `ollama` binary is available on PATH,
@@ -124,7 +126,7 @@ def install_ollama(allow_install: bool = False, method: Optional[str] = None, ti
     return False
 
 
-def start_ollama(host: str = "http://127.0.0.1", port: int = 11434, start_args: Optional[list] = None, timeout: float = 10.0) -> bool:
+def start_ollama(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, start_args: Optional[list] = None, timeout: float = 10.0) -> bool:
     """Start `ollama serve` and wait for it to become available."""
     return ensure_ollama_running(host=host, port=port, auto_start=True, start_args=start_args, timeout=timeout)
 
@@ -292,7 +294,7 @@ def serve_model(model_name: Optional[str] = None, start_args: Optional[list] = N
         return False
     deadline = time.time() + timeout
     while time.time() < deadline:
-        if server_is_up("http://127.0.0.1", 11434):
+        if server_is_up(DEFAULT_URL, DEFAULT_PORT):
             return True
         time.sleep(0.5)
     return False
@@ -407,6 +409,13 @@ def start_detached_ollama_serve(host: str) -> subprocess.Popen:
 def json_post(url: str, payload: dict, timeout: float = 60.0) -> dict:
     request = Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
     with urlopen(request, timeout=timeout) as response:
+        body = response.read().decode("utf-8")
+    return json.loads(body) if body else {}
+
+
+def json_get(url: str, timeout: float = 5.0) -> dict:
+    """Read JSON from an HTTP GET endpoint and decode it to a dict."""
+    with urlopen(url, timeout=timeout) as response:
         body = response.read().decode("utf-8")
     return json.loads(body) if body else {}
 
