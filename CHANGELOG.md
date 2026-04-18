@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.1.3 - 2026-04-18
+
+- Merge `fix/ollama-compat`: Ollama compatibility improvements (CLI fallback, improved `list_models`).
+- Documentation: update `README.md` and `docs/USAGE.md` with clearer overview and quickstart.
+- Chore: small post-merge fix to `modelito/ollama.py`.
+
 ## 0.2.0 - Unreleased
 
 - Export fixes and API consistency (`install_service`, `ensure_ollama_running_verbose`).
