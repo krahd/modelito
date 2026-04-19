@@ -192,22 +192,117 @@ class OllamaProvider:
         return prompt
 
     def stream(self, messages: Any, settings: Optional[dict] = None):
-        """Streaming fallback for Ollama provider.
+        """Streaming implementation for Ollama via the local HTTP API.
 
-        Yield the completed response in character chunks. Real Ollama
-        integrations can replace this with the HTTP/CLI streaming output.
+        Attempts to call the Ollama `/api/generate` endpoint and yields
+        incremental text pieces as they arrive. Falls back to the
+        deterministic `summarize()` chunking when streaming isn't available.
         """
-        text = self.summarize(messages, settings=settings)
-        if not text:
-            return
-        chunk_size = 64
         try:
-            if isinstance(settings, dict) and "chunk_size" in settings:
-                chunk_size = int(settings.get("chunk_size", chunk_size) or chunk_size)
+            import json
+            from urllib.request import Request, urlopen
         except Exception:
-            pass
-        for i in range(0, len(text), chunk_size):
-            yield text[i : i + chunk_size]
+            # best-effort fallback
+            text = self.summarize(messages, settings=settings)
+            if not text:
+                return
+            for i in range(0, len(text), 64):
+                yield text[i: i + 64]
+            return
+
+        # Build payload mirroring summarize() behavior
+        payload: dict[str, Any] = {}
+        if self.model:
+            payload["model"] = self.model
+
+        if isinstance(messages, (list, tuple)) and messages and isinstance(messages[0], dict):
+            payload["messages"] = messages
+        else:
+            # flatten
+            try:
+                parts = []
+                for m in (messages or []):
+                    if isinstance(m, dict):
+                        parts.append(m.get("content", ""))
+                    else:
+                        parts.append(str(m))
+                payload["prompt"] = "\n".join(p for p in parts if p)
+            except Exception:
+                payload["prompt"] = str(messages or "")
+
+        url = endpoint_url(self.host, self.port, "/api/generate")
+
+        req = Request(url, data=json.dumps(payload).encode("utf-8"),
+                      headers={"Content-Type": "application/json"}, method="POST")
+        try:
+            with urlopen(req, timeout=60) as resp:
+                # iterate lines as they arrive
+                while True:
+                    chunk = resp.readline()
+                    if not chunk:
+                        break
+                    try:
+                        s = chunk.decode("utf-8").strip()
+                    except Exception:
+                        try:
+                            s = str(chunk)
+                        except Exception:
+                            continue
+                    if not s:
+                        continue
+                    # Some servers prefix SSE lines with 'data: '
+                    if s.startswith("data: "):
+                        s2 = s[6:]
+                    else:
+                        s2 = s
+                    # Try JSON parse
+                    try:
+                        obj = json.loads(s2)
+                    except Exception:
+                        yield s2
+                        continue
+                    # Extract plausible text fields
+                    if isinstance(obj, dict):
+                        # common shapes
+                        if "token" in obj and isinstance(obj.get("token"), str):
+                            yield obj.get("token")
+                            continue
+                        if "text" in obj and isinstance(obj.get("text"), str):
+                            yield obj.get("text")
+                            continue
+                        if "output" in obj:
+                            out = obj.get("output")
+                            if isinstance(out, str):
+                                yield out
+                                continue
+                            if isinstance(out, list) and out:
+                                first = out[0]
+                                if isinstance(first, dict):
+                                    yield str(first.get("content") or first.get("text") or "")
+                                    continue
+                                yield str(first)
+                                continue
+                        if "choices" in obj and isinstance(obj.get("choices"), list) and obj.get("choices"):
+                            first = obj.get("choices")[0]
+                            if isinstance(first, dict):
+                                delta = first.get("delta") or first.get("message") or {}
+                                if isinstance(delta, dict) and "content" in delta:
+                                    yield str(delta.get("content") or "")
+                                    continue
+                                if "text" in first:
+                                    yield str(first.get("text") or "")
+                                    continue
+                    # Fallback: yield the raw string
+                    yield s2
+                return
+        except Exception:
+            # fallback deterministic chunked output
+            text = self.summarize(messages, settings=settings)
+            if not text:
+                return
+            for i in range(0, len(text), 64):
+                yield text[i: i + 64]
+            return
 
     def embed(self, texts: Any, **kwargs) -> List[List[float]]:
         """Embedding surface for tests: delegate to the embeddings helper."""
