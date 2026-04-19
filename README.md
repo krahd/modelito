@@ -40,7 +40,7 @@ python -m build
 Install from the built wheel:
 
 ```sh
-pip install dist/modelito-0.3.0-py3-none-any.whl
+pip install dist/modelito-1.0.0-py3-none-any.whl
 ```
 
 See the `docs/` folder for more details on calibration and migration.

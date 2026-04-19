@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.0.0 - 2026-04-19
+
+- Major release: break compatibility in favor of a cleaner, modern API.
+- Add typed `Message`/`Response` dataclasses and expanded provider Protocols.
+- Streaming `stream()` surface implemented for OpenAI, Claude, Gemini, Ollama, and Grok.
+- SDK-aware integrations for OpenAI (async/streaming/embed), Claude and Gemini.
+- Ollama HTTP streaming implemented with robust fallback behavior.
+- Integration tests added (gated by environment variables).
+- CI/type/lint updates and general cleanup.
+
 ## 0.2.2 - 2026-04-18
 
 - Bump version to 0.2.2.
