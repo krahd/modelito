@@ -1,3 +1,7 @@
 [submodule "_external/BatLLM"]
 	path = _external/BatLLM
 	url = https://github.com/krahd/BatLLM
+
+[submodule "_external/mail_summariser"]
+	path = _external/mail_summariser
+	url = https://github.com/krahd/mail_summariser
