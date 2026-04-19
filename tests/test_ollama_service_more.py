@@ -1,5 +1,4 @@
 from modelito import ollama_service as osvc
-import sys
 import pytest
 
 pytestmark = pytest.mark.integration

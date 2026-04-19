@@ -1,7 +1,6 @@
 from types import SimpleNamespace
 import sys
 
-import pytest
 
 from modelito.openai import OpenAIProvider
 from modelito.claude import ClaudeProvider

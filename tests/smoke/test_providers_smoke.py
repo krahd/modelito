@@ -2,7 +2,6 @@ from modelito.openai import OpenAIProvider
 from modelito.ollama import OllamaProvider
 import os
 import sys
-import importlib
 import pytest
 
 pytestmark = pytest.mark.smoke

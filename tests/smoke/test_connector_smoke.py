@@ -1,7 +1,6 @@
 from modelito.connector import OllamaConnector
 import os
 import sys
-import importlib
 import pytest
 
 pytestmark = pytest.mark.smoke

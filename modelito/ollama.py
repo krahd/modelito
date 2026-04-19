@@ -110,7 +110,7 @@ class OllamaProvider:
         # First attempt: HTTP API
         try:
             if server_is_up(self.host, self.port):
-                payload = {}
+                payload: dict[str, Any] = {}
                 if self.model:
                     payload["model"] = self.model
                 # prefer sending structured messages when available

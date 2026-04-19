@@ -9,16 +9,14 @@ from __future__ import annotations
 
 import socket
 from urllib.request import urlopen
-from urllib.error import URLError
 from urllib.request import Request
-from urllib.error import HTTPError
 import time
 import shutil
 import subprocess
 import os
 import sys
 import shlex
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Callable
 from pathlib import Path
 import json
 import logging
@@ -190,8 +188,8 @@ def install_ollama(allow_install: bool = False, method: Optional[str] = None, ti
             # fallback to the official script installer
             cmd, _ = install_command_for_current_platform()
             try:
-                proc = subprocess.run(cmd, cwd=str(ROOT), text=True,
-                                      capture_output=True, check=False, timeout=timeout)
+                subprocess.run(cmd, cwd=str(ROOT), text=True,
+                                  capture_output=True, check=False, timeout=timeout)
                 return get_ollama_binary() is not None
             except Exception:
                 return False
@@ -200,8 +198,8 @@ def install_ollama(allow_install: bool = False, method: Optional[str] = None, ti
         # managers may not provide an `ollama` package.
         cmd, _ = install_command_for_current_platform()
         try:
-            proc = subprocess.run(cmd, cwd=str(ROOT), text=True,
-                                  capture_output=True, check=False, timeout=timeout)
+            subprocess.run(cmd, cwd=str(ROOT), text=True,
+                              capture_output=True, check=False, timeout=timeout)
             return get_ollama_binary() is not None
         except Exception:
             return False
@@ -229,7 +227,7 @@ def stop_ollama(force: bool = False) -> bool:
         ``True`` on success, ``False`` otherwise.
     """
     try:
-        import psutil
+        import psutil  # type: ignore
     except Exception:
         psutil = None
 
@@ -387,8 +385,8 @@ def list_local_models() -> List[str]:
                     continue
 
             # Plain text fallback: filter out obvious error/header lines
-            lines = [l.strip() for l in out.splitlines() if l.strip()]
-            good = [l for l in lines if not _looks_like_error_or_header(l)]
+            lines = [line.strip() for line in out.splitlines() if line.strip()]
+            good = [line for line in lines if not _looks_like_error_or_header(line)]
             if good:
                 return good
         except Exception as exc:
@@ -477,8 +475,8 @@ def list_remote_models() -> List[str]:
                         "Failed to parse JSON remote output from %s; stdout/stderr: %s", cmd, out[:1000])
                     continue
 
-            lines = [l.strip() for l in out.splitlines() if l.strip()]
-            good = [l for l in lines if not _looks_like_error_or_header(l)]
+            lines = [line.strip() for line in out.splitlines() if line.strip()]
+            good = [line for line in lines if not _looks_like_error_or_header(line)]
             if good:
                 return good
         except Exception as exc:
@@ -697,12 +695,12 @@ def start_detached_ollama_serve(host: str, start_args: Optional[List[str]] = Non
 
     if os.name == "nt":
         kwargs["creationflags"] = (
-            subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+            getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "CREATE_NO_WINDOW", 0)
         )
     else:
         kwargs["start_new_session"] = True
 
-    return subprocess.Popen(cmd, **kwargs)
+    return subprocess.Popen(cmd, **kwargs)  # type: ignore[call-overload]
 
 
 def json_post(url: str, payload: dict, timeout: float = 60.0) -> dict:
@@ -758,12 +756,14 @@ def load_llm_config(path: Optional[str] = None) -> Dict[str, Any]:
 
     Returns a dict with keys: last_served_model, model, model_timeouts, timeout, url, port
     """
+    load_config: Optional[Callable[[str], dict[str, Any]]] = None
     try:
-        from .config import load_config
+        from .config import load_config as _load_config  # type: ignore
+        load_config = _load_config
     except Exception:
         load_config = None
 
-    data = {}
+    data: dict[str, Any] = {}
     if path:
         try:
             if load_config:
@@ -795,8 +795,11 @@ def load_llm_config(path: Optional[str] = None) -> Dict[str, Any]:
     if not isinstance(data, dict):
         data = {}
     llm = data.get("llm") or {}
-    model_timeouts = llm.get("model_timeouts") if isinstance(
-        llm.get("model_timeouts"), dict) else {}
+    raw_model_timeouts = llm.get("model_timeouts")
+    if isinstance(raw_model_timeouts, dict):
+        model_timeouts: dict[str, Any] = dict(raw_model_timeouts)
+    else:
+        model_timeouts = {}
     return {
         "last_served_model": str(llm.get("last_served_model") or "").strip(),
         "model": str(llm.get("model") or "").strip(),
@@ -818,7 +821,7 @@ def save_last_served_model(model: str, path: Optional[str] = None) -> bool:
         target = Path(path) if path else (Path.home() / ".modelito" / "config.json")
         target.parent.mkdir(parents=True, exist_ok=True)
         # load existing data if possible
-        data = {}
+        data: dict[str, Any] = {}
         if target.exists():
             try:
                 data = json.loads(target.read_text(encoding="utf-8")) or {}
@@ -962,7 +965,7 @@ def _listener_pids_from_connections(connections, port: int) -> List[int]:
 def find_ollama_listener_pids(port: int) -> List[int]:
     """Return process IDs listening on the configured TCP port (best-effort)."""
     try:
-        import psutil
+        import psutil  # type: ignore
     except Exception:
         psutil = None
 
@@ -1024,7 +1027,7 @@ def stop_service(host: str = "http://127.0.0.1", port: int = 11434, verbose: boo
 
     killed = False
     try:
-        import psutil
+        import psutil  # type: ignore
     except Exception:
         psutil = None
 

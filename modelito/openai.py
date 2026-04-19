@@ -7,6 +7,7 @@ from __future__ import annotations
 import importlib
 
 from typing import Any, List, Optional
+from types import ModuleType
 
 
 """OpenAI provider that prefers the official SDK when available.
@@ -68,6 +69,7 @@ class OpenAIProvider:
         self.api_key = api_key
         self.model = model or "gpt-3.5-turbo"
         self._client = client
+        self._openai: Optional[ModuleType] = None
         try:
             self._openai = importlib.import_module("openai")
         except Exception:

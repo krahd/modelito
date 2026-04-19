@@ -11,7 +11,6 @@ from modelito import (
     OllamaConnector,
     OllamaProvider,
     load_config,
-    parse_host_port,
 )
 
 
