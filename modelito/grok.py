@@ -68,7 +68,7 @@ class GrokProvider:
         except Exception:
             pass
         for i in range(0, len(text), chunk_size):
-            yield text[i : i + chunk_size]
+            yield text[i: i + chunk_size]
 
     def embed(self, texts: Any, **kwargs) -> List[List[float]]:
         """Embedding surface for tests: delegate to the embeddings helper."""
