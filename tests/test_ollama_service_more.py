@@ -1,4 +1,7 @@
 import sys
+import pytest
+
+pytestmark = pytest.mark.integration
 
 from modelito import ollama_service as osvc
 

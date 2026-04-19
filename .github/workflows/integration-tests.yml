@@ -1,0 +1,44 @@
+name: Integration tests (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      allow_install:
+        description: 'Allow installing ollama (true/false)'
+        required: false
+        default: 'false'
+      allow_update:
+        description: 'Allow updating ollama (true/false)'
+        required: false
+        default: 'false'
+      allow_download:
+        description: 'Allow downloading models (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  integration:
+    name: Run integration tests (manual)
+    runs-on: ubuntu-latest
+    env:
+      RUN_OLLAMA_INTEGRATION: '1'
+      ALLOW_OLLAMA_INSTALL: ${{ github.event.inputs.allow_install }}
+      ALLOW_OLLAMA_UPDATE: ${{ github.event.inputs.allow_update }}
+      ALLOW_OLLAMA_DOWNLOAD: ${{ github.event.inputs.allow_download }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          python -m pip install -e .
+          if [ -f dev-requirements.txt ]; then python -m pip install -r dev-requirements.txt; fi
+
+      - name: Run integration tests
+        run: pytest -q -m integration --maxfail=1
