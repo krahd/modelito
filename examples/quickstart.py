@@ -11,6 +11,9 @@ from modelito import (
     estimate_remote_timeout,
     OllamaConnector,
     OllamaProvider,
+    Provider,
+    Message,
+    Response,
 )
 
 
@@ -24,10 +27,12 @@ def main() -> None:
         "gpt-3.5-turbo", input_tokens=50, concurrency=1))
 
     provider = OllamaProvider()
+    provider: Provider = OllamaProvider()
+    print("Is Provider:", isinstance(provider, Provider))
     conn = OllamaConnector(provider=provider)
-    user_msg = {"role": "user", "content": "Please summarize: Hello world"}
-    resp = conn.send_sync(conv_id="example", new_messages=[user_msg])
-    print("provider response:", resp)
+    user_msg = Message(role="user", content="Please summarize: Hello world")
+    resp: Response = conn.complete(conv_id="example", new_messages=[user_msg])
+    print("provider response:", resp.text)
 
 
 if __name__ == "__main__":

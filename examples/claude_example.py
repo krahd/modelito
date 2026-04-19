@@ -6,13 +6,14 @@ is not available.
 """
 from __future__ import annotations
 
-from modelito import ClaudeProvider
+from modelito import ClaudeProvider, Provider, Message
 
 
 def main() -> None:
-    prov = ClaudeProvider()
+    prov: Provider = ClaudeProvider()
     print("ClaudeProvider models:", prov.list_models())
-    msgs = [{"role": "user", "content": "Summarize: Hello from Claude example."}]
+    print("Is Provider:", isinstance(prov, Provider))
+    msgs = [Message(role="user", content="Summarize: Hello from Claude example.")]
     resp = prov.summarize(msgs)
     print("Response:\n", resp)
 

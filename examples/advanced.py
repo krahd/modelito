@@ -10,6 +10,7 @@ from modelito import (
     estimate_remote_timeout,
     OllamaConnector,
     OllamaProvider,
+    Provider,
     load_config,
 )
 
@@ -21,6 +22,7 @@ def main() -> None:
 
     # provider + connector
     provider = OllamaProvider()
+    provider: Provider = OllamaProvider()
     conn = OllamaConnector(provider=provider, shared_history=False,
                            max_history_messages=5, max_history_tokens=200)
     conn.set_system_message("You are a concise assistant.")
@@ -29,12 +31,13 @@ def main() -> None:
     conn.add_to_history(conv, "user", "Hello!")
     conn.add_to_history(conv, "assistant", "Hi, how can I help?")
 
-    new_message = {"role": "user", "content": "Summarize the conversation in one sentence."}
+    from modelito import Message, Response
+
+    new_message = Message(role="user", content="Summarize the conversation in one sentence.")
     prompt = conn.build_prompt(conv, new_messages=[new_message])
     print("Built prompt:", prompt)
-
-    resp = conn.send_sync(conv, [new_message])
-    print("Response:", resp)
+    resp: Response = conn.complete(conv, [new_message])
+    print("Response:", resp.text)
     print("Token estimate:", count_tokens(resp))
     print("Timeout suggestion:", estimate_remote_timeout(
         "gpt-3.5-turbo", input_tokens=count_tokens(resp), concurrency=1))
