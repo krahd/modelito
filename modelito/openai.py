@@ -6,7 +6,7 @@ defaults for tests and local usage without requiring network access.
 from __future__ import annotations
 import importlib
 
-from typing import Any, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 from .messages import Message
 from types import ModuleType
 
@@ -109,8 +109,8 @@ class OpenAIProvider:
             pass
         return []
 
-    def summarize(self, messages: Any, settings: Optional[dict] = None) -> str:
-        def _flatten(msgs: Any) -> List[dict]:
+    def summarize(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> str:
+        def _flatten(msgs: Any) -> List[Dict[str, Any]]:
             if not msgs:
                 return []
             if isinstance(msgs, (list, tuple)):
@@ -146,7 +146,8 @@ class OpenAIProvider:
 
                 oi = self._openai
                 if oi is not None and hasattr(oi, "ChatCompletion") and hasattr(oi.ChatCompletion, "create"):
-                    res = oi.ChatCompletion.create(model=self.model, messages=msgs, **(settings or {}))
+                    res = oi.ChatCompletion.create(
+                        model=self.model, messages=msgs, **(settings or {}))
                     text = _extract_text_from_response(res)
                     if text:
                         return text
@@ -165,18 +166,18 @@ class OpenAIProvider:
         except Exception:
             return ""
 
-    def stream(self, messages: Any, settings: Optional[dict] = None):
+    def stream(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
         """Streaming provider surface attempting SDK streaming first.
 
         Tries several common client shapes (modern and legacy). Falls back
         to chunked deterministic output when streaming is unavailable.
         """
 
-        def _flatten_msgs(msgs: Any) -> List[dict]:
+        def _flatten_msgs(msgs: Any) -> List[Dict[str, Any]]:
             if not msgs:
                 return []
             if isinstance(msgs, (list, tuple)):
-                out: List[dict] = []
+                out: List[Dict[str, Any]] = []
                 for m in msgs:
                     if isinstance(m, Message):
                         out.append({"role": m.role, "content": m.content})
@@ -318,7 +319,7 @@ class OpenAIProvider:
         for i in range(0, len(text), chunk_size):
             yield text[i: i + chunk_size]
 
-    async def acomplete(self, messages: Any, settings: Optional[dict] = None) -> str:
+    async def acomplete(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> str:
         """Async wrapper for `summarize()` using a threadpool executor."""
         try:
             import asyncio
@@ -328,7 +329,7 @@ class OpenAIProvider:
         except Exception:
             return self.summarize(messages, settings=settings)
 
-    def embed(self, texts: Any, **kwargs) -> List[List[float]]:
+    def embed(self, texts: Iterable[str], **kwargs: Any) -> List[List[float]]:
         """Attempt to use provider SDK for embeddings, fallback to stub.
 
         Supports common client shapes (modern and legacy). Returns a list

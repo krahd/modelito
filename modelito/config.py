@@ -29,7 +29,9 @@ def load_config(path: str) -> Dict[str, Any]:
         return {}
     text = p.read_text(encoding="utf-8")
     try:
-        return json.loads(text)
+        data = json.loads(text)
+        if isinstance(data, dict):
+            return data
     except Exception:
         pass
     # try YAML if available (dynamic import to avoid static lint errors)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable, List
+from typing import Any, Iterable, List
 
 
 def embed_texts(texts: Iterable[str], dim: int = 8) -> List[List[float]]:
@@ -16,6 +16,6 @@ def embed_texts(texts: Iterable[str], dim: int = 8) -> List[List[float]]:
 class StubEmbeddingProvider:
     """Simple test provider implementing the embedding surface."""
 
-    def embed(self, texts: Iterable[str], **kwargs) -> List[List[float]]:
+    def embed(self, texts: Iterable[str], **kwargs: Any) -> List[List[float]]:
         dim = int(kwargs.get("dim", 8))
         return embed_texts(texts, dim=dim)

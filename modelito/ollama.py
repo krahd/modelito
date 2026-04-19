@@ -9,7 +9,7 @@ the provider API during tests or local runs continue to work.
 """
 from __future__ import annotations
 
-from typing import Any, List, Optional
+from typing import Any, Iterable, List, Optional
 from .messages import Message
 from .ollama_service import endpoint_url, server_is_up, json_post, list_local_models, list_remote_models, ollama_installed, run_ollama_command, running_model_names
 
@@ -75,7 +75,7 @@ class OllamaProvider:
 
         return []
 
-    def summarize(self, messages: Any, settings: Optional[dict] = None) -> str:
+    def summarize(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> str:
         """Produce a deterministic summary by concatenating message contents.
 
         This minimal implementation is intended for local testing and
@@ -195,7 +195,7 @@ class OllamaProvider:
         # deterministic fallback
         return prompt
 
-    def stream(self, messages: Any, settings: Optional[dict] = None):
+    def stream(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
         """Streaming implementation for Ollama via the local HTTP API.
 
         Attempts to call the Ollama `/api/generate` endpoint and yields
@@ -231,7 +231,8 @@ class OllamaProvider:
                     elif isinstance(m, str):
                         parts.append(m)
                     else:
-                        raise TypeError("OllamaProvider.stream requires modelito.messages.Message instances; dicts are not supported")
+                        raise TypeError(
+                            "OllamaProvider.stream requires modelito.messages.Message instances; dicts are not supported")
                 payload["prompt"] = "\n".join(p for p in parts if p)
             except Exception:
                 payload["prompt"] = str(messages or "")
@@ -271,10 +272,10 @@ class OllamaProvider:
                     if isinstance(obj, dict):
                         # common shapes
                         if "token" in obj and isinstance(obj.get("token"), str):
-                            yield obj.get("token")
+                            yield str(obj.get("token") or "")
                             continue
                         if "text" in obj and isinstance(obj.get("text"), str):
-                            yield obj.get("text")
+                            yield str(obj.get("text") or "")
                             continue
                         if "output" in obj:
                             out = obj.get("output")
@@ -311,7 +312,7 @@ class OllamaProvider:
                 yield text[i: i + 64]
             return
 
-    def embed(self, texts: Any, **kwargs) -> List[List[float]]:
+    def embed(self, texts: Iterable[str], **kwargs: Any) -> List[List[float]]:
         """Embedding surface for tests: delegate to the embeddings helper."""
         try:
             from .embeddings import embed_texts

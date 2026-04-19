@@ -16,7 +16,8 @@ def test_openai_integration_stream_and_embed():
     prov = OpenAIProvider(api_key=api_key, model=os.environ.get("OPENAI_MODEL", "gpt-3.5-turbo"))
 
     from modelito.messages import Message
-    txt = prov.summarize([Message(role="user", content="Say hello in one word.")], settings={"max_tokens": 8})
+    txt = prov.summarize([Message(role="user", content="Say hello in one word.")],
+                         settings={"max_tokens": 8})
     assert isinstance(txt, str) and txt
 
     chunks = []
