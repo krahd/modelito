@@ -84,9 +84,17 @@ jobs:
           pip install -e '.[dev]'
           pip install -r dev-requirements.txt || true
       - name: Run Ollama integration tests
-        run: pytest tests/test_ollama_integration.py -q
+        run: |
+          if [ -n "${OLLAMA_HOST}" ] || [ "${{ github.event.inputs.run_ollama_integration }}" = "yes" ] || [ "${{ github.event.inputs.run_ollama_integration }}" = "1" ]; then
+            pytest tests/test_ollama_integration.py -q
+          else
+            echo "Skipping Ollama integration tests (no OLLAMA_HOST configured)"
+          fi
         env:
           RUN_OLLAMA_INTEGRATION: ${{ env.RUN_OLLAMA_INTEGRATION }}
+          OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
+          OLLAMA_PORT: ${{ secrets.OLLAMA_PORT }}
+          OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL }}
 
   docs:
     name: Docs
@@ -112,8 +120,6 @@ jobs:
 
   integration-gated:
     name: Integration (gated)
-    # Only run this job when at least one integration secret is configured.
-    if: ${{ secrets.OPENAI_API_KEY != '' || secrets.ANTHROPIC_API_KEY != '' || secrets.OLLAMA_HOST != '' }}
     runs-on: ubuntu-latest
     needs: test
     strategy:
@@ -132,24 +138,35 @@ jobs:
           pip install -r dev-requirements.txt || true
 
       - name: OpenAI integration tests
-        if: ${{ matrix.provider == 'openai' && secrets.OPENAI_API_KEY != '' }}
-        run: pytest tests/integration/test_integration_openai_stream.py -q
+        run: |
+          if [ -n "${OPENAI_API_KEY}" ]; then
+            pytest tests/integration/test_integration_openai_stream.py -q
+          else
+            echo "Skipping OpenAI tests (no OPENAI_API_KEY)"
+          fi
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
 
       - name: Anthropic integration tests
-        if: ${{ matrix.provider == 'anthropic' && secrets.ANTHROPIC_API_KEY != '' }}
-        run: pytest tests/integration/test_integration_anthropic_stream.py -q
+        run: |
+          if [ -n "${ANTHROPIC_API_KEY}" ]; then
+            pytest tests/integration/test_integration_anthropic_stream.py -q
+          else
+            echo "Skipping Anthropic tests (no ANTHROPIC_API_KEY)"
+          fi
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
       - name: Ollama integration tests
-        if: ${{ matrix.provider == 'ollama' && (github.event.inputs.run_ollama_integration == 'yes' || github.event.inputs.run_ollama_integration == '1' || env.RUN_OLLAMA_INTEGRATION == '1') && secrets.OLLAMA_HOST != '' }}
-        run: pytest tests/integration/test_integration_ollama_stream.py -q
+        run: |
+          if [ "${{ matrix.provider }}" = "ollama" ] && ( [ "${{ github.event.inputs.run_ollama_integration }}" = "yes" ] || [ "${{ github.event.inputs.run_ollama_integration }}" = "1" ] || [ "${RUN_OLLAMA_INTEGRATION}" = "1" ] ) && [ -n "${OLLAMA_HOST}" ]; then
+            pytest tests/integration/test_integration_ollama_stream.py -q
+          else
+            echo "Skipping Ollama integration tests"
+          fi
         env:
+          RUN_OLLAMA_INTEGRATION: ${{ env.RUN_OLLAMA_INTEGRATION }}
           OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
           OLLAMA_PORT: ${{ secrets.OLLAMA_PORT }}
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL }}
-
-  # (Duplicate integration job removed - single gated integration job above)
