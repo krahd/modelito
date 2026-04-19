@@ -40,7 +40,7 @@ python -m build
 Install from the built wheel:
 
 ```sh
-pip install dist/modelito-0.2.3-py3-none-any.whl
+pip install dist/modelito-0.3.0-py3-none-any.whl
 ```
 
 See the `docs/` folder for more details on calibration and migration.
@@ -87,5 +87,58 @@ Example (local):
 
 ```sh
 RUN_OLLAMA_INTEGRATION=1 pytest tests/test_ollama_integration.py -q
+```
+
+Provider interface
+------------------
+
+`modelito` exposes a minimal structural `Provider` Protocol that codifies the
+small runtime surface expected from provider implementations and third-party
+adapters. The Protocol is intentionally small to remain compatible with
+existing duck-typed providers — it requires only:
+
+- `list_models()` -> `list[str]`
+- `summarize(messages, settings=None)` -> `str`
+
+All built-in providers shipped with the package (`OpenAIProvider`,
+`ClaudeProvider`, `GeminiProvider`, `OllamaProvider`, `GrokProvider`) now
+explicitly subclass `Provider`. The `Provider` Protocol is decorated with
+`@runtime_checkable`, so you can use `isinstance()` checks at runtime when
+you need to enforce the contract in application code.
+
+Example usage:
+
+```py
+from modelito import Provider, OllamaProvider
+
+p: Provider = OllamaProvider()
+if isinstance(p, Provider):
+    resp = p.summarize([{"role": "user", "content": "hello"}])
+    print(resp)
+```
+This release introduces typed `Message`/`Response` dataclasses and expands the
+provider surface into a small set of optional Protocols:
+
+- `SyncProvider` (alias: `Provider`) — existing synchronous `summarize()`/`list_models()` surface.
+- `AsyncProvider` — async `acomplete()` surface for providers that support awaitable calls.
+- `StreamingProvider` — streaming `stream()` generator surface.
+- `EmbeddingProvider` — `embed()` surface for vector embeddings.
+
+`modelito` exposes `Message` and `Response` dataclasses; connectors now prefer
+these types while still accepting legacy dict-shaped messages for
+compatibility. Example usage with the new API:
+
+```py
+from modelito import Provider, Message, OllamaProvider, OllamaConnector
+
+p: Provider = OllamaProvider()
+if isinstance(p, Provider):
+    resp_text = p.summarize([Message(role="user", content="hello")])
+    print(resp_text)
+
+conn = OllamaConnector(provider=p)
+res = conn.complete(conv_id="example", new_messages=[Message(role="user", content="hello")])
+print(res.text)
+```
 ```
 
