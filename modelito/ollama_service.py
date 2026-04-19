@@ -21,6 +21,7 @@ import shlex
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 import json
+import logging
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,6 +29,9 @@ UNIX_INSTALL_URL = "https://ollama.com/install.sh"
 WINDOWS_INSTALL_URL = "https://ollama.com/install.ps1"
 DEFAULT_URL = "http://127.0.0.1"
 DEFAULT_PORT = 11434
+
+# Module logger
+logger = logging.getLogger(__name__)
 
 
 def endpoint_url(host: str, port: int, path: str = "/api/generate") -> str:
@@ -301,17 +305,11 @@ def list_local_models() -> List[str]:
     returned.
     """
     def _looks_like_error_or_header(line: str) -> bool:
-        """Return True for lines that look like errors or table headers.
-
-        We avoid returning noisy CLI output such as lines that contain
-        common error words ("error", "failed", "unable", etc.) or
-        obvious headers like "NAME" so callers receive only plausible
-        model-name lines.
-        """
         if not line:
             return True
         low = line.strip().lower()
-        error_indicators = ("error", "failed", "unable", "not found", "no such", "denied", "unauthorized", "forbidden", "exception")
+        error_indicators = ("error", "failed", "unable", "not found", "no such",
+                            "denied", "unauthorized", "forbidden", "exception")
         for tok in error_indicators:
             if tok in low:
                 return True
@@ -320,22 +318,81 @@ def list_local_models() -> List[str]:
             return True
         return False
 
+    def _try_parse_json_models(out: str) -> Optional[List[str]]:
+        try:
+            data = json.loads(out)
+        except Exception:
+            return None
+        names: List[str] = []
+        # Handle obvious structures
+        if isinstance(data, list):
+            for item in data:
+                if isinstance(item, str):
+                    names.append(item)
+                elif isinstance(item, dict):
+                    if "name" in item:
+                        names.append(str(item.get("name")))
+                    elif "model" in item:
+                        names.append(str(item.get("model")))
+                    else:
+                        # fallback to any key that looks like a name
+                        for k in ("name", "model"):
+                            if k in item:
+                                names.append(str(item.get(k)))
+                                break
+        elif isinstance(data, dict):
+            # common: {"models": [...]}
+            for key in ("models", "llms", "data"):
+                if key in data and isinstance(data[key], list):
+                    for item in data[key]:
+                        if isinstance(item, str):
+                            names.append(item)
+                        elif isinstance(item, dict):
+                            if "name" in item:
+                                names.append(str(item.get("name")))
+                            elif "model" in item:
+                                names.append(str(item.get("model")))
+                    if names:
+                        break
+            # If dict keys are model names
+            if not names:
+                for k in data.keys():
+                    if isinstance(k, str) and k and not k.lower().startswith("error"):
+                        names.append(k)
+        return names if names else None
+
     binp = get_ollama_binary()
     if not binp:
         return []
-    cmds = [[binp, "list"], [binp, "ls"], [binp, "models"]]
+
+    # Try JSON-capable invocations first, falling back to plain text parsing.
+    cmds = [[binp, "list", "--json"], [binp, "ls", "--json"], [binp, "models", "--json"],
+            [binp, "list"], [binp, "ls"], [binp, "models"]]
     for cmd in cmds:
         try:
             res = subprocess.run(cmd, stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE, text=True, timeout=15, check=False)
-            out = res.stdout or res.stderr
-            if out:
-                lines = [l.strip() for l in out.splitlines() if l.strip()]
-                # Filter out obvious error and header lines
-                good = [l for l in lines if not _looks_like_error_or_header(l)]
-                if good:
-                    return good
-        except Exception:
+            out = (res.stdout or "").strip() or (res.stderr or "").strip()
+            if not out:
+                continue
+            # If JSON flag used try parsing structured output
+            if "--json" in cmd:
+                parsed = _try_parse_json_models(out)
+                if parsed:
+                    logger.debug("Parsed JSON model list from %s: %s", cmd, parsed)
+                    return parsed
+                else:
+                    logger.debug(
+                        "Failed to parse JSON output from %s; stdout/stderr: %s", cmd, out[:1000])
+                    continue
+
+            # Plain text fallback: filter out obvious error/header lines
+            lines = [l.strip() for l in out.splitlines() if l.strip()]
+            good = [l for l in lines if not _looks_like_error_or_header(l)]
+            if good:
+                return good
+        except Exception as exc:
+            logger.debug("Exception while listing local models with %s: %s", cmd, exc)
             continue
     return []
 
@@ -351,7 +408,8 @@ def list_remote_models() -> List[str]:
         if not line:
             return True
         low = line.strip().lower()
-        error_indicators = ("error", "failed", "unable", "not found", "no such", "denied", "unauthorized", "forbidden", "exception")
+        error_indicators = ("error", "failed", "unable", "not found", "no such",
+                            "denied", "unauthorized", "forbidden", "exception")
         for tok in error_indicators:
             if tok in low:
                 return True
@@ -360,23 +418,71 @@ def list_remote_models() -> List[str]:
             return True
         return False
 
+    def _try_parse_json_models(out: str) -> Optional[List[str]]:
+        try:
+            data = json.loads(out)
+        except Exception:
+            return None
+        names: List[str] = []
+        if isinstance(data, list):
+            for item in data:
+                if isinstance(item, str):
+                    names.append(item)
+                elif isinstance(item, dict):
+                    if "name" in item:
+                        names.append(str(item.get("name")))
+                    elif "model" in item:
+                        names.append(str(item.get("model")))
+        elif isinstance(data, dict):
+            for key in ("models", "llms", "data"):
+                if key in data and isinstance(data[key], list):
+                    for item in data[key]:
+                        if isinstance(item, str):
+                            names.append(item)
+                        elif isinstance(item, dict):
+                            if "name" in item:
+                                names.append(str(item.get("name")))
+                            elif "model" in item:
+                                names.append(str(item.get("model")))
+                    if names:
+                        break
+            if not names:
+                for k in data.keys():
+                    if isinstance(k, str) and k and not k.lower().startswith("error"):
+                        names.append(k)
+        return names if names else None
+
     binp = get_ollama_binary()
     if not binp:
         return []
-    cmds = [[binp, "list", "--remote"], [binp, "ls", "--remote"],
+
+    cmds = [[binp, "list", "--remote", "--json"], [binp, "ls", "--remote", "--json"],
+            [binp, "models", "--remote", "--json"], [binp, "llms", "--remote", "--json"],
+            [binp, "list", "--remote"], [binp, "ls", "--remote"],
             [binp, "models", "--remote"], [binp, "llms", "--remote"]]
     for cmd in cmds:
         try:
             res = subprocess.run(cmd, stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE, text=True, timeout=20, check=False)
-            out = res.stdout or res.stderr
-            if out:
-                lines = [l.strip() for l in out.splitlines() if l.strip()]
-                # Filter out obvious error and header lines
-                good = [l for l in lines if not _looks_like_error_or_header(l)]
-                if good:
-                    return good
-        except Exception:
+            out = (res.stdout or "").strip() or (res.stderr or "").strip()
+            if not out:
+                continue
+            if "--json" in cmd:
+                parsed = _try_parse_json_models(out)
+                if parsed:
+                    logger.debug("Parsed JSON remote model list from %s: %s", cmd, parsed)
+                    return parsed
+                else:
+                    logger.debug(
+                        "Failed to parse JSON remote output from %s; stdout/stderr: %s", cmd, out[:1000])
+                    continue
+
+            lines = [l.strip() for l in out.splitlines() if l.strip()]
+            good = [l for l in lines if not _looks_like_error_or_header(l)]
+            if good:
+                return good
+        except Exception as exc:
+            logger.debug("Exception while listing remote models with %s: %s", cmd, exc)
             continue
     return []
 
@@ -396,6 +502,7 @@ def download_model(model_name: str, timeout: float = 600.0) -> bool:
     """
     binp = get_ollama_binary()
     if not binp:
+        logger.debug("download_model: ollama binary not found")
         return False
     cmds = [[binp, "pull", model_name], [binp, "download", model_name]]
     for cmd in cmds:
@@ -403,8 +510,13 @@ def download_model(model_name: str, timeout: float = 600.0) -> bool:
             res = subprocess.run(cmd, stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE, text=True, timeout=timeout, check=False)
             if res.returncode == 0:
+                logger.debug("download_model succeeded for %s via %s", model_name, cmd)
                 return True
-        except Exception:
+            else:
+                logger.warning("download_model failed for %s via %s: returncode=%s stdout=%s stderr=%s",
+                               model_name, cmd, res.returncode, (res.stdout or '')[:1000], (res.stderr or '')[:1000])
+        except Exception as exc:
+            logger.debug("Exception running download command %s for %s: %s", cmd, model_name, exc)
             continue
     return False
 
@@ -417,6 +529,7 @@ def delete_model(model_name: str) -> bool:
     """
     binp = get_ollama_binary()
     if not binp:
+        logger.debug("delete_model: ollama binary not found")
         return False
     cmds = [[binp, "rm", model_name], [binp, "remove", model_name], [binp, "delete", model_name]]
     for cmd in cmds:
@@ -424,8 +537,13 @@ def delete_model(model_name: str) -> bool:
             res = subprocess.run(cmd, stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE, text=True, timeout=60, check=False)
             if res.returncode == 0:
+                logger.debug("delete_model succeeded for %s via %s", model_name, cmd)
                 return True
-        except Exception:
+            else:
+                logger.debug("delete_model attempt for %s via %s returned %s; stdout=%s stderr=%s",
+                             model_name, cmd, res.returncode, (res.stdout or '')[:1000], (res.stderr or '')[:1000])
+        except Exception as exc:
+            logger.debug("Exception running delete command %s for %s: %s", cmd, model_name, exc)
             continue
     return False
 
