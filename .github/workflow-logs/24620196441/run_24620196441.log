@@ -1,0 +1,322 @@
+Run integration tests (manual)	Set up job	﻿2026-04-19T03:39:10.8545298Z Current runner version: '2.333.1'
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8580155Z ##[group]Runner Image Provisioner
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8581607Z Hosted Compute Agent
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8582595Z Version: 20260213.493
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8583956Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8585145Z Build Date: 2026-02-13T00:28:41Z
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8586456Z Worker ID: {36cc6d43-29fc-4394-8dc2-f417483bc00f}
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8587501Z Azure Region: centralus
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8588382Z ##[endgroup]
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8590616Z ##[group]Operating System
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8591556Z Ubuntu
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8592331Z 24.04.4
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8593387Z LTS
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8594148Z ##[endgroup]
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8594952Z ##[group]Runner Image
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8596158Z Image: ubuntu-24.04
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8597030Z Version: 20260413.86.1
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8598800Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260413.86/images/ubuntu/Ubuntu2404-Readme.md
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8601760Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260413.86
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8603693Z ##[endgroup]
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8605607Z ##[group]GITHUB_TOKEN Permissions
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8608792Z Contents: read
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8609673Z Metadata: read
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8610539Z Packages: read
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8611319Z ##[endgroup]
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8614486Z Secret source: Actions
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.8615664Z Prepare workflow directory
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.9293043Z Prepare all required actions
+Run integration tests (manual)	Set up job	2026-04-19T03:39:10.9349087Z Getting action download info
+Run integration tests (manual)	Set up job	2026-04-19T03:39:11.2825015Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+Run integration tests (manual)	Set up job	2026-04-19T03:39:11.4136980Z Download action repository 'actions/setup-python@v4' (SHA:7f4fc3e22c37d6ff65e88745f38bd3157c663f7c)
+Run integration tests (manual)	Set up job	2026-04-19T03:39:11.7488831Z Complete job name: Run integration tests (manual)
+Run integration tests (manual)	Checkout	﻿2026-04-19T03:39:11.8175856Z ##[group]Run actions/checkout@v4
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8176799Z with:
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8177230Z   repository: krahd/modelito
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8177907Z   token: ***
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8178314Z   ssh-strict: true
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8178736Z   ssh-user: git
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8179170Z   persist-credentials: true
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8179644Z   clean: true
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8180069Z   sparse-checkout-cone-mode: true
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8180573Z   fetch-depth: 1
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8180989Z   fetch-tags: false
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8181398Z   show-progress: true
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8181838Z   lfs: false
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8182225Z   submodules: false
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8182646Z   set-safe-directory: true
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8183528Z env:
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8183957Z   RUN_OLLAMA_INTEGRATION: 1
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8184449Z   ALLOW_OLLAMA_INSTALL: true
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8184935Z   ALLOW_OLLAMA_UPDATE: true
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8185408Z   ALLOW_OLLAMA_DOWNLOAD: true
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.8185881Z ##[endgroup]
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9336292Z Syncing repository: krahd/modelito
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9338252Z ##[group]Getting Git version info
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9339013Z Working directory is '/home/runner/work/modelito/modelito'
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9340026Z [command]/usr/bin/git version
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9392696Z git version 2.53.0
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9419876Z ##[endgroup]
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9434684Z Temporarily overriding HOME='/home/runner/work/_temp/38b7b0e3-af21-4776-98bb-17e11b52342a' before making global git config changes
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9436170Z Adding repository directory to the temporary git global config as a safe directory
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9440451Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/modelito/modelito
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9475187Z Deleting the contents of '/home/runner/work/modelito/modelito'
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9478528Z ##[group]Initializing the repository
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9482745Z [command]/usr/bin/git init /home/runner/work/modelito/modelito
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9607408Z hint: Using 'master' as the name for the initial branch. This default branch name
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9609884Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9611748Z hint: to use in all of your new repositories, which will suppress this warning,
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9613570Z hint: call:
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9614392Z hint:
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9615401Z hint: 	git config --global init.defaultBranch <name>
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9616566Z hint:
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9617614Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9619334Z hint: 'development'. The just-created branch can be renamed via this command:
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9620754Z hint:
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9621533Z hint: 	git branch -m <name>
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9622541Z hint:
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9624181Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9626093Z Initialized empty Git repository in /home/runner/work/modelito/modelito/.git/
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9629000Z [command]/usr/bin/git remote add origin https://github.com/krahd/modelito
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9661392Z ##[endgroup]
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9662743Z ##[group]Disabling automatic garbage collection
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9667133Z [command]/usr/bin/git config --local gc.auto 0
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9698614Z ##[endgroup]
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9708176Z ##[group]Setting up auth
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9709537Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Run integration tests (manual)	Checkout	2026-04-19T03:39:11.9743636Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.0052651Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.0089857Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.0314213Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.0346476Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.0591520Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.0626148Z ##[endgroup]
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.0627094Z ##[group]Fetching the repository
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.0635139Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +5164aa75ad2fcdb984d913c0a3d4c33918301997:refs/remotes/origin/main
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.3224409Z From https://github.com/krahd/modelito
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.3227050Z  * [new ref]         5164aa75ad2fcdb984d913c0a3d4c33918301997 -> origin/main
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.3251891Z ##[endgroup]
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.3253845Z ##[group]Determining the checkout info
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.3255721Z ##[endgroup]
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.3258415Z [command]/usr/bin/git sparse-checkout disable
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.3295809Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.3321679Z ##[group]Checking out the ref
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.3325392Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.3402837Z Switched to a new branch 'main'
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.3406388Z branch 'main' set up to track 'origin/main'.
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.3413046Z ##[endgroup]
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.3446313Z [command]/usr/bin/git log -1 --format=%H
+Run integration tests (manual)	Checkout	2026-04-19T03:39:12.3468444Z 5164aa75ad2fcdb984d913c0a3d4c33918301997
+Run integration tests (manual)	Setup Python	﻿2026-04-19T03:39:12.3778091Z ##[group]Run actions/setup-python@v4
+Run integration tests (manual)	Setup Python	2026-04-19T03:39:12.3779289Z with:
+Run integration tests (manual)	Setup Python	2026-04-19T03:39:12.3780093Z   python-version: 3.11
+Run integration tests (manual)	Setup Python	2026-04-19T03:39:12.3781041Z   check-latest: false
+Run integration tests (manual)	Setup Python	2026-04-19T03:39:12.3782216Z   token: ***
+Run integration tests (manual)	Setup Python	2026-04-19T03:39:12.3783243Z   update-environment: true
+Run integration tests (manual)	Setup Python	2026-04-19T03:39:12.3784500Z   allow-prereleases: false
+Run integration tests (manual)	Setup Python	2026-04-19T03:39:12.3785465Z env:
+Run integration tests (manual)	Setup Python	2026-04-19T03:39:12.3786258Z   RUN_OLLAMA_INTEGRATION: 1
+Run integration tests (manual)	Setup Python	2026-04-19T03:39:12.3787286Z   ALLOW_OLLAMA_INSTALL: true
+Run integration tests (manual)	Setup Python	2026-04-19T03:39:12.3788336Z   ALLOW_OLLAMA_UPDATE: true
+Run integration tests (manual)	Setup Python	2026-04-19T03:39:12.3789352Z   ALLOW_OLLAMA_DOWNLOAD: true
+Run integration tests (manual)	Setup Python	2026-04-19T03:39:12.3790368Z ##[endgroup]
+Run integration tests (manual)	Setup Python	2026-04-19T03:39:12.5584097Z ##[group]Installed versions
+Run integration tests (manual)	Setup Python	2026-04-19T03:39:12.6174844Z Successfully set up CPython (3.11.15)
+Run integration tests (manual)	Setup Python	2026-04-19T03:39:12.6177396Z ##[endgroup]
+Run integration tests (manual)	Install dependencies	﻿2026-04-19T03:39:12.6326302Z ##[group]Run python -m pip install -U pip
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6327627Z [36;1mpython -m pip install -U pip[0m
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6328762Z [36;1mpython -m pip install -e .[0m
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6330529Z [36;1mif [ -f dev-requirements.txt ]; then python -m pip install -r dev-requirements.txt; fi[0m
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6545429Z shell: /usr/bin/bash -e {0}
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6546447Z env:
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6547155Z   RUN_OLLAMA_INTEGRATION: 1
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6548121Z   ALLOW_OLLAMA_INSTALL: true
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6549061Z   ALLOW_OLLAMA_UPDATE: true
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6550012Z   ALLOW_OLLAMA_DOWNLOAD: true
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6551192Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6552914Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib/pkgconfig
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6554807Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6556341Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6557875Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6559474Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:12.6560759Z ##[endgroup]
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:15.7134162Z Requirement already satisfied: pip in /opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages (26.0.1)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:16.7956293Z Obtaining file:///home/runner/work/modelito/modelito
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:16.7980146Z   Installing build dependencies: started
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:18.2879800Z   Installing build dependencies: finished with status 'done'
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:18.2885916Z   Checking if build backend supports build_editable: started
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:18.6329802Z   Checking if build backend supports build_editable: finished with status 'done'
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:18.6337591Z   Getting requirements to build editable: started
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:18.9496649Z   Getting requirements to build editable: finished with status 'done'
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:18.9505953Z   Preparing editable metadata (pyproject.toml): started
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:19.1302857Z   Preparing editable metadata (pyproject.toml): finished with status 'done'
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:19.1339514Z Building wheels for collected packages: modelito
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:19.1347724Z   Building editable for modelito (pyproject.toml): started
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:19.3298235Z   Building editable for modelito (pyproject.toml): finished with status 'done'
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:19.3304450Z   Created wheel for modelito: filename=modelito-0.2.1-0.editable-py3-none-any.whl size=5693 sha256=18c0af2a2252a845d26184ce977704bf0a1620867598dcdc769265f835c7e482
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:19.3306723Z   Stored in directory: /tmp/pip-ephem-wheel-cache-sirk3w13/wheels/97/ad/b2/d3b5f3af721eacf70004dbbf07b13b57a7a066b94b0d0cc630
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:19.3332503Z Successfully built modelito
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:19.3388701Z Installing collected packages: modelito
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:19.3462627Z Successfully installed modelito-0.2.1
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.2675923Z Collecting pytest<9,>=8.3 (from -r dev-requirements.txt (line 1))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.3584856Z   Downloading pytest-8.4.2-py3-none-any.whl.metadata (7.7 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.4754776Z Collecting psutil>=5.9.0 (from -r dev-requirements.txt (line 2))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.4922657Z   Downloading psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl.metadata (22 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.5358082Z Collecting httpx<1,>=0.27 (from -r dev-requirements.txt (line 3))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.5542441Z   Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.6087124Z Collecting tiktoken (from -r dev-requirements.txt (line 4))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.6254784Z   Downloading tiktoken-0.12.0-cp311-cp311-manylinux_2_28_x86_64.whl.metadata (6.7 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.7590481Z Collecting mypy (from -r dev-requirements.txt (line 5))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.7756540Z   Downloading mypy-1.20.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.3 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.8022643Z Collecting iniconfig>=1 (from pytest<9,>=8.3->-r dev-requirements.txt (line 1))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.8187637Z   Downloading iniconfig-2.3.0-py3-none-any.whl.metadata (2.5 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.8457771Z Collecting packaging>=20 (from pytest<9,>=8.3->-r dev-requirements.txt (line 1))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.8472345Z   Using cached packaging-26.1-py3-none-any.whl.metadata (3.5 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.8717734Z Collecting pluggy<2,>=1.5 (from pytest<9,>=8.3->-r dev-requirements.txt (line 1))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.8883736Z   Downloading pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.9234531Z Collecting pygments>=2.7.2 (from pytest<9,>=8.3->-r dev-requirements.txt (line 1))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.9397781Z   Downloading pygments-2.20.0-py3-none-any.whl.metadata (2.5 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.9731669Z Collecting anyio (from httpx<1,>=0.27->-r dev-requirements.txt (line 3))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:20.9898681Z   Downloading anyio-4.13.0-py3-none-any.whl.metadata (4.5 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.0228228Z Collecting certifi (from httpx<1,>=0.27->-r dev-requirements.txt (line 3))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.0398545Z   Downloading certifi-2026.2.25-py3-none-any.whl.metadata (2.5 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.0728718Z Collecting httpcore==1.* (from httpx<1,>=0.27->-r dev-requirements.txt (line 3))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.0895848Z   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.1196101Z Collecting idna (from httpx<1,>=0.27->-r dev-requirements.txt (line 3))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.1362721Z   Downloading idna-3.11-py3-none-any.whl.metadata (8.4 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.1639731Z Collecting h11>=0.16 (from httpcore==1.*->httpx<1,>=0.27->-r dev-requirements.txt (line 3))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.1811607Z   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.6210550Z Collecting regex>=2022.1.18 (from tiktoken->-r dev-requirements.txt (line 4))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.6398793Z   Downloading regex-2026.4.4-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.6814232Z Collecting requests>=2.26.0 (from tiktoken->-r dev-requirements.txt (line 4))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.6981935Z   Downloading requests-2.33.1-py3-none-any.whl.metadata (4.8 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.7281156Z Collecting typing_extensions>=4.6.0 (from mypy->-r dev-requirements.txt (line 5))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.7451257Z   Downloading typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.7691849Z Collecting mypy_extensions>=1.0.0 (from mypy->-r dev-requirements.txt (line 5))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.7856596Z   Downloading mypy_extensions-1.1.0-py3-none-any.whl.metadata (1.1 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.8120182Z Collecting pathspec>=1.0.0 (from mypy->-r dev-requirements.txt (line 5))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.8313370Z   Downloading pathspec-1.0.4-py3-none-any.whl.metadata (13 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.9572543Z Collecting librt>=0.8.0 (from mypy->-r dev-requirements.txt (line 5))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:21.9742831Z   Downloading librt-0.9.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (1.3 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.0969956Z Collecting charset_normalizer<4,>=2 (from requests>=2.26.0->tiktoken->-r dev-requirements.txt (line 4))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.1134540Z   Downloading charset_normalizer-3.4.7-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.1537579Z Collecting urllib3<3,>=1.26 (from requests>=2.26.0->tiktoken->-r dev-requirements.txt (line 4))
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.1699647Z   Downloading urllib3-2.6.3-py3-none-any.whl.metadata (6.9 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.1993809Z Downloading pytest-8.4.2-py3-none-any.whl (365 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.2636389Z Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.2831262Z Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.3032704Z Downloading pluggy-1.6.0-py3-none-any.whl (20 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.3225591Z Downloading psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl (155 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.3465683Z Downloading tiktoken-0.12.0-cp311-cp311-manylinux_2_28_x86_64.whl (1.2 MB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.3860408Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 26.5 MB/s  0:00:00
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.4027170Z Downloading mypy-1.20.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (14.5 MB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.5095041Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.5/14.5 MB 137.1 MB/s  0:00:00
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.5261752Z Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.5458659Z Downloading iniconfig-2.3.0-py3-none-any.whl (7.5 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.5654716Z Downloading librt-0.9.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (224 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.5861655Z Downloading mypy_extensions-1.1.0-py3-none-any.whl (5.0 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.5908402Z Using cached packaging-26.1-py3-none-any.whl (95 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.6070984Z Downloading pathspec-1.0.4-py3-none-any.whl (55 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.6262679Z Downloading pygments-2.20.0-py3-none-any.whl (1.2 MB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.6344825Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 166.6 MB/s  0:00:00
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.6512419Z Downloading regex-2026.4.4-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (799 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.6574212Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 799.8/799.8 kB 139.9 MB/s  0:00:00
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.6739107Z Downloading requests-2.33.1-py3-none-any.whl (64 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.6944803Z Downloading charset_normalizer-3.4.7-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (214 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.7147678Z Downloading idna-3.11-py3-none-any.whl (71 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.7349174Z Downloading urllib3-2.6.3-py3-none-any.whl (131 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.7545264Z Downloading certifi-2026.2.25-py3-none-any.whl (153 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.7841300Z Downloading typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.7971380Z Downloading anyio-4.13.0-py3-none-any.whl (114 kB)
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:22.9129718Z Installing collected packages: urllib3, typing_extensions, regex, pygments, psutil, pluggy, pathspec, packaging, mypy_extensions, librt, iniconfig, idna, h11, charset_normalizer, certifi, requests, pytest, mypy, httpcore, anyio, tiktoken, httpx
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:26.0002913Z 
+Run integration tests (manual)	Install dependencies	2026-04-19T03:39:26.0020505Z Successfully installed anyio-4.13.0 certifi-2026.2.25 charset_normalizer-3.4.7 h11-0.16.0 httpcore-1.0.9 httpx-0.28.1 idna-3.11 iniconfig-2.3.0 librt-0.9.0 mypy-1.20.1 mypy_extensions-1.1.0 packaging-26.1 pathspec-1.0.4 pluggy-1.6.0 psutil-7.2.2 pygments-2.20.0 pytest-8.4.2 regex-2026.4.4 requests-2.33.1 tiktoken-0.12.0 typing_extensions-4.15.0 urllib3-2.6.3
+Run integration tests (manual)	Run integration tests	﻿2026-04-19T03:39:26.1997087Z ##[group]Run pytest -q -m integration --maxfail=1
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:26.1997507Z [36;1mpytest -q -m integration --maxfail=1[0m
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:26.2020135Z shell: /usr/bin/bash -e {0}
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:26.2020372Z env:
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:26.2020564Z   RUN_OLLAMA_INTEGRATION: 1
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:26.2020792Z   ALLOW_OLLAMA_INSTALL: true
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:26.2021026Z   ALLOW_OLLAMA_UPDATE: true
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:26.2021243Z   ALLOW_OLLAMA_DOWNLOAD: true
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:26.2021540Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:26.2021961Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib/pkgconfig
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:26.2022365Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:26.2022905Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:26.2023418Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:26.2023787Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:26.2024125Z ##[endgroup]
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:58.2691166Z ...s..                                                                   [100%]
+Run integration tests (manual)	Run integration tests	2026-04-19T03:39:58.2691629Z 5 passed, 1 skipped, 22 deselected in 31.20s
+Run integration tests (manual)	Cleanup Ollama and models	﻿2026-04-19T03:39:58.3067373Z ##[group]Run set -euo pipefail
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3067732Z [36;1mset -euo pipefail[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3068150Z [36;1mecho "Integration cleanup: attempting to remove Ollama models and uninstall if allowed"[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3068598Z [36;1m[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3068857Z [36;1m# If ollama present, attempt best-effort model removal[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3069229Z [36;1mif command -v ollama >/dev/null 2>&1; then[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3069617Z [36;1m  echo "ollama binary found, attempting to list and remove models"[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3070061Z [36;1m  # Try common CLI list output; parse lines, remove entries[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3070421Z [36;1m  MODELS_OUT=$(ollama list 2>/dev/null || true)[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3070721Z [36;1m  if [ -n "$MODELS_OUT" ]; then[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3071014Z [36;1m    echo "$MODELS_OUT" | while IFS= read -r m; do[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3071341Z [36;1m      m_trim=$(echo "$m" | awk '{print $1}')[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3071633Z [36;1m      if [ -n "$m_trim" ]; then[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3071959Z [36;1m        echo "Attempting to delete model: $m_trim"[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3072266Z [36;1m        ollama rm "$m_trim" || true[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3072504Z [36;1m      fi[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3072680Z [36;1m    done[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3072847Z [36;1m  fi[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3073012Z [36;1mfi[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3073448Z [36;1m[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3073776Z [36;1m# If installation was allowed, try to remove the installed binary (best-effort)[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3074253Z [36;1mif [ "${ALLOW_OLLAMA_INSTALL:-false}" = 'true' ]; then[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3074626Z [36;1m  echo "ALLOW_OLLAMA_INSTALL=true, attempting uninstall"[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3074982Z [36;1m  if command -v brew >/dev/null 2>&1; then[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3075323Z [36;1m    brew uninstall --ignore-dependencies ollama || true[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3075627Z [36;1m  fi[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3075845Z [36;1m  if command -v apt-get >/dev/null 2>&1; then[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3076167Z [36;1m    sudo apt-get remove -y ollama || true[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3076430Z [36;1m  fi[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3076638Z [36;1m  if command -v ollama >/dev/null 2>&1; then[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3076943Z [36;1m    BINPATH=$(command -v ollama || true)[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3077222Z [36;1m    if [ -n "$BINPATH" ]; then[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3077483Z [36;1m      sudo rm -f "$BINPATH" || true[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3077719Z [36;1m    fi[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3077894Z [36;1m  fi[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3078052Z [36;1mfi[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3078215Z [36;1m[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3078412Z [36;1mecho "Cleanup completed (best-effort)."[0m
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3100525Z shell: /usr/bin/bash -e {0}
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3100758Z env:
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3100942Z   RUN_OLLAMA_INTEGRATION: 1
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3101169Z   ALLOW_OLLAMA_INSTALL: true
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3101396Z   ALLOW_OLLAMA_UPDATE: true
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3101618Z   ALLOW_OLLAMA_DOWNLOAD: true
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3101930Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3102353Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib/pkgconfig
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3102759Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3103345Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3103724Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3104286Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3104589Z ##[endgroup]
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3148618Z Integration cleanup: attempting to remove Ollama models and uninstall if allowed
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3149510Z ollama binary found, attempting to list and remove models
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:39:58.3294162Z ALLOW_OLLAMA_INSTALL=true, attempting uninstall
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:40:01.0734486Z Reading package lists...
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:40:01.3196999Z Building dependency tree...
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:40:01.3261642Z Reading state information...
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:40:01.3494053Z E: Unable to locate package ollama
+Run integration tests (manual)	Cleanup Ollama and models	2026-04-19T03:40:01.3664147Z Cleanup completed (best-effort).
+Run integration tests (manual)	Post Setup Python	﻿2026-04-19T03:40:01.3749047Z Post job cleanup.
+Run integration tests (manual)	Post Checkout	﻿2026-04-19T03:40:01.5470239Z Post job cleanup.
+Run integration tests (manual)	Post Checkout	2026-04-19T03:40:01.6465723Z [command]/usr/bin/git version
+Run integration tests (manual)	Post Checkout	2026-04-19T03:40:01.6521479Z git version 2.53.0
+Run integration tests (manual)	Post Checkout	2026-04-19T03:40:01.6591213Z Temporarily overriding HOME='/home/runner/work/_temp/759fddd6-5aba-4c94-b545-5c0563276b1f' before making global git config changes
+Run integration tests (manual)	Post Checkout	2026-04-19T03:40:01.6592667Z Adding repository directory to the temporary git global config as a safe directory
+Run integration tests (manual)	Post Checkout	2026-04-19T03:40:01.6599808Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/modelito/modelito
+Run integration tests (manual)	Post Checkout	2026-04-19T03:40:01.6650053Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Run integration tests (manual)	Post Checkout	2026-04-19T03:40:01.6687284Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Run integration tests (manual)	Post Checkout	2026-04-19T03:40:01.6900934Z fatal: No url found for submodule path '_external/mail_summariser' in .gitmodules
+Run integration tests (manual)	Post Checkout	2026-04-19T03:40:01.6951695Z ##[warning]The process '/usr/bin/git' failed with exit code 128
+Run integration tests (manual)	Complete job	﻿2026-04-19T03:40:01.7042428Z Cleaning up orphan processes
+Run integration tests (manual)	Complete job	2026-04-19T03:40:01.7315808Z ##[warning]Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: actions/checkout@v4, actions/setup-python@v4. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Node.js 20 will be removed from the runner on September 16th, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

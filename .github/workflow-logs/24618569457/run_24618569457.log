@@ -1,0 +1,322 @@
+Run integration tests (manual)	UNKNOWN STEP	﻿2026-04-19T01:56:11.6654832Z Current runner version: '2.333.1'
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6687257Z ##[group]Runner Image Provisioner
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6688377Z Hosted Compute Agent
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6689218Z Version: 20260213.493
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6690070Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6691335Z Build Date: 2026-02-13T00:28:41Z
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6692301Z Worker ID: {fa331d15-b46f-4475-b030-79ff5dc1e7da}
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6693355Z Azure Region: northcentralus
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6694698Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6696833Z ##[group]Operating System
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6697733Z Ubuntu
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6698529Z 24.04.4
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6699211Z LTS
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6699651Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6700257Z ##[group]Runner Image
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6700767Z Image: ubuntu-24.04
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6701300Z Version: 20260413.86.1
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6702866Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260413.86/images/ubuntu/Ubuntu2404-Readme.md
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6705241Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260413.86
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6706852Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6708565Z ##[group]GITHUB_TOKEN Permissions
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6711008Z Contents: read
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6711864Z Metadata: read
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6712592Z Packages: read
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6713456Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6716417Z Secret source: Actions
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.6717471Z Prepare workflow directory
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.7365149Z Prepare all required actions
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:11.7403236Z Getting action download info
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.0652713Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.1829451Z Download action repository 'actions/setup-python@v4' (SHA:7f4fc3e22c37d6ff65e88745f38bd3157c663f7c)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.3539557Z Complete job name: Run integration tests (manual)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4198520Z ##[group]Run actions/checkout@v4
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4199455Z with:
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4199906Z   repository: krahd/modelito
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4200606Z   token: ***
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4201034Z   ssh-strict: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4201472Z   ssh-user: git
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4201922Z   persist-credentials: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4202404Z   clean: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4202836Z   sparse-checkout-cone-mode: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4203355Z   fetch-depth: 1
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4203781Z   fetch-tags: false
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4204416Z   show-progress: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4204871Z   lfs: false
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4205263Z   submodules: false
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4205690Z   set-safe-directory: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4206428Z env:
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4206899Z   RUN_OLLAMA_INTEGRATION: 1
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4207410Z   ALLOW_OLLAMA_INSTALL: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4207911Z   ALLOW_OLLAMA_UPDATE: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4208392Z   ALLOW_OLLAMA_DOWNLOAD: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.4208922Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5297486Z Syncing repository: krahd/modelito
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5299442Z ##[group]Getting Git version info
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5300213Z Working directory is '/home/runner/work/modelito/modelito'
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5301255Z [command]/usr/bin/git version
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5339368Z git version 2.53.0
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5366201Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5380739Z Temporarily overriding HOME='/home/runner/work/_temp/fbf6cbd5-2222-4c8f-a94d-b18bbdd615b7' before making global git config changes
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5383206Z Adding repository directory to the temporary git global config as a safe directory
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5393145Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/modelito/modelito
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5423972Z Deleting the contents of '/home/runner/work/modelito/modelito'
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5427924Z ##[group]Initializing the repository
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5431948Z [command]/usr/bin/git init /home/runner/work/modelito/modelito
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5528641Z hint: Using 'master' as the name for the initial branch. This default branch name
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5530606Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5531628Z hint: to use in all of your new repositories, which will suppress this warning,
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5532425Z hint: call:
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5532817Z hint:
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5533351Z hint: 	git config --global init.defaultBranch <name>
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5533989Z hint:
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5534887Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5536364Z hint: 'development'. The just-created branch can be renamed via this command:
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5537672Z hint:
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5538325Z hint: 	git branch -m <name>
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5539109Z hint:
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5540083Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5541125Z Initialized empty Git repository in /home/runner/work/modelito/modelito/.git/
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5543306Z [command]/usr/bin/git remote add origin https://github.com/krahd/modelito
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5571302Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5572556Z ##[group]Disabling automatic garbage collection
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5575047Z [command]/usr/bin/git config --local gc.auto 0
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5602362Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5603525Z ##[group]Setting up auth
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5609262Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5638623Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5915475Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.5943369Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.6157389Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.6187190Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.6412697Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.6446080Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.6447316Z ##[group]Fetching the repository
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.6454792Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +0701a8e3cf0b9198d878b3e96dd8cc9283cce515:refs/remotes/origin/main
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.8805047Z From https://github.com/krahd/modelito
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.8806444Z  * [new ref]         0701a8e3cf0b9198d878b3e96dd8cc9283cce515 -> origin/main
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.8833616Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.8834683Z ##[group]Determining the checkout info
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.8836149Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.8841269Z [command]/usr/bin/git sparse-checkout disable
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.8879049Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.8906463Z ##[group]Checking out the ref
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.8911088Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.8988417Z Switched to a new branch 'main'
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.8991412Z branch 'main' set up to track 'origin/main'.
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.8997332Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.9032468Z [command]/usr/bin/git log -1 --format=%H
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.9053661Z 0701a8e3cf0b9198d878b3e96dd8cc9283cce515
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.9293404Z ##[group]Run actions/setup-python@v4
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.9293994Z with:
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.9294766Z   python-version: 3.11
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.9295243Z   check-latest: false
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.9295848Z   token: ***
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.9296288Z   update-environment: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.9297047Z   allow-prereleases: false
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.9297541Z env:
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.9297923Z   RUN_OLLAMA_INTEGRATION: 1
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.9298421Z   ALLOW_OLLAMA_INSTALL: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.9298930Z   ALLOW_OLLAMA_UPDATE: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.9299413Z   ALLOW_OLLAMA_DOWNLOAD: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:12.9299890Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.0969915Z ##[group]Installed versions
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1074620Z Successfully set up CPython (3.11.15)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1076605Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1217342Z ##[group]Run python -m pip install -U pip
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1218829Z [36;1mpython -m pip install -U pip[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1220169Z [36;1mpython -m pip install -e .[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1222170Z [36;1mif [ -f dev-requirements.txt ]; then python -m pip install -r dev-requirements.txt; fi[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1261527Z shell: /usr/bin/bash -e {0}
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1262696Z env:
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1263592Z   RUN_OLLAMA_INTEGRATION: 1
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1265048Z   ALLOW_OLLAMA_INSTALL: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1266111Z   ALLOW_OLLAMA_UPDATE: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1267165Z   ALLOW_OLLAMA_DOWNLOAD: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1268463Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1270350Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib/pkgconfig
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1272240Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1273917Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1275904Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1277578Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.1278985Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:13.7441329Z Requirement already satisfied: pip in /opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages (26.0.1)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:14.2503983Z Obtaining file:///home/runner/work/modelito/modelito
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:14.2520462Z   Installing build dependencies: started
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:15.0289622Z   Installing build dependencies: finished with status 'done'
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:15.0293899Z   Checking if build backend supports build_editable: started
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:15.3736617Z   Checking if build backend supports build_editable: finished with status 'done'
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:15.3743556Z   Getting requirements to build editable: started
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:15.6825862Z   Getting requirements to build editable: finished with status 'done'
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:15.6834810Z   Preparing editable metadata (pyproject.toml): started
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:15.8505926Z   Preparing editable metadata (pyproject.toml): finished with status 'done'
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:15.8541506Z Building wheels for collected packages: modelito
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:15.8550301Z   Building editable for modelito (pyproject.toml): started
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.0421231Z   Building editable for modelito (pyproject.toml): finished with status 'done'
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.0427895Z   Created wheel for modelito: filename=modelito-0.2.1-0.editable-py3-none-any.whl size=5693 sha256=4e3dacfd487fb3a0077cdd923cf6571b5f47b7e9c2d7aa7f21de66004d8df236
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.0430043Z   Stored in directory: /tmp/pip-ephem-wheel-cache-j1_dxhdi/wheels/97/ad/b2/d3b5f3af721eacf70004dbbf07b13b57a7a066b94b0d0cc630
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.0454920Z Successfully built modelito
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.0509916Z Installing collected packages: modelito
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.0588234Z Successfully installed modelito-0.2.1
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.4770573Z Collecting pytest<9,>=8.3 (from -r dev-requirements.txt (line 1))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.5305586Z   Downloading pytest-8.4.2-py3-none-any.whl.metadata (7.7 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.6165934Z Collecting psutil>=5.9.0 (from -r dev-requirements.txt (line 2))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.6208593Z   Downloading psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl.metadata (22 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.6452477Z Collecting httpx<1,>=0.27 (from -r dev-requirements.txt (line 3))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.6490111Z   Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.6865089Z Collecting tiktoken (from -r dev-requirements.txt (line 4))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.6904669Z   Downloading tiktoken-0.12.0-cp311-cp311-manylinux_2_28_x86_64.whl.metadata (6.7 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.7862951Z Collecting mypy (from -r dev-requirements.txt (line 5))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.7905214Z   Downloading mypy-1.20.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.3 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.8021316Z Collecting iniconfig>=1 (from pytest<9,>=8.3->-r dev-requirements.txt (line 1))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.8062084Z   Downloading iniconfig-2.3.0-py3-none-any.whl.metadata (2.5 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.8204648Z Collecting packaging>=20 (from pytest<9,>=8.3->-r dev-requirements.txt (line 1))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.8218090Z   Using cached packaging-26.1-py3-none-any.whl.metadata (3.5 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.8318593Z Collecting pluggy<2,>=1.5 (from pytest<9,>=8.3->-r dev-requirements.txt (line 1))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.8359974Z   Downloading pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.8548309Z Collecting pygments>=2.7.2 (from pytest<9,>=8.3->-r dev-requirements.txt (line 1))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.8586034Z   Downloading pygments-2.20.0-py3-none-any.whl.metadata (2.5 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.8769980Z Collecting anyio (from httpx<1,>=0.27->-r dev-requirements.txt (line 3))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.8807989Z   Downloading anyio-4.13.0-py3-none-any.whl.metadata (4.5 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.8995283Z Collecting certifi (from httpx<1,>=0.27->-r dev-requirements.txt (line 3))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.9041904Z   Downloading certifi-2026.2.25-py3-none-any.whl.metadata (2.5 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.9207344Z Collecting httpcore==1.* (from httpx<1,>=0.27->-r dev-requirements.txt (line 3))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.9259261Z   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.9409271Z Collecting idna (from httpx<1,>=0.27->-r dev-requirements.txt (line 3))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.9444563Z   Downloading idna-3.11-py3-none-any.whl.metadata (8.4 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.9572575Z Collecting h11>=0.16 (from httpcore==1.*->httpx<1,>=0.27->-r dev-requirements.txt (line 3))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:16.9614668Z   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.3094659Z Collecting regex>=2022.1.18 (from tiktoken->-r dev-requirements.txt (line 4))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.3146578Z   Downloading regex-2026.4.4-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.3360519Z Collecting requests>=2.26.0 (from tiktoken->-r dev-requirements.txt (line 4))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.3401406Z   Downloading requests-2.33.1-py3-none-any.whl.metadata (4.8 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.3567112Z Collecting typing_extensions>=4.6.0 (from mypy->-r dev-requirements.txt (line 5))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.3604200Z   Downloading typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.3743612Z Collecting mypy_extensions>=1.0.0 (from mypy->-r dev-requirements.txt (line 5))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.3783897Z   Downloading mypy_extensions-1.1.0-py3-none-any.whl.metadata (1.1 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.3930501Z Collecting pathspec>=1.0.0 (from mypy->-r dev-requirements.txt (line 5))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.4198541Z   Downloading pathspec-1.0.4-py3-none-any.whl.metadata (13 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.5119100Z Collecting librt>=0.8.0 (from mypy->-r dev-requirements.txt (line 5))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.5185143Z   Downloading librt-0.9.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (1.3 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.6078607Z Collecting charset_normalizer<4,>=2 (from requests>=2.26.0->tiktoken->-r dev-requirements.txt (line 4))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.6119103Z   Downloading charset_normalizer-3.4.7-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.6358857Z Collecting urllib3<3,>=1.26 (from requests>=2.26.0->tiktoken->-r dev-requirements.txt (line 4))
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.6403232Z   Downloading urllib3-2.6.3-py3-none-any.whl.metadata (6.9 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.6548366Z Downloading pytest-8.4.2-py3-none-any.whl (365 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.6659129Z Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.6732486Z Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.6794447Z Downloading pluggy-1.6.0-py3-none-any.whl (20 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.6857888Z Downloading psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl (155 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.6929365Z Downloading tiktoken-0.12.0-cp311-cp311-manylinux_2_28_x86_64.whl (1.2 MB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.7086861Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 76.8 MB/s  0:00:00
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.7150511Z Downloading mypy-1.20.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (14.5 MB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.8549085Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.5/14.5 MB 103.7 MB/s  0:00:00
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.8694319Z Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.8761347Z Downloading iniconfig-2.3.0-py3-none-any.whl (7.5 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.8822327Z Downloading librt-0.9.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (224 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.8892633Z Downloading mypy_extensions-1.1.0-py3-none-any.whl (5.0 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.8926722Z Using cached packaging-26.1-py3-none-any.whl (95 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.8963850Z Downloading pathspec-1.0.4-py3-none-any.whl (55 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.9038817Z Downloading pygments-2.20.0-py3-none-any.whl (1.2 MB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.9120279Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 178.4 MB/s  0:00:00
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.9171168Z Downloading regex-2026.4.4-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (799 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.9235157Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 799.8/799.8 kB 131.9 MB/s  0:00:00
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.9295441Z Downloading requests-2.33.1-py3-none-any.whl (64 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.9372042Z Downloading charset_normalizer-3.4.7-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (214 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.9444581Z Downloading idna-3.11-py3-none-any.whl (71 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.9506818Z Downloading urllib3-2.6.3-py3-none-any.whl (131 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.9571823Z Downloading certifi-2026.2.25-py3-none-any.whl (153 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.9633097Z Downloading typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:17.9693181Z Downloading anyio-4.13.0-py3-none-any.whl (114 kB)
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:18.0734626Z Installing collected packages: urllib3, typing_extensions, regex, pygments, psutil, pluggy, pathspec, packaging, mypy_extensions, librt, iniconfig, idna, h11, charset_normalizer, certifi, requests, pytest, mypy, httpcore, anyio, tiktoken, httpx
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:20.9958356Z 
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:20.9976371Z Successfully installed anyio-4.13.0 certifi-2026.2.25 charset_normalizer-3.4.7 h11-0.16.0 httpcore-1.0.9 httpx-0.28.1 idna-3.11 iniconfig-2.3.0 librt-0.9.0 mypy-1.20.1 mypy_extensions-1.1.0 packaging-26.1 pathspec-1.0.4 pluggy-1.6.0 psutil-7.2.2 pygments-2.20.0 pytest-8.4.2 regex-2026.4.4 requests-2.33.1 tiktoken-0.12.0 typing_extensions-4.15.0 urllib3-2.6.3
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:21.1390386Z ##[group]Run pytest -q -m integration --maxfail=1
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:21.1390782Z [36;1mpytest -q -m integration --maxfail=1[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:21.1413768Z shell: /usr/bin/bash -e {0}
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:21.1413998Z env:
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:21.1414474Z   RUN_OLLAMA_INTEGRATION: 1
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:21.1414698Z   ALLOW_OLLAMA_INSTALL: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:21.1414928Z   ALLOW_OLLAMA_UPDATE: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:21.1415142Z   ALLOW_OLLAMA_DOWNLOAD: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:21.1415435Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:21.1415856Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib/pkgconfig
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:21.1416265Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:21.1416808Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:21.1417161Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:21.1417558Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:21.1417865Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1161823Z ...s..                                                                   [100%]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1162552Z 5 passed, 1 skipped, 22 deselected in 34.34s
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1513917Z ##[group]Run set -euo pipefail
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1514570Z [36;1mset -euo pipefail[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1514984Z [36;1mecho "Integration cleanup: attempting to remove Ollama models and uninstall if allowed"[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1515412Z [36;1m[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1515656Z [36;1m# If ollama present, attempt best-effort model removal[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1516010Z [36;1mif command -v ollama >/dev/null 2>&1; then[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1516493Z [36;1m  echo "ollama binary found, attempting to list and remove models"[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1516933Z [36;1m  # Try common CLI list output; parse lines, remove entries[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1517295Z [36;1m  MODELS_OUT=$(ollama list 2>/dev/null || true)[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1517593Z [36;1m  if [ -n "$MODELS_OUT" ]; then[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1517886Z [36;1m    echo "$MODELS_OUT" | while IFS= read -r m; do[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1518198Z [36;1m      m_trim=$(echo "$m" | awk '{print $1}')[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1518510Z [36;1m      if [ -n "$m_trim" ]; then[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1518795Z [36;1m        echo "Attempting to delete model: $m_trim"[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1519099Z [36;1m        ollama rm "$m_trim" || true[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1519335Z [36;1m      fi[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1519514Z [36;1m    done[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1519678Z [36;1m  fi[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1519846Z [36;1mfi[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1520001Z [36;1m[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1520309Z [36;1m# If installation was allowed, try to remove the installed binary (best-effort)[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1520764Z [36;1mif [ "${ALLOW_OLLAMA_INSTALL:-false}" = 'true' ]; then[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1521131Z [36;1m  echo "ALLOW_OLLAMA_INSTALL=true, attempting uninstall"[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1521478Z [36;1m  if command -v brew >/dev/null 2>&1; then[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1521816Z [36;1m    brew uninstall --ignore-dependencies ollama || true[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1522117Z [36;1m  fi[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1522400Z [36;1m  if command -v apt-get >/dev/null 2>&1; then[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1522715Z [36;1m    sudo apt-get remove -y ollama || true[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1522983Z [36;1m  fi[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1523191Z [36;1m  if command -v ollama >/dev/null 2>&1; then[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1523491Z [36;1m    BINPATH=$(command -v ollama || true)[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1523769Z [36;1m    if [ -n "$BINPATH" ]; then[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1524027Z [36;1m      sudo rm -f "$BINPATH" || true[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1524653Z [36;1m    fi[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1524890Z [36;1m  fi[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1525049Z [36;1mfi[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1525212Z [36;1m[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1525417Z [36;1mecho "Cleanup completed (best-effort)."[0m
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1547878Z shell: /usr/bin/bash -e {0}
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1548112Z env:
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1548293Z   RUN_OLLAMA_INTEGRATION: 1
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1548518Z   ALLOW_OLLAMA_INSTALL: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1548748Z   ALLOW_OLLAMA_UPDATE: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1548968Z   ALLOW_OLLAMA_DOWNLOAD: true
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1549257Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1549672Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib/pkgconfig
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1550078Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1550443Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1550797Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1551325Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1551617Z ##[endgroup]
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1686902Z Integration cleanup: attempting to remove Ollama models and uninstall if allowed
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1687764Z ollama binary found, attempting to list and remove models
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:56.1828723Z ALLOW_OLLAMA_INSTALL=true, attempting uninstall
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.0635515Z Reading package lists...
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.2415267Z Building dependency tree...
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.2426999Z Reading state information...
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.2601993Z E: Unable to locate package ollama
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.2767112Z Cleanup completed (best-effort).
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.2829447Z Post job cleanup.
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.4469238Z Post job cleanup.
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.5396347Z [command]/usr/bin/git version
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.5432212Z git version 2.53.0
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.5476499Z Temporarily overriding HOME='/home/runner/work/_temp/8f39c75d-1c21-43a3-8f3f-b12e1a33f284' before making global git config changes
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.5477923Z Adding repository directory to the temporary git global config as a safe directory
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.5489697Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/modelito/modelito
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.5524092Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.5556549Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.5767261Z fatal: No url found for submodule path '_external/BatLLM' in .gitmodules
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.5814620Z ##[warning]The process '/usr/bin/git' failed with exit code 128
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.5896412Z Cleaning up orphan processes
+Run integration tests (manual)	UNKNOWN STEP	2026-04-19T01:56:58.6301770Z ##[warning]Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: actions/checkout@v4, actions/setup-python@v4. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Node.js 20 will be removed from the runner on September 16th, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
