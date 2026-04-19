@@ -157,21 +157,35 @@ class OpenAIProvider:
         except Exception:
             return ""
 
-        def stream(self, messages: Any, settings: Optional[dict] = None):
-            """Streaming fallback for OpenAI provider.
+    def stream(self, messages: Any, settings: Optional[dict] = None):
+        """Streaming fallback for OpenAI provider.
 
-            This implementation yields the full response in deterministic chunks.
-            Providers with native streaming support can override this with a
-            real streaming implementation that yields incremental tokens.
-            """
-            text = self.summarize(messages, settings=settings)
-            if not text:
-                return
-            chunk_size = 64
-            try:
-                if isinstance(settings, dict) and "chunk_size" in settings:
-                    chunk_size = int(settings.get("chunk_size", chunk_size) or chunk_size)
-            except Exception:
-                pass
-            for i in range(0, len(text), chunk_size):
-                yield text[i : i + chunk_size]
+        This implementation yields the full response in deterministic chunks.
+        Providers with native streaming support can override this with a
+        real streaming implementation that yields incremental tokens.
+        """
+        text = self.summarize(messages, settings=settings)
+        if not text:
+            return
+        chunk_size = 64
+        try:
+            if isinstance(settings, dict) and "chunk_size" in settings:
+                chunk_size = int(settings.get("chunk_size", chunk_size) or chunk_size)
+        except Exception:
+            pass
+        for i in range(0, len(text), chunk_size):
+            yield text[i : i + chunk_size]
+
+    def embed(self, texts: Any, **kwargs) -> List[List[float]]:
+        """Embedding surface for tests: delegate to the embeddings helper.
+
+        Real providers should replace this with SDK-backed embeddings.
+        """
+        try:
+            from .embeddings import embed_texts
+        except Exception:
+            from modelito.embeddings import embed_texts
+
+        texts_list = [str(t) for t in (texts or [])]
+        dim = int(kwargs.get("dim", 8))
+        return embed_texts(texts_list, dim=dim)

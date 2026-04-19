@@ -208,3 +208,14 @@ class OllamaProvider:
             pass
         for i in range(0, len(text), chunk_size):
             yield text[i : i + chunk_size]
+
+    def embed(self, texts: Any, **kwargs) -> List[List[float]]:
+        """Embedding surface for tests: delegate to the embeddings helper."""
+        try:
+            from .embeddings import embed_texts
+        except Exception:
+            from modelito.embeddings import embed_texts
+
+        texts_list = [str(t) for t in (texts or [])]
+        dim = int(kwargs.get("dim", 8))
+        return embed_texts(texts_list, dim=dim)
