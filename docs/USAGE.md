@@ -48,10 +48,22 @@ Try the example
 
 There is a small example script demonstrating the public API at:
 
-[examples/quickstart.py](examples/quickstart.py)
+[examples/quickstart.py](../examples/quickstart.py)
 
 Run it with:
 
 ```sh
 python examples/quickstart.py
+```
+
+Additional examples demonstrating specific provider shims are included:
+
+- [examples/openai_example.py](../examples/openai_example.py)
+- [examples/claude_example.py](../examples/claude_example.py)
+- [examples/gemini_example.py](../examples/gemini_example.py)
+
+Run any example from the repository root, for example:
+
+```sh
+python examples/openai_example.py
 ```
