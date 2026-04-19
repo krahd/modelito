@@ -156,3 +156,22 @@ class OpenAIProvider:
             return "\n".join(p for p in parts if p)
         except Exception:
             return ""
+
+        def stream(self, messages: Any, settings: Optional[dict] = None):
+            """Streaming fallback for OpenAI provider.
+
+            This implementation yields the full response in deterministic chunks.
+            Providers with native streaming support can override this with a
+            real streaming implementation that yields incremental tokens.
+            """
+            text = self.summarize(messages, settings=settings)
+            if not text:
+                return
+            chunk_size = 64
+            try:
+                if isinstance(settings, dict) and "chunk_size" in settings:
+                    chunk_size = int(settings.get("chunk_size", chunk_size) or chunk_size)
+            except Exception:
+                pass
+            for i in range(0, len(text), chunk_size):
+                yield text[i : i + chunk_size]

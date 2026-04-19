@@ -190,3 +190,21 @@ class OllamaProvider:
 
         # deterministic fallback
         return prompt
+
+    def stream(self, messages: Any, settings: Optional[dict] = None):
+        """Streaming fallback for Ollama provider.
+
+        Yield the completed response in character chunks. Real Ollama
+        integrations can replace this with the HTTP/CLI streaming output.
+        """
+        text = self.summarize(messages, settings=settings)
+        if not text:
+            return
+        chunk_size = 64
+        try:
+            if isinstance(settings, dict) and "chunk_size" in settings:
+                chunk_size = int(settings.get("chunk_size", chunk_size) or chunk_size)
+        except Exception:
+            pass
+        for i in range(0, len(text), chunk_size):
+            yield text[i : i + chunk_size]
