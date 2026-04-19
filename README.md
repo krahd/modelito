@@ -1,10 +1,12 @@
 modelito
 =======
 
-Lightweight Python library of provider abstractions and connectors for
-local and cloud LLM runtimes (Ollama, OpenAI, Claude, Gemini). Designed to be
-dependency-light, test-friendly, and easy to integrate into downstream
-projects such as BatLLM and mail_summariser.
+Lightweight Python abstractions and connectors for LLMs (OpenAI, Claude,
+Gemini, and Ollama). Modelito is a small, dependency‑light Python library
+providing well‑tested abstractions and connectors for large language model
+providers. It includes token‑counting utilities, remote timeout estimation,
+and helper routines to detect, install, run and serve Ollama models locally —
+designed for easy integration into downstream projects.
 
 [![CI](https://github.com/krahd/modelito/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/krahd/modelito/actions/workflows/ci.yml)
 
