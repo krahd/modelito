@@ -68,7 +68,7 @@ jobs:
         run: pytest tests -q
 
   integration:
-    if: ${{ github.event.inputs.run_ollama_integration == 'yes' || env.RUN_OLLAMA_INTEGRATION == '1' }}
+    if: ${{ github.event.inputs.run_ollama_integration == 'yes' || github.event.inputs.run_ollama_integration == '1' }}
     runs-on: ubuntu-latest
     needs: test
     steps:
