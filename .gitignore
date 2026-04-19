@@ -8,3 +8,4 @@ build/
 .mypy_cache/
 *.sqlite3
 calibration_report.json
+.github/workflow-logs/
