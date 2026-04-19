@@ -158,12 +158,141 @@ class OpenAIProvider:
             return ""
 
     def stream(self, messages: Any, settings: Optional[dict] = None):
-        """Streaming fallback for OpenAI provider.
+        """Streaming provider surface attempting SDK streaming first.
 
-        This implementation yields the full response in deterministic chunks.
-        Providers with native streaming support can override this with a
-        real streaming implementation that yields incremental tokens.
+        Tries several common client shapes (modern and legacy). Falls back
+        to chunked deterministic output when streaming is unavailable.
         """
+
+        def _flatten_msgs(msgs: Any) -> List[dict]:
+            if not msgs:
+                return []
+            if isinstance(msgs, (list, tuple)):
+                out: List[dict] = []
+                for m in msgs:
+                    if isinstance(m, dict):
+                        out.append({"role": m.get("role", "user"),
+                                   "content": m.get("content", str(m))})
+                    else:
+                        # dataclass-like or plain string
+                        role = getattr(m, "role", "user") if hasattr(m, "role") else "user"
+                        content = getattr(m, "content", str(m)) if hasattr(m, "content") else str(m)
+                        out.append({"role": role, "content": content})
+                return out
+            return [{"role": "user", "content": str(msgs)}]
+
+        msgs = _flatten_msgs(messages)
+
+        import json
+
+        def _extract_delta_text(event: Any) -> str:
+            if not event:
+                return ""
+            # string payloads may be newline/json-prefixed
+            if isinstance(event, str):
+                s = event.strip()
+                if s.startswith("data: "):
+                    s = s[6:]
+                try:
+                    event = json.loads(s)
+                except Exception:
+                    return s
+
+            # dict-like
+            if isinstance(event, dict):
+                for k in ("text", "content", "output"):
+                    if k in event and isinstance(event.get(k), str):
+                        return event.get(k) or ""
+                choices = event.get("choices")
+                if isinstance(choices, list) and choices:
+                    first = choices[0]
+                    if isinstance(first, dict):
+                        delta = first.get("delta") or first.get("message") or {}
+                        if isinstance(delta, dict):
+                            if "content" in delta:
+                                c = delta.get("content") or ""
+                                if isinstance(c, str):
+                                    return c
+                                if isinstance(c, list):
+                                    return "".join(str(x) for x in c)
+                        if "message" in first and isinstance(first["message"], dict):
+                            return str(first["message"].get("content") or "")
+                        if "text" in first:
+                            return str(first.get("text") or "")
+                    else:
+                        return str(first)
+
+            # object-like
+            try:
+                choices = getattr(event, "choices", None)
+                if choices:
+                    first = choices[0]
+                    delta = getattr(first, "delta", None)
+                    if delta:
+                        if isinstance(delta, dict) and "content" in delta:
+                            return str(delta.get("content") or "")
+                        return str(delta)
+                    msg = getattr(first, "message", None)
+                    if msg:
+                        return str(getattr(msg, "content", "") or "")
+                for attr in ("text", "content", "output"):
+                    val = getattr(event, attr, None)
+                    if val:
+                        return str(val)
+            except Exception:
+                pass
+            return ""
+
+        client = self._client or self._openai
+        if client is not None:
+            try:
+                # Preferred modern shape: client.chat.completions.stream(...)
+                chat = getattr(client, "chat", None)
+                if chat is not None:
+                    comps = getattr(chat, "completions", None)
+                    if comps is not None:
+                        if hasattr(comps, "stream"):
+                            for evt in comps.stream(model=self.model, messages=msgs, **(settings or {})):
+                                txt = _extract_delta_text(evt)
+                                if txt:
+                                    yield txt
+                            return
+                        if hasattr(comps, "create"):
+                            try:
+                                for evt in comps.create(model=self.model, messages=msgs, stream=True, **(settings or {})):
+                                    txt = _extract_delta_text(evt)
+                                    if txt:
+                                        yield txt
+                                return
+                            except TypeError:
+                                # create() may not accept stream param
+                                pass
+
+                # legacy module-level ChatCompletion.create(..., stream=True)
+                if hasattr(self._openai, "ChatCompletion") and hasattr(self._openai.ChatCompletion, "create"):
+                    try:
+                        for evt in self._openai.ChatCompletion.create(model=self.model, messages=msgs, stream=True, **(settings or {})):
+                            txt = _extract_delta_text(evt)
+                            if txt:
+                                yield txt
+                        return
+                    except Exception:
+                        pass
+
+                # Newer "responses" streaming API
+                if hasattr(client, "responses") and hasattr(client.responses, "stream"):
+                    try:
+                        for evt in client.responses.stream(model=self.model, input=msgs, **(settings or {})):
+                            txt = _extract_delta_text(evt)
+                            if txt:
+                                yield txt
+                        return
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        # Fallback: deterministic chunked output
         text = self.summarize(messages, settings=settings)
         if not text:
             return
@@ -174,18 +303,63 @@ class OpenAIProvider:
         except Exception:
             pass
         for i in range(0, len(text), chunk_size):
-            yield text[i : i + chunk_size]
+            yield text[i: i + chunk_size]
+
+    async def acomplete(self, messages: Any, settings: Optional[dict] = None) -> str:
+        """Async wrapper for `summarize()` using a threadpool executor."""
+        try:
+            import asyncio
+
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(None, lambda: self.summarize(messages, settings=settings))
+        except Exception:
+            return self.summarize(messages, settings=settings)
 
     def embed(self, texts: Any, **kwargs) -> List[List[float]]:
-        """Embedding surface for tests: delegate to the embeddings helper.
+        """Attempt to use provider SDK for embeddings, fallback to stub.
 
-        Real providers should replace this with SDK-backed embeddings.
+        Supports common client shapes (modern and legacy). Returns a list
+        of vectors for each input text.
         """
+        try:
+            client = self._client or self._openai
+            if client is not None:
+                # modern client: client.embeddings.create(input=[...])
+                emb_api = getattr(client, "embeddings", None)
+                if emb_api is not None and hasattr(emb_api, "create"):
+                    res = emb_api.create(input=list(texts or []), **kwargs)
+                    data = getattr(res, "data", None) if not isinstance(
+                        res, dict) else res.get("data")
+                    out: List[List[float]] = []
+                    for item in (data or []):
+                        if isinstance(item, dict) and "embedding" in item:
+                            out.append(list(item.get("embedding") or []))
+                        else:
+                            out.append(list(getattr(item, "embedding", [])))
+                    if out:
+                        return out
+
+                # older shape: client.Embedding.create(input=[...])
+                if hasattr(client, "Embedding") and hasattr(client.Embedding, "create"):
+                    res = client.Embedding.create(input=list(texts or []), **kwargs)
+                    data = getattr(res, "data", None) if not isinstance(
+                        res, dict) else res.get("data")
+                    out = []
+                    for item in (data or []):
+                        if isinstance(item, dict) and "embedding" in item:
+                            out.append(list(item.get("embedding") or []))
+                        else:
+                            out.append(list(getattr(item, "embedding", [])))
+                    if out:
+                        return out
+        except Exception:
+            pass
+
+        # Fallback to test stub
         try:
             from .embeddings import embed_texts
         except Exception:
             from modelito.embeddings import embed_texts
 
-        texts_list = [str(t) for t in (texts or [])]
         dim = int(kwargs.get("dim", 8))
-        return embed_texts(texts_list, dim=dim)
+        return embed_texts(texts or [], dim=dim)
