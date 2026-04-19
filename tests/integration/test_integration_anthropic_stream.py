@@ -7,9 +7,8 @@ def test_anthropic_integration_basic():
     if not api_key:
         pytest.skip("ANTHROPIC_API_KEY not set")
 
-    try:
-        import anthropic  # type: ignore
-    except Exception:
+    import importlib
+    if importlib.util.find_spec("anthropic") is None:
         pytest.skip("anthropic package not installed")
 
     from modelito.claude import ClaudeProvider

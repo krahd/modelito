@@ -141,5 +141,32 @@ conn = OllamaConnector(provider=p)
 res = conn.complete(conv_id="example", new_messages=[Message(role="user", content="hello")])
 print(res.text)
 ```
+
+Streaming semantics
+-------------------
+
+Modelito normalizes provider streaming into a simple incremental text stream.
+Providers may emit data at different granularities; the connector/streaming
+helpers attempt to normalize these into a sequence of text chunks that are
+safe to concatenate to form the final output. Common shapes you will encounter:
+
+- **Token-level**: Backends (e.g., OpenAI SDK) may stream individual token
+	deltas. These are emitted as short text fragments; consumers should append
+	fragments in order to reconstruct the full output.
+- **Chunk-level**: Some providers deliver logical chunks or events (for
+	example, chunked JSON payloads). Modelito extracts the textual portion and
+	yields it as incremental chunks.
+- **Line-delimited / SSE**: HTTP services (like Ollama's `/api/generate`) may
+	send newline-delimited JSON or SSE frames. Modelito reads and normalizes the
+	frames and yields textual content as it becomes available.
+
+Behavioral notes:
+
+- The `stream()` generator yields `str` pieces; each yielded item is intended
+	to be appended to reconstruct the response incrementally.
+- When you need token-level control (e.g., streaming token-by-token), prefer
+	providers that expose token deltas (OpenAI SDK). Modelito will still yield
+	those token deltas as text fragments.
+- Offline/deterministic fallbacks yield the full text in a single chunk.
 ```
 

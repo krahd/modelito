@@ -5,7 +5,7 @@ from modelito.ollama import OllamaProvider
 
 class _FakeResp:
     def __init__(self, lines):
-        self._lines = [l.encode("utf-8") for l in lines]
+        self._lines = [line.encode("utf-8") for line in lines]
         self._i = 0
 
     def readline(self):

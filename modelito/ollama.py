@@ -288,8 +288,9 @@ class OllamaProvider:
                                     continue
                                 yield str(first)
                                 continue
-                        if "choices" in obj and isinstance(obj.get("choices"), list) and obj.get("choices"):
-                            first = obj.get("choices")[0]
+                        choices = obj.get("choices")
+                        if isinstance(choices, list) and choices:
+                            first = choices[0]
                             if isinstance(first, dict):
                                 delta = first.get("delta") or first.get("message") or {}
                                 if isinstance(delta, dict) and "content" in delta:

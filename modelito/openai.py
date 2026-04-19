@@ -99,7 +99,7 @@ class OpenAIProvider:
                         return [getattr(m, "id", str(m)) for m in (data or [])]
                     except Exception:
                         pass
-                if hasattr(self._openai, "Model") and hasattr(self._openai.Model, "list"):
+                if self._openai is not None and hasattr(self._openai, "Model") and hasattr(self._openai.Model, "list"):
                     try:
                         res = self._openai.Model.list()
                         return [getattr(m, "id", str(m)) for m in getattr(res, "data", [])]
@@ -144,9 +144,9 @@ class OpenAIProvider:
                     if text:
                         return text
 
-                if hasattr(self._openai, "ChatCompletion") and hasattr(self._openai.ChatCompletion, "create"):
-                    res = self._openai.ChatCompletion.create(
-                        model=self.model, messages=msgs, **(settings or {}))
+                oi = self._openai
+                if oi is not None and hasattr(oi, "ChatCompletion") and hasattr(oi.ChatCompletion, "create"):
+                    res = oi.ChatCompletion.create(model=self.model, messages=msgs, **(settings or {}))
                     text = _extract_text_from_response(res)
                     if text:
                         return text
@@ -281,9 +281,10 @@ class OpenAIProvider:
                                 pass
 
                 # legacy module-level ChatCompletion.create(..., stream=True)
-                if hasattr(self._openai, "ChatCompletion") and hasattr(self._openai.ChatCompletion, "create"):
+                oi = self._openai
+                if oi is not None and hasattr(oi, "ChatCompletion") and hasattr(oi.ChatCompletion, "create"):
                     try:
-                        for evt in self._openai.ChatCompletion.create(model=self.model, messages=msgs, stream=True, **(settings or {})):
+                        for evt in oi.ChatCompletion.create(model=self.model, messages=msgs, stream=True, **(settings or {})):
                             txt = _extract_delta_text(evt)
                             if txt:
                                 yield txt

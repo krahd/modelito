@@ -7,9 +7,8 @@ def test_openai_integration_stream_and_embed():
     if not api_key:
         pytest.skip("OPENAI_API_KEY not set")
 
-    try:
-        import openai  # type: ignore
-    except Exception:
+    import importlib
+    if importlib.util.find_spec("openai") is None:
         pytest.skip("openai package not installed")
 
     from modelito.openai import OpenAIProvider

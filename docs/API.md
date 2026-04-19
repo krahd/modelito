@@ -64,6 +64,25 @@ Provider adapters implement the small provider surfaces used by the connectors. 
 - `stream(messages, settings: Optional[dict] = None) -> Iterable[str]` — streaming generator (optional).
 - `embed(texts: Iterable[str], **kwargs) -> List[List[float]]` — embeddings surface (optional).
 
+Streaming semantics
+-------------------
+
+Providers may stream outputs at different granularities; modelito normalizes
+these into a simple incremental `stream()` generator that yields `str` pieces.
+Typical provider streaming shapes:
+
+- **Token-level**: SDKs may provide token deltas. Modelito yields these as
+  short text fragments suitable for concatenation.
+- **Chunk-level**: Providers that emit logical chunks or JSON events are
+  parsed and the textual payload is yielded as chunks.
+- **Line-delimited / SSE**: HTTP services (e.g., Ollama `/api/generate`) may
+  send newline-delimited JSON/SSE frames; modelito reads and normalizes these
+  to textual chunks.
+
+The `stream(messages, settings=None)` generator returns an iterable of
+`str` fragments which, when concatenated, form the final response. Offline
+fallbacks emit a single full-text chunk.
+
 Ollama helpers
 --------------
 
