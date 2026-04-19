@@ -133,11 +133,112 @@ class ClaudeProvider:
             return ""
 
     def stream(self, messages: Any, settings: Optional[dict] = None):
-        """Streaming fallback for Claude provider.
+        """SDK-aware streaming for Claude.
 
-        Yields the final text in fixed-size chunks. Providers that support
-        real streaming should implement a more efficient tokenized stream.
+        Try several common client shapes for streaming completions and
+        yield incremental text chunks. Falls back to deterministic
+        chunking via `summarize()` when streaming isn't available.
         """
+        def _flatten(msgs: Any) -> str:
+            try:
+                parts = []
+                for m in (msgs or []):
+                    if isinstance(m, dict):
+                        parts.append(m.get("content", ""))
+                    else:
+                        parts.append(str(m))
+                return "\n".join(p for p in parts if p)
+            except Exception:
+                return ""
+
+        prompt = _flatten(messages)
+
+        import json
+
+        def _extract_delta_text(evt: Any) -> str:
+            if not evt:
+                return ""
+            if isinstance(evt, str):
+                s = evt.strip()
+                if s.startswith("data: "):
+                    s = s[6:]
+                try:
+                    evt = json.loads(s)
+                except Exception:
+                    return s
+            if isinstance(evt, dict):
+                for k in ("text", "completion", "content", "output"):
+                    if k in evt and isinstance(evt.get(k), str):
+                        return evt.get(k) or ""
+                choices = evt.get("choices")
+                if isinstance(choices, list) and choices:
+                    first = choices[0]
+                    if isinstance(first, dict):
+                        delta = first.get("delta") or first.get("message") or {}
+                        if isinstance(delta, dict) and "content" in delta:
+                            return str(delta.get("content") or "")
+                        if "text" in first:
+                            return str(first.get("text") or "")
+                    else:
+                        return str(first)
+            try:
+                # object-like
+                choices = getattr(evt, "choices", None)
+                if choices:
+                    first = choices[0]
+                    delta = getattr(first, "delta", None)
+                    if delta:
+                        if isinstance(delta, dict) and "content" in delta:
+                            return str(delta.get("content") or "")
+                        return str(delta)
+                    msg = getattr(first, "message", None)
+                    if msg:
+                        return str(getattr(msg, "content", "") or "")
+                for attr in ("text", "completion", "content", "output"):
+                    val = getattr(evt, attr, None)
+                    if val:
+                        return str(val)
+            except Exception:
+                pass
+            return ""
+
+        client = self._client or self._anthropic
+        if client is not None:
+            try:
+                # Try modern streaming: client.completions.stream(...)
+                comps = getattr(client, "completions", None)
+                if comps is not None and hasattr(comps, "stream"):
+                    for e in comps.stream(model=self.model, prompt=prompt, **(settings or {})):
+                        txt = _extract_delta_text(e)
+                        if txt:
+                            yield txt
+                    return
+
+                # Try create(..., stream=True)
+                if comps is not None and hasattr(comps, "create"):
+                    try:
+                        for e in comps.create(model=self.model, prompt=prompt, stream=True, **(settings or {})):
+                            txt = _extract_delta_text(e)
+                            if txt:
+                                yield txt
+                        return
+                    except TypeError:
+                        pass
+
+                # Try alternate client shape
+                if hasattr(client, "create_completion"):
+                    try:
+                        for e in client.create_completion(model=self.model, prompt=prompt, stream=True, **(settings or {})):
+                            txt = _extract_delta_text(e)
+                            if txt:
+                                yield txt
+                        return
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        # Fallback deterministic chunking
         text = self.summarize(messages, settings=settings)
         if not text:
             return
@@ -148,7 +249,7 @@ class ClaudeProvider:
         except Exception:
             pass
         for i in range(0, len(text), chunk_size):
-            yield text[i : i + chunk_size]
+            yield text[i: i + chunk_size]
 
     def embed(self, texts: Any, **kwargs) -> List[List[float]]:
         """Embedding surface for tests: delegate to the embeddings helper."""

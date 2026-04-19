@@ -125,10 +125,86 @@ class GeminiProvider:
         return prompt
 
     def stream(self, messages: Any, settings: Optional[dict] = None):
-        """Streaming fallback for Gemini provider.
+        """SDK-aware streaming for Gemini-like providers.
 
-        Returns the summarize() result sliced into sequential chunks.
+        Attempts common SDK streaming shapes (`generate_text` generators,
+        client.generate_text with streaming, or `.stream()` helpers). Falls
+        back to deterministic chunking when not available.
         """
+        def _flatten(msgs: Any) -> str:
+            if not msgs:
+                return ""
+            out = []
+            for m in (msgs or []):
+                if isinstance(m, dict):
+                    out.append(m.get("content", ""))
+                else:
+                    out.append(str(m))
+            return "\n".join(p for p in out if p)
+
+        prompt = _flatten(messages)
+
+        import json
+
+        def _extract_delta_text(evt: Any) -> str:
+            if not evt:
+                return ""
+            if isinstance(evt, str):
+                s = evt.strip()
+                if s.startswith("data: "):
+                    s = s[6:]
+                try:
+                    evt = json.loads(s)
+                except Exception:
+                    return s
+            if isinstance(evt, dict):
+                for k in ("text", "content", "output"):
+                    if k in evt and isinstance(evt.get(k), str):
+                        return evt.get(k) or ""
+                choices = evt.get("candidates") or evt.get("choices")
+                if isinstance(choices, list) and choices:
+                    first = choices[0]
+                    if isinstance(first, dict):
+                        return str(first.get("content") or first.get("text") or "")
+                    return str(first)
+            try:
+                for attr in ("text", "content", "output"):
+                    val = getattr(evt, attr, None)
+                    if val:
+                        return str(val)
+            except Exception:
+                pass
+            return ""
+
+        gen = self._client or self._gemini_mod
+        if gen is not None:
+            try:
+                # Generator-style: gen.generate_text(...) yields partials
+                if hasattr(gen, "generate_text"):
+                    try:
+                        for e in gen.generate_text(model=self.model or "gemini-1.0", prompt=prompt, **(settings or {})):
+                            txt = _extract_delta_text(e)
+                            if txt:
+                                yield txt
+                        return
+                    except TypeError:
+                        # generate_text might not be iterable; fall through
+                        pass
+
+                # client.generate_text streaming shape
+                if hasattr(gen, "client") and hasattr(gen.client, "generate_text"):
+                    try:
+                        for e in gen.client.generate_text(model=self.model or "gemini-1.0", prompt=prompt, **(settings or {})):
+                            txt = _extract_delta_text(e)
+                            if txt:
+                                yield txt
+                        return
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        # Fallback deterministic chunking
         text = self.summarize(messages, settings=settings)
         if not text:
             return
@@ -139,7 +215,7 @@ class GeminiProvider:
         except Exception:
             pass
         for i in range(0, len(text), chunk_size):
-            yield text[i : i + chunk_size]
+            yield text[i: i + chunk_size]
 
     def embed(self, texts: Any, **kwargs) -> List[List[float]]:
         """Embedding surface for tests: delegate to the embeddings helper."""
