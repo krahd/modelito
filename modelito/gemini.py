@@ -123,3 +123,20 @@ class GeminiProvider:
 
         # deterministic fallback
         return prompt
+
+    def stream(self, messages: Any, settings: Optional[dict] = None):
+        """Streaming fallback for Gemini provider.
+
+        Returns the summarize() result sliced into sequential chunks.
+        """
+        text = self.summarize(messages, settings=settings)
+        if not text:
+            return
+        chunk_size = 64
+        try:
+            if isinstance(settings, dict) and "chunk_size" in settings:
+                chunk_size = int(settings.get("chunk_size", chunk_size) or chunk_size)
+        except Exception:
+            pass
+        for i in range(0, len(text), chunk_size):
+            yield text[i : i + chunk_size]
