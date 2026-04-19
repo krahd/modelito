@@ -1,9 +1,9 @@
+from modelito import ollama_service as osvc
 import sys
 import pytest
 
 pytestmark = pytest.mark.integration
 
-from modelito import ollama_service as osvc
 
 
 def test_load_and_inspect_config_smoke():

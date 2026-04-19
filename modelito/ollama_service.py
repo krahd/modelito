@@ -300,6 +300,26 @@ def list_local_models() -> List[str]:
     ``ollama`` binary is not present or the calls fail, an empty list is
     returned.
     """
+    def _looks_like_error_or_header(line: str) -> bool:
+        """Return True for lines that look like errors or table headers.
+
+        We avoid returning noisy CLI output such as lines that contain
+        common error words ("error", "failed", "unable", etc.) or
+        obvious headers like "NAME" so callers receive only plausible
+        model-name lines.
+        """
+        if not line:
+            return True
+        low = line.strip().lower()
+        error_indicators = ("error", "failed", "unable", "not found", "no such", "denied", "unauthorized", "forbidden", "exception")
+        for tok in error_indicators:
+            if tok in low:
+                return True
+        first = low.split()[0].rstrip(":")
+        if first in ("name", "model", "models", "llms", "description"):
+            return True
+        return False
+
     binp = get_ollama_binary()
     if not binp:
         return []
@@ -311,8 +331,10 @@ def list_local_models() -> List[str]:
             out = res.stdout or res.stderr
             if out:
                 lines = [l.strip() for l in out.splitlines() if l.strip()]
-                if lines:
-                    return lines
+                # Filter out obvious error and header lines
+                good = [l for l in lines if not _looks_like_error_or_header(l)]
+                if good:
+                    return good
         except Exception:
             continue
     return []
@@ -325,6 +347,19 @@ def list_remote_models() -> List[str]:
     variants of the CLI (``--remote``). Returns an empty list if the CLI is
     not available or the calls fail.
     """
+    def _looks_like_error_or_header(line: str) -> bool:
+        if not line:
+            return True
+        low = line.strip().lower()
+        error_indicators = ("error", "failed", "unable", "not found", "no such", "denied", "unauthorized", "forbidden", "exception")
+        for tok in error_indicators:
+            if tok in low:
+                return True
+        first = low.split()[0].rstrip(":")
+        if first in ("name", "model", "models", "llms", "description"):
+            return True
+        return False
+
     binp = get_ollama_binary()
     if not binp:
         return []
@@ -337,8 +372,10 @@ def list_remote_models() -> List[str]:
             out = res.stdout or res.stderr
             if out:
                 lines = [l.strip() for l in out.splitlines() if l.strip()]
-                if lines:
-                    return lines
+                # Filter out obvious error and header lines
+                good = [l for l in lines if not _looks_like_error_or_header(l)]
+                if good:
+                    return good
         except Exception:
             continue
     return []
