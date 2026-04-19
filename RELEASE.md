@@ -22,10 +22,13 @@ TWINE_USERNAME="__token__" TWINE_PASSWORD="$TESTPYPI_API_TOKEN" \
   python -m twine upload --repository testpypi dist/*
 ```
 
-If pip can't find the version via the simple index, you can install the wheel directly from TestPyPI's file hosting URL:
+If pip can't find the version via the simple index, download the wheel from
+TestPyPI's "Files" page and install it locally. Example:
 
 ```bash
-python -m pip install --no-deps "https://test-files.pythonhosted.org/packages/.../modelito-0.2.2-py3-none-any.whl"
+# Visit https://test.pypi.org/project/modelito/0.2.2/#files and download the
+# appropriate wheel file, then:
+python -m pip install --no-deps /path/to/modelito-0.2.2-py3-none-any.whl
 ```
 
 ## Verify install from TestPyPI
