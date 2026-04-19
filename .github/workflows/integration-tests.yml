@@ -42,3 +42,44 @@ jobs:
 
       - name: Run integration tests
         run: pytest -q -m integration --maxfail=1
+
+      - name: Cleanup Ollama and models
+        if: always()
+        run: |
+          set -euo pipefail
+          echo "Integration cleanup: attempting to remove Ollama models and uninstall if allowed"
+
+          # If ollama present, attempt best-effort model removal
+          if command -v ollama >/dev/null 2>&1; then
+            echo "ollama binary found, attempting to list and remove models"
+            # Try common CLI list output; parse lines, remove entries
+            MODELS_OUT=$(ollama list 2>/dev/null || true)
+            if [ -n "$MODELS_OUT" ]; then
+              echo "$MODELS_OUT" | while IFS= read -r m; do
+                m_trim=$(echo "$m" | awk '{print $1}')
+                if [ -n "$m_trim" ]; then
+                  echo "Attempting to delete model: $m_trim"
+                  ollama rm "$m_trim" || true
+                fi
+              done
+            fi
+          fi
+
+          # If installation was allowed, try to remove the installed binary (best-effort)
+          if [ "${ALLOW_OLLAMA_INSTALL:-false}" = 'true' ]; then
+            echo "ALLOW_OLLAMA_INSTALL=true, attempting uninstall"
+            if command -v brew >/dev/null 2>&1; then
+              brew uninstall --ignore-dependencies ollama || true
+            fi
+            if command -v apt-get >/dev/null 2>&1; then
+              sudo apt-get remove -y ollama || true
+            fi
+            if command -v ollama >/dev/null 2>&1; then
+              BINPATH=$(command -v ollama || true)
+              if [ -n "$BINPATH" ]; then
+                sudo rm -f "$BINPATH" || true
+              fi
+            fi
+          fi
+
+          echo "Cleanup completed (best-effort)."
