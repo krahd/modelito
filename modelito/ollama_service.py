@@ -1,8 +1,8 @@
 """Small Ollama HTTP helpers (lightweight) used by the calibration tool.
 
 This module intentionally provides only thin helpers (endpoint builder and
-server liveness check) so the package can be used without requiring the
-full Ollama lifecycle helpers from BatLLM.
+server liveness check) so the package can be used without requiring full
+external lifecycle helpers.
 """
 
 from __future__ import annotations

@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, os.path.abspath("../../"))
 
 project = "modelito"
-author = "mail_summariser"
+author = "krahd"
 
 try:
     from modelito import __version__ as release

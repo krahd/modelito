@@ -1,15 +1,12 @@
 modelito
 =======
 
-Lightweight Python abstractions and connectors for LLMs (OpenAI, Claude,
-Gemini, and Ollama). Modelito is a small, dependency‑light Python library
-providing well‑tested abstractions and connectors for large language model
-providers. It includes token‑counting utilities, remote timeout estimation,
-and helper routines to detect, install, run and serve Ollama models locally —
-designed for easy integration into downstream projects.
-
-[![CI](https://github.com/krahd/modelito/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/krahd/modelito/actions/workflows/ci.yml)
-
+Modelito is a compact, dependency-light Python library that provides provider-
+agnostic abstractions and connectors for large language models (LLMs). It
+offers lightweight shims for OpenAI, Claude, Gemini and local Ollama
+deployments, plus utilities for token counting, timeout estimation, and small
+helpers to manage Ollama servers when needed. The library is designed for easy
+integration into applications and CI pipelines.
 
 Quick start
 -----------
@@ -43,7 +40,7 @@ python -m build
 Install from the built wheel:
 
 ```sh
-pip install dist/modelito-0.2.0-py3-none-any.whl
+pip install dist/modelito-0.2.3-py3-none-any.whl
 ```
 
 See the `docs/` folder for more details on calibration and migration.

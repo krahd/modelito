@@ -42,11 +42,11 @@ input) to avoid accidental runs in CI.
 
 Release plan
 ------------
-1. Cut a 0.1.0 release on TestPyPI for downstream validation.
-2. Run downstream integration tests in dependent repos (mail_summariser).
+1. Cut a TestPyPI release for downstream validation.
+2. Run downstream integration tests in dependent repos.
 3. Publish to PyPI and update downstream requirements to a pinned RC.
 
 Next actions
 ------------
 - Implement `__all__` and add public-API unit tests.
-- Create migration PRs for `mail_summariser` to switch to the package.
+-- Create migration PRs for downstream projects to switch to the package.

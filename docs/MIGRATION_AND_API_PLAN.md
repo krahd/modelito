@@ -5,10 +5,9 @@ Purpose
 -------
 This document records the feature mapping, public API design, and an actionable plan
 to finish extracting `modelito` as a standalone library and integrate it into
-downstream projects (for example: `mail_summariser` and `BatLLM`). It is intended
-to be a concise, executable checklist for maintainers.
+downstream projects. It is intended to be a concise, executable checklist for maintainers.
 
-Feature mapping (BatLLM -> modelito)
+Feature mapping (example mapping -> modelito)
 -----------------------------------
 - Token counting
   - modelito: `tokenizer.count_tokens(text, model=None)` — lightweight wrapper
