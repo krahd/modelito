@@ -6,12 +6,12 @@ utilities used by downstream projects.
 try:
     from importlib.metadata import version, PackageNotFoundError
 except Exception:
-    __version__ = "0.2.2"
+    __version__ = "0.3.0"
 else:
     try:
         __version__ = version("modelito")
     except PackageNotFoundError:
-        __version__ = "0.2.2"
+        __version__ = "0.3.0"
 
 from .tokenizer import count_tokens
 from .timeout import estimate_remote_timeout
@@ -50,6 +50,8 @@ from .gemini import GeminiProvider
 from .grok import GrokProvider
 from .openai import OpenAIProvider
 from .claude import ClaudeProvider
+from .provider import Provider
+from .messages import Message, Messages, Response
 
 __all__ = [
     "__version__",
@@ -61,6 +63,10 @@ __all__ = [
     "GrokProvider",
     "OpenAIProvider",
     "ClaudeProvider",
+    "Provider",
+    "Message",
+    "Messages",
+    "Response",
     "load_config",
     "parse_host_port",
     "LLMProviderError",

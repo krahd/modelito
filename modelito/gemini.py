@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import importlib
 from typing import Any, List, Optional
+from .provider import Provider
 
 
-class GeminiProvider:
+class GeminiProvider(Provider):
     """Provider for Google Gemini-like APIs with best-effort SDK usage.
 
     The provider supports multiple client shapes via runtime introspection

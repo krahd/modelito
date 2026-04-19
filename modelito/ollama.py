@@ -10,10 +10,11 @@ the provider API during tests or local runs continue to work.
 from __future__ import annotations
 
 from typing import Any, List, Optional
+from .provider import Provider
 from .ollama_service import endpoint_url, server_is_up, json_post, list_local_models, list_remote_models, ollama_installed, run_ollama_command, running_model_names
 
 
-class OllamaProvider:
+class OllamaProvider(Provider):
     """Minimal compatibility shim for Ollama-style providers.
 
     Provides `list_models()` and `summarize()` with safe defaults for local

@@ -10,6 +10,7 @@ import importlib
 
 from typing import Any, List, Optional
 from types import ModuleType
+from .provider import Provider
 
 def _extract_text_from_response(res: Any) -> str:
     try:
@@ -38,7 +39,7 @@ def _extract_text_from_response(res: Any) -> str:
     return ""
 
 
-class ClaudeProvider:
+class ClaudeProvider(Provider):
     """Provider for Anthropic/Claude that uses the SDK when present.
 
     The provider attempts multiple client shapes (modern `anthropic` client

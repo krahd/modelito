@@ -13,7 +13,7 @@ import *`) are:
 - `__version__` — package version string.
 - `count_tokens(text: str) -> int` — estimate token count (uses `tiktoken` if available).
 - `estimate_remote_timeout(model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1) -> int` — conservative timeout estimator.
-- `OllamaConnector` — small conversation history manager and prompt builder.
+- `OllamaConnector` — small conversation history manager and prompt builder. Connectors now prefer typed `Message`/`Response` dataclasses and provide both sync (`complete`) and async (`acomplete`) surfaces in addition to the legacy `send_sync` helper.
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama HTTP
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama HTTP
   API when available (via the bundled `ollama_service` helpers). If the HTTP
@@ -49,15 +49,20 @@ Important `OllamaConnector` methods
 - `add_to_history(conv_id: Optional[str], role: str, content: str) -> None`
 - `get_history(conv_id: Optional[str]) -> List[Dict[str, str]]`
 - `build_prompt(conv_id: Optional[str], new_messages: Optional[List[Dict[str, str]]]=None, include_history: bool=True, max_prompt_tokens: Optional[int]=None) -> List[Dict[str,str]]`
-- `send_sync(conv_id: Optional[str], new_messages: List[Dict[str,str]], settings: Optional[dict]=None) -> str` — builds the prompt, calls `provider.summarize(messages, settings=settings)` and updates local history.
+- `send_sync(conv_id: Optional[str], new_messages: List[Dict[str,str]], settings: Optional[dict]=None) -> str` — legacy helper that builds the prompt, calls `provider.summarize(messages, settings=settings)` and updates local history (returns `str`).
+- `complete(conv_id: Optional[str], new_messages: Optional[Iterable]=None, settings: Optional[dict]=None) -> Response` — new, typed convenience wrapper returning a `Response` dataclass.
+- `acomplete(conv_id: Optional[str], new_messages: Optional[Iterable]=None, settings: Optional[dict]=None) -> Response` — asynchronous variant.
 
 Provider shims
 --------------
 
-All provider shims (`OllamaProvider`, `GeminiProvider`, `GrokProvider`, `OpenAIProvider`, `ClaudeProvider`) implement two convenience methods:
+Provider adapters implement the small provider surfaces used by the connectors. Implementations may choose to support the sync `summarize()` surface, the async `acomplete()` surface, streaming, and/or embeddings. The core convenience methods are:
 
-- `list_models() -> List[str]` — best-effort model enumeration (may be an empty list in offline mode). Where possible the implementation will prefer local runtime discovery (CLI or HTTP API) and otherwise return an empty list.
-- `summarize(messages, settings: Optional[dict] = None) -> str` — attempt a real model invocation when the corresponding SDK/API is available and fall back to a deterministic join of message content for offline tests and examples.
+- `list_models() -> List[str]` — best-effort model enumeration (may be an empty list in offline mode).
+- `summarize(messages, settings: Optional[dict] = None) -> str` — synchronous completion surface.
+- `acomplete(messages, settings: Optional[dict] = None) -> str` — asynchronous completion surface (optional).
+- `stream(messages, settings: Optional[dict] = None) -> Iterable[str]` — streaming generator (optional).
+- `embed(texts: Iterable[str], **kwargs) -> List[List[float]]` — embeddings surface (optional).
 
 Ollama helpers
 --------------

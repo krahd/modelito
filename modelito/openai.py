@@ -8,6 +8,7 @@ import importlib
 
 from typing import Any, List, Optional
 from types import ModuleType
+from .provider import Provider
 
 
 """OpenAI provider that prefers the official SDK when available.
@@ -56,7 +57,7 @@ def _extract_text_from_response(res: Any) -> str:
     return ""
 
 
-class OpenAIProvider:
+class OpenAIProvider(Provider):
     """OpenAI provider using the official SDK when available.
 
     Methods provided:

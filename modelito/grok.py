@@ -6,9 +6,10 @@ and import compatibility.
 from __future__ import annotations
 
 from typing import Any, List, Optional
+from .provider import Provider
 
 
-class GrokProvider:
+class GrokProvider(Provider):
     """Minimal compatibility shim for Grok providers used in tests.
 
     Offers `list_models()` and `summarize()` methods with conservative behavior
