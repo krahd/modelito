@@ -1,6 +1,7 @@
 import types
 
 from modelito.claude import ClaudeProvider
+from modelito.messages import Message
 
 
 def test_claude_completions_stream():
@@ -11,7 +12,7 @@ def test_claude_completions_stream():
 
     fake_client = types.SimpleNamespace(completions=FakeCompletions())
     prov = ClaudeProvider(client=fake_client)
-    out = "".join(list(prov.stream([{"role": "user", "content": "hi"}])))
+    out = "".join(list(prov.stream([Message(role="user", content="hi")])))
     assert out == "Hi there"
 
 
@@ -25,5 +26,5 @@ def test_claude_completions_create_stream():
 
     fake_client = types.SimpleNamespace(completions=FakeCompletions())
     prov = ClaudeProvider(client=fake_client)
-    out = "".join(list(prov.stream([{"role": "user", "content": "hi"}])))
+    out = "".join(list(prov.stream([Message(role="user", content="hi")])))
     assert out == "AB"

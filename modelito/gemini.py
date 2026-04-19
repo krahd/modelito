@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import importlib
 from typing import Any, List, Optional
+from .messages import Message
 
 
 class GeminiProvider:
@@ -68,10 +69,13 @@ class GeminiProvider:
                 return ""
             out = []
             for m in (msgs or []):
-                if isinstance(m, dict):
-                    out.append(m.get("content", ""))
+                if isinstance(m, Message):
+                    out.append(m.content)
+                elif isinstance(m, str):
+                    out.append(m)
                 else:
-                    out.append(str(m))
+                    raise TypeError(
+                        "GeminiProvider.summarize requires modelito.messages.Message instances; dicts are not supported")
             return "\n".join(p for p in out if p)
 
         prompt = _flatten(messages)
@@ -136,10 +140,13 @@ class GeminiProvider:
                 return ""
             out = []
             for m in (msgs or []):
-                if isinstance(m, dict):
-                    out.append(m.get("content", ""))
+                if isinstance(m, Message):
+                    out.append(m.content)
+                elif isinstance(m, str):
+                    out.append(m)
                 else:
-                    out.append(str(m))
+                    raise TypeError(
+                        "GeminiProvider.stream requires modelito.messages.Message instances; dicts are not supported")
             return "\n".join(p for p in out if p)
 
         prompt = _flatten(messages)

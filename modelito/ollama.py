@@ -10,6 +10,7 @@ the provider API during tests or local runs continue to work.
 from __future__ import annotations
 
 from typing import Any, List, Optional
+from .messages import Message
 from .ollama_service import endpoint_url, server_is_up, json_post, list_local_models, list_remote_models, ollama_installed, run_ollama_command, running_model_names
 
 
@@ -93,10 +94,13 @@ class OllamaProvider:
             try:
                 parts = []
                 for m in (msgs or []):
-                    if isinstance(m, dict):
-                        parts.append(m.get("content", ""))
+                    if isinstance(m, Message):
+                        parts.append(m.content)
+                    elif isinstance(m, str):
+                        parts.append(m)
                     else:
-                        parts.append(str(m))
+                        raise TypeError(
+                            "OllamaProvider.summarize requires modelito.messages.Message instances; dicts are not supported")
                 return "\n".join(p for p in parts if p)
             except Exception:
                 return ""
@@ -114,8 +118,8 @@ class OllamaProvider:
                 if self.model:
                     payload["model"] = self.model
                 # prefer sending structured messages when available
-                if isinstance(messages, (list, tuple)) and messages and isinstance(messages[0], dict):
-                    payload["messages"] = messages
+                if isinstance(messages, (list, tuple)) and messages and isinstance(messages[0], Message):
+                    payload["messages"] = [{"role": m.role, "content": m.content} for m in messages]
                 else:
                     payload["prompt"] = prompt
 
@@ -215,17 +219,19 @@ class OllamaProvider:
         if self.model:
             payload["model"] = self.model
 
-        if isinstance(messages, (list, tuple)) and messages and isinstance(messages[0], dict):
-            payload["messages"] = messages
+        if isinstance(messages, (list, tuple)) and messages and isinstance(messages[0], Message):
+            payload["messages"] = [{"role": m.role, "content": m.content} for m in messages]
         else:
             # flatten
             try:
                 parts = []
                 for m in (messages or []):
-                    if isinstance(m, dict):
-                        parts.append(m.get("content", ""))
+                    if isinstance(m, Message):
+                        parts.append(m.content)
+                    elif isinstance(m, str):
+                        parts.append(m)
                     else:
-                        parts.append(str(m))
+                        raise TypeError("OllamaProvider.stream requires modelito.messages.Message instances; dicts are not supported")
                 payload["prompt"] = "\n".join(p for p in parts if p)
             except Exception:
                 payload["prompt"] = str(messages or "")

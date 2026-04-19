@@ -6,6 +6,7 @@ from modelito.openai import OpenAIProvider
 from modelito.claude import ClaudeProvider
 from modelito import gemini as gemini_mod
 from modelito import ollama as ollama_mod
+from modelito.messages import Message
 
 
 def test_openai_modern_client(monkeypatch):
@@ -22,7 +23,7 @@ def test_openai_modern_client(monkeypatch):
     )
 
     p = OpenAIProvider(client=client)
-    out = p.summarize([{"role": "user", "content": "hi"}], settings={})
+    out = p.summarize([Message(role="user", content="hi")], settings={})
     assert isinstance(out, str)
     assert out == "sdk reply"
 
@@ -37,7 +38,7 @@ def test_openai_legacy_chatcompletion(monkeypatch):
     ))
 
     p = OpenAIProvider()
-    out = p.summarize([{"role": "user", "content": "hello"}], settings={})
+    out = p.summarize([Message(role="user", content="hello")], settings={})
     assert "legacy reply" in out
 
 
@@ -52,7 +53,7 @@ def test_claude_modern_client(monkeypatch):
     )
 
     p = ClaudeProvider(client=client)
-    out = p.summarize([{"role": "user", "content": "ok"}], settings={})
+    out = p.summarize([Message(role="user", content="ok")], settings={})
     assert isinstance(out, str)
     assert out == "anthropic reply"
 
@@ -65,7 +66,7 @@ def test_claude_legacy_create_completion(monkeypatch):
     )
 
     p = ClaudeProvider(client=client)
-    out = p.summarize([{"role": "user", "content": "ok"}], settings={})
+    out = p.summarize([Message(role="user", content="ok")], settings={})
     assert "legacy anthropic" in out
 
 
@@ -77,7 +78,7 @@ def test_gemini_generate_text(monkeypatch):
     monkeypatch.setitem(sys.modules, "google.generativeai", fake)
 
     p = gemini_mod.GeminiProvider()
-    out = p.summarize([{"role": "user", "content": "hi"}], settings={})
+    out = p.summarize([Message(role="user", content="hi")], settings={})
     assert isinstance(out, str)
     assert "gen reply" in out
 
@@ -89,5 +90,5 @@ def test_ollama_server_response(monkeypatch):
                         payload, timeout=None: {"text": "ollama reply"})
 
     p = ollama_mod.OllamaProvider()
-    out = p.summarize([{"role": "user", "content": "hello"}], settings={})
+    out = p.summarize([Message(role="user", content="hello")], settings={})
     assert out == "ollama reply"

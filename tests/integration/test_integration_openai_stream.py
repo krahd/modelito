@@ -16,11 +16,12 @@ def test_openai_integration_stream_and_embed():
 
     prov = OpenAIProvider(api_key=api_key, model=os.environ.get("OPENAI_MODEL", "gpt-3.5-turbo"))
 
-    txt = prov.summarize([{"role": "user", "content": "Say hello in one word."}], settings={"max_tokens": 8})
+    from modelito.messages import Message
+    txt = prov.summarize([Message(role="user", content="Say hello in one word.")], settings={"max_tokens": 8})
     assert isinstance(txt, str) and txt
 
     chunks = []
-    for c in prov.stream([{"role": "user", "content": "Say hello in one word."}], settings={"max_tokens": 8}):
+    for c in prov.stream([Message(role="user", content="Say hello in one word.")], settings={"max_tokens": 8}):
         chunks.append(c)
         if len("".join(chunks)) > 32:
             break

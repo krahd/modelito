@@ -1,6 +1,7 @@
 import types
 
 from modelito.openai import OpenAIProvider
+from modelito.messages import Message
 
 
 def test_stream_with_chat_completions_stream():
@@ -12,7 +13,7 @@ def test_stream_with_chat_completions_stream():
 
     fake_client = types.SimpleNamespace(chat=types.SimpleNamespace(completions=FakeCompletions()))
     prov = OpenAIProvider(client=fake_client)
-    out = "".join(list(prov.stream([{"role": "user", "content": "hi"}])))
+    out = "".join(list(prov.stream([Message(role="user", content="hi")])))
     assert out == "Hello world"
 
 
@@ -26,7 +27,7 @@ def test_stream_with_chat_completions_create_stream():
 
     fake_client = types.SimpleNamespace(chat=types.SimpleNamespace(completions=FakeCompletions()))
     prov = OpenAIProvider(client=fake_client)
-    out = "".join(list(prov.stream([{"role": "user", "content": "hi"}])))
+    out = "".join(list(prov.stream([Message(role="user", content="hi")])))
     assert out == "AB"
 
 

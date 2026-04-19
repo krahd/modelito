@@ -7,6 +7,7 @@ from __future__ import annotations
 import importlib
 
 from typing import Any, List, Optional
+from .messages import Message
 from types import ModuleType
 
 
@@ -115,13 +116,20 @@ class OpenAIProvider:
             if isinstance(msgs, (list, tuple)):
                 out = []
                 for m in msgs:
-                    if isinstance(m, dict):
-                        out.append({"role": m.get("role", "user"),
-                                   "content": m.get("content", str(m))})
+                    if isinstance(m, Message):
+                        out.append({"role": m.role, "content": m.content})
+                    elif isinstance(m, str):
+                        out.append({"role": "user", "content": m})
                     else:
-                        out.append({"role": "user", "content": str(m)})
+                        raise TypeError(
+                            "OpenAIProvider.summarize requires modelito.messages.Message instances; dicts are not supported")
                 return out
-            return [{"role": "user", "content": str(msgs)}]
+            if isinstance(msgs, Message):
+                return [{"role": msgs.role, "content": msgs.content}]
+            if isinstance(msgs, str):
+                return [{"role": "user", "content": msgs}]
+            raise TypeError(
+                "OpenAIProvider.summarize requires modelito.messages.Message instances; dicts are not supported")
 
         msgs = _flatten(messages)
 
@@ -170,16 +178,20 @@ class OpenAIProvider:
             if isinstance(msgs, (list, tuple)):
                 out: List[dict] = []
                 for m in msgs:
-                    if isinstance(m, dict):
-                        out.append({"role": m.get("role", "user"),
-                                   "content": m.get("content", str(m))})
+                    if isinstance(m, Message):
+                        out.append({"role": m.role, "content": m.content})
+                    elif isinstance(m, str):
+                        out.append({"role": "user", "content": m})
                     else:
-                        # dataclass-like or plain string
-                        role = getattr(m, "role", "user") if hasattr(m, "role") else "user"
-                        content = getattr(m, "content", str(m)) if hasattr(m, "content") else str(m)
-                        out.append({"role": role, "content": content})
+                        raise TypeError(
+                            "OpenAIProvider.stream requires modelito.messages.Message instances; dicts are not supported")
                 return out
-            return [{"role": "user", "content": str(msgs)}]
+            if isinstance(msgs, Message):
+                return [{"role": msgs.role, "content": msgs.content}]
+            if isinstance(msgs, str):
+                return [{"role": "user", "content": msgs}]
+            raise TypeError(
+                "OpenAIProvider.stream requires modelito.messages.Message instances; dicts are not supported")
 
         msgs = _flatten_msgs(messages)
 

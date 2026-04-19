@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib
 
 from typing import Any, List, Optional
+from .messages import Message
 from types import ModuleType
 
 def _extract_text_from_response(res: Any) -> str:
@@ -90,10 +91,13 @@ class ClaudeProvider:
             try:
                 parts = []
                 for m in (msgs or []):
-                    if isinstance(m, dict):
-                        parts.append(m.get("content", ""))
+                    if isinstance(m, Message):
+                        parts.append(m.content)
+                    elif isinstance(m, str):
+                        parts.append(m)
                     else:
-                        parts.append(str(m))
+                        raise TypeError(
+                            "ClaudeProvider.summarize requires modelito.messages.Message instances; dicts are not supported")
                 return "\n".join(p for p in parts if p)
             except Exception:
                 return ""
@@ -143,10 +147,13 @@ class ClaudeProvider:
             try:
                 parts = []
                 for m in (msgs or []):
-                    if isinstance(m, dict):
-                        parts.append(m.get("content", ""))
+                    if isinstance(m, Message):
+                        parts.append(m.content)
+                    elif isinstance(m, str):
+                        parts.append(m)
                     else:
-                        parts.append(str(m))
+                        raise TypeError(
+                            "ClaudeProvider.stream requires modelito.messages.Message instances; dicts are not supported")
                 return "\n".join(p for p in parts if p)
             except Exception:
                 return ""

@@ -15,13 +15,15 @@ if REPO_ROOT not in sys.path:
 
 def test_openai_provider_summarize_fallback():
     p = OpenAIProvider()
-    res = p.summarize([{"role": "user", "content": "hello"}])
+    from modelito.messages import Message
+    res = p.summarize([Message(role="user", content="hello")])
     assert isinstance(res, str)
 
 
 def test_ollama_provider_summarize_fallback():
     p = OllamaProvider()
-    res = p.summarize([{"role": "user", "content": "hey"}])
+    from modelito.messages import Message
+    res = p.summarize([Message(role="user", content="hey")])
     assert isinstance(res, str)
 
 

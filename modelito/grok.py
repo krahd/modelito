@@ -6,6 +6,7 @@ and import compatibility.
 from __future__ import annotations
 
 from typing import Any, List, Optional
+from .messages import Message
 
 
 class GrokProvider:
@@ -45,10 +46,13 @@ class GrokProvider:
         try:
             parts = []
             for m in (messages or []):
-                if isinstance(m, dict):
-                    parts.append(m.get("content", ""))
+                if isinstance(m, Message):
+                    parts.append(m.content)
+                elif isinstance(m, str):
+                    parts.append(m)
                 else:
-                    parts.append(str(m))
+                    raise TypeError(
+                        "GrokProvider.summarize requires modelito.messages.Message instances; dicts are not supported")
             return "\n".join(p for p in parts if p)
         except Exception:
             return ""

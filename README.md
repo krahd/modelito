@@ -113,8 +113,9 @@ from modelito import Provider, OllamaProvider
 
 p: Provider = OllamaProvider()
 if isinstance(p, Provider):
-    resp = p.summarize([{"role": "user", "content": "hello"}])
-    print(resp)
+	from modelito.messages import Message
+	resp = p.summarize([Message(role="user", content="hello")])
+	print(resp)
 ```
 This release introduces typed `Message`/`Response` dataclasses and expands the
 provider surface into a small set of optional Protocols:

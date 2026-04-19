@@ -22,8 +22,9 @@ def test_connector_send_sync_and_history():
     conn = OllamaConnector(provider=prov)
     conn.clear_history()
     conn.add_to_history(None, "user", "first")
-    resp = conn.send_sync(None, [{"role": "user", "content": "ask"}])
+    from modelito.messages import Message
+    resp = conn.send_sync(None, [Message(role="user", content="ask")])
     assert isinstance(resp, str)
     hist = conn.get_history(None)
     # should contain at least one assistant response
-    assert any(m.get("role") == "assistant" for m in hist)
+    assert any(m.role == "assistant" for m in hist)

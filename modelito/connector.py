@@ -9,13 +9,13 @@ dict-based public surface for compatibility.
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional
 from pathlib import Path
 
 from .provider import Provider
 from .exceptions import LLMProviderError
 from .tokenizer import count_tokens
-from .messages import Message, Response, to_message
+from .messages import Message, Response
 
 
 def _estimate_tokens(text: str) -> int:
@@ -36,7 +36,12 @@ def _msg_to_dict(m: Message) -> Dict[str, Any]:
     return d
 
 
-def _to_messages(messages: Optional[Iterable[Union[Dict[str, Any], Message]]]) -> List[Message]:
+def _to_messages(messages: Optional[Iterable[Message]]) -> List[Message]:
+    """Normalize input into a list of `Message` objects.
+
+    This connector no longer accepts legacy dict-shaped messages. Callers
+    must pass `Message` dataclasses (or strings are not accepted here).
+    """
     msgs: List[Message] = []
     if not messages:
         return msgs
@@ -44,7 +49,8 @@ def _to_messages(messages: Optional[Iterable[Union[Dict[str, Any], Message]]]) -
         if isinstance(m, Message):
             msgs.append(m)
         else:
-            msgs.append(to_message(m))
+            raise TypeError(
+                "Connector APIs require modelito.messages.Message instances; dicts are no longer supported")
     return msgs
 
 
@@ -125,13 +131,15 @@ class OllamaConnector:
                 else:
                     del hist[0]
 
-    def get_history(self, conv_id: Optional[str]) -> List[Dict[str, Any]]:
-        return [_msg_to_dict(m) for m in list(self._histories.get(self._conv_key(conv_id), []))]
+    def get_history(self, conv_id: Optional[str]) -> List[Message]:
+        # Return Message objects for the history. Consumers should use the
+        # `Message` dataclass rather than legacy dicts.
+        return list(self._histories.get(self._conv_key(conv_id), []))
 
-    def trim_history_by_tokens(self, messages: List[Dict[str, Any]], max_tokens: int) -> List[Dict[str, Any]]:
+    def trim_history_by_tokens(self, messages: List[Message], max_tokens: int) -> List[Message]:
         if max_tokens is None or max_tokens <= 0:
             return messages
-        msgs = _to_messages(messages)
+        msgs = list(messages)
         system: Optional[Message] = None
         if msgs and msgs[0].role == "system":
             system = msgs.pop(0)
@@ -141,15 +149,15 @@ class OllamaConnector:
             result = [system] + msgs
         else:
             result = msgs
-        return [_msg_to_dict(m) for m in result]
+        return result
 
     def build_prompt(
         self,
         conv_id: Optional[str],
-        new_messages: Optional[Iterable[Union[Dict[str, Any], Message]]] = None,
+        new_messages: Optional[Iterable[Message]] = None,
         include_history: bool = True,
         max_prompt_tokens: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Message]:
         hist_msgs: List[Message] = []
         if include_history:
             hist_msgs = list(self._histories.get(self._conv_key(conv_id), []))
@@ -158,13 +166,12 @@ class OllamaConnector:
         if len(hist_msgs) > self.max_history_messages:
             hist_msgs = hist_msgs[-self.max_history_messages:]
         if max_prompt_tokens is not None:
-            trimmed = self.trim_history_by_tokens(
-                [_msg_to_dict(m) for m in hist_msgs], max_prompt_tokens)
-            hist_msgs = _to_messages(trimmed)
+            trimmed = self.trim_history_by_tokens(hist_msgs, max_prompt_tokens)
+            hist_msgs = trimmed
         hist_msgs = self._ensure_system(hist_msgs)
-        return [_msg_to_dict(m) for m in hist_msgs]
+        return hist_msgs
 
-    def send_sync(self, conv_id: Optional[str], new_messages: List[Dict[str, Any]], settings: Optional[Dict] = None) -> str:
+    def send_sync(self, conv_id: Optional[str], new_messages: List[Message], settings: Optional[Dict] = None) -> str:
         messages = self.build_prompt(conv_id, new_messages=new_messages, include_history=True, max_prompt_tokens=(
             settings or {}).get("max_prompt_tokens"))
         try:
@@ -172,18 +179,18 @@ class OllamaConnector:
         except Exception as exc:
             raise LLMProviderError(f"Provider call failed: {exc}") from exc
         for m in (new_messages or []):
-            role = (m.get("role") if isinstance(m, dict) else getattr(m, "role", "user")) or "user"
-            content = (m.get("content") if isinstance(m, dict) else getattr(m, "content", "")) or ""
-            self.add_to_history(conv_id, role, content)
+            if not isinstance(m, Message):
+                raise TypeError("new_messages must be modelito.messages.Message instances")
+            self.add_to_history(conv_id, m.role, m.content)
         self.add_to_history(conv_id, "assistant", resp)
         return resp
 
-    def complete(self, conv_id: Optional[str], new_messages: Optional[Iterable[Union[Dict[str, Any], Message]]] = None, settings: Optional[Dict] = None) -> Response:
-        """Backward-compatible wrapper that returns a `Response` dataclass."""
+    def complete(self, conv_id: Optional[str], new_messages: Optional[Iterable[Message]] = None, settings: Optional[Dict] = None) -> Response:
+        """Return a `Response` dataclass. `new_messages` must be `Message` instances."""
         resp_text = self.send_sync(conv_id, list(new_messages or []), settings=settings)
         return Response(text=resp_text, raw=None)
 
-    async def acomplete(self, conv_id: Optional[str], new_messages: Optional[Iterable[Union[Dict[str, Any], Message]]] = None, settings: Optional[Dict] = None) -> Response:
+    async def acomplete(self, conv_id: Optional[str], new_messages: Optional[Iterable[Message]] = None, settings: Optional[Dict] = None) -> Response:
         msgs = self.build_prompt(conv_id, new_messages=new_messages, include_history=True,
                                  max_prompt_tokens=(settings or {}).get("max_prompt_tokens"))
         # If provider supplies an async API, prefer that.
@@ -199,9 +206,8 @@ class OllamaConnector:
             raise LLMProviderError(f"Provider call failed: {exc}") from exc
         # update history with original new_messages
         for m in (new_messages or []):
-            if isinstance(m, Message):
-                self.add_to_history(conv_id, m.role, m.content)
-            else:
-                self.add_to_history(conv_id, m.get("role", "user"), m.get("content", ""))
+            if not isinstance(m, Message):
+                raise TypeError("new_messages must be modelito.messages.Message instances")
+            self.add_to_history(conv_id, m.role, m.content)
         self.add_to_history(conv_id, "assistant", raw)
         return Response(text=raw if isinstance(raw, str) else str(raw), raw=raw)

@@ -1,6 +1,7 @@
 import types
 
 from modelito.gemini import GeminiProvider
+from modelito.messages import Message
 
 
 def test_gemini_generate_text_iterable():
@@ -11,7 +12,7 @@ def test_gemini_generate_text_iterable():
 
     fake = FakeGen()
     prov = GeminiProvider(client=fake)
-    out = "".join(list(prov.stream([{"role": "user", "content": "hi"}])))
+    out = "".join(list(prov.stream([Message(role="user", content="hi")])))
     assert out == "XY"
 
 
@@ -23,5 +24,5 @@ def test_gemini_client_generate_text():
 
     fake = types.SimpleNamespace(client=FakeClient())
     prov = GeminiProvider(client=fake)
-    out = "".join(list(prov.stream([{"role": "user", "content": "hi"}])))
+    out = "".join(list(prov.stream([Message(role="user", content="hi")])))
     assert out == "12"

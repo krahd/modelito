@@ -15,11 +15,12 @@ def test_ollama_integration_streaming():
 
     prov = OllamaProvider(host=host, port=port, model=os.environ.get("OLLAMA_MODEL"))
 
-    out = prov.summarize([{"role": "user", "content": "Hello world"}], settings={})
+    from modelito.messages import Message
+    out = prov.summarize([Message(role="user", content="Hello world")], settings={})
     assert isinstance(out, str) and out
 
     parts = []
-    for p in prov.stream([{"role": "user", "content": "Hello world"}], settings={}):
+    for p in prov.stream([Message(role="user", content="Hello world")], settings={}):
         parts.append(p)
         if len("".join(parts)) > 32:
             break
