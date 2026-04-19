@@ -11,6 +11,8 @@ integration into applications and CI pipelines.
 Quick start
 -----------
 
+Note: these docs are written for the repository owner / sole maintainer.
+
 Install in editable mode for development (install optional extras as needed):
 
 ```sh
@@ -40,7 +42,7 @@ python -m build
 Install from the built wheel:
 
 ```sh
-pip install dist/modelito-1.0.0-py3-none-any.whl
+pip install dist/*.whl
 ```
 
 See the `docs/` folder for more details on calibration and migration.
@@ -117,8 +119,8 @@ if isinstance(p, Provider):
 	resp = p.summarize([Message(role="user", content="hello")])
 	print(resp)
 ```
-This release introduces typed `Message`/`Response` dataclasses and expands the
-provider surface into a small set of optional Protocols:
+The package provides typed `Message`/`Response` dataclasses and exposes a
+small set of optional Protocols for provider surfaces:
 
 - `SyncProvider` (alias: `Provider`) — existing synchronous `summarize()`/`list_models()` surface.
 - `AsyncProvider` — async `acomplete()` surface for providers that support awaitable calls.
@@ -126,8 +128,7 @@ provider surface into a small set of optional Protocols:
 - `EmbeddingProvider` — `embed()` surface for vector embeddings.
 
 `modelito` exposes `Message` and `Response` dataclasses; connectors and
-provider surfaces now require `Message` instances. Legacy dict-shaped
-messages are no longer accepted. Example usage with the new API:
+provider surfaces accept `Message` instances. Example usage with the current API:
 
 ```py
 from modelito import Provider, Message, OllamaProvider, OllamaConnector

@@ -24,7 +24,8 @@ class _FakeResp:
 
 def test_ollama_stream_monkeypatch(monkeypatch):
     # Simulate SSE/line-delimited JSON tokens
-    lines = [json.dumps({"token": "Hello"}) + "\n", json.dumps({"token": " "}) + "\n", json.dumps({"token": "world"}) + "\n"]
+    lines = [json.dumps({"token": "Hello"}) + "\n", json.dumps({"token": " "}
+                                                               ) + "\n", json.dumps({"token": "world"}) + "\n"]
 
     def _fake_urlopen(req, timeout=60):
         return _FakeResp(lines)
@@ -32,5 +33,5 @@ def test_ollama_stream_monkeypatch(monkeypatch):
     monkeypatch.setattr("urllib.request.urlopen", _fake_urlopen)
     prov = OllamaProvider(host="http://127.0.0.1", port=11434)
     from modelito.messages import Message
-    out = "".join(list(prov.stream([Message(role="user", content="hi") ])))
+    out = "".join(list(prov.stream([Message(role="user", content="hi")])))
     assert out == "Hello world"

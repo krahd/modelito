@@ -1,9 +1,9 @@
 """Simple connector utilities to manage conversation history and system messages.
 
 This module provides a small, framework-agnostic connector that maintains per-
-conversation histories and prepares prompts for providers. The connector now
-operates on `Message` dataclasses internally while preserving the legacy
-dict-based public surface for compatibility.
+conversation histories and prepares prompts for providers. The connector
+operates on `Message` dataclasses and exposes synchronous and asynchronous
+helper methods for convenience.
 """
 
 from __future__ import annotations
@@ -39,8 +39,7 @@ def _msg_to_dict(m: Message) -> Dict[str, Any]:
 def _to_messages(messages: Optional[Iterable[Message]]) -> List[Message]:
     """Normalize input into a list of `Message` objects.
 
-    This connector no longer accepts legacy dict-shaped messages. Callers
-    must pass `Message` dataclasses (or strings are not accepted here).
+    Callers must pass `Message` dataclasses.
     """
     msgs: List[Message] = []
     if not messages:
@@ -59,7 +58,7 @@ class OllamaConnector:
 
     The connector stores `Message` objects per conversation id and provides
     utilities to trim by message count or token budget. It exposes both the
-    legacy dict-oriented surface and the newer `complete()`/`acomplete()`
+    dict-oriented convenience surface and the `complete()`/`acomplete()`
     methods that return `Response` dataclasses.
     """
 
@@ -133,7 +132,7 @@ class OllamaConnector:
 
     def get_history(self, conv_id: Optional[str]) -> List[Message]:
         # Return Message objects for the history. Consumers should use the
-        # `Message` dataclass rather than legacy dicts.
+        # `Message` dataclass rather than dicts.
         return list(self._histories.get(self._conv_key(conv_id), []))
 
     def trim_history_by_tokens(self, messages: List[Message], max_tokens: int) -> List[Message]:
@@ -171,7 +170,7 @@ class OllamaConnector:
         hist_msgs = self._ensure_system(hist_msgs)
         return hist_msgs
 
-    def send_sync(self, conv_id: Optional[str], new_messages: List[Message], settings: Optional[Dict] = None) -> str:
+    def send_sync(self, conv_id: Optional[str], new_messages: List[Message], settings: Optional[Dict[str, Any]] = None) -> str:
         messages = self.build_prompt(conv_id, new_messages=new_messages, include_history=True, max_prompt_tokens=(
             settings or {}).get("max_prompt_tokens"))
         try:
@@ -185,12 +184,12 @@ class OllamaConnector:
         self.add_to_history(conv_id, "assistant", resp)
         return resp
 
-    def complete(self, conv_id: Optional[str], new_messages: Optional[Iterable[Message]] = None, settings: Optional[Dict] = None) -> Response:
+    def complete(self, conv_id: Optional[str], new_messages: Optional[Iterable[Message]] = None, settings: Optional[Dict[str, Any]] = None) -> Response:
         """Return a `Response` dataclass. `new_messages` must be `Message` instances."""
         resp_text = self.send_sync(conv_id, list(new_messages or []), settings=settings)
         return Response(text=resp_text, raw=None)
 
-    async def acomplete(self, conv_id: Optional[str], new_messages: Optional[Iterable[Message]] = None, settings: Optional[Dict] = None) -> Response:
+    async def acomplete(self, conv_id: Optional[str], new_messages: Optional[Iterable[Message]] = None, settings: Optional[Dict[str, Any]] = None) -> Response:
         msgs = self.build_prompt(conv_id, new_messages=new_messages, include_history=True,
                                  max_prompt_tokens=(settings or {}).get("max_prompt_tokens"))
         # If provider supplies an async API, prefer that.

@@ -37,7 +37,9 @@ def load_catalog() -> Dict[str, Any]:
     p = _catalog_path()
     if p.exists():
         try:
-            return json.loads(p.read_text())
+            data = json.loads(p.read_text())
+            if isinstance(data, dict):
+                return data
         except Exception:
             pass
     # fallback minimal catalog

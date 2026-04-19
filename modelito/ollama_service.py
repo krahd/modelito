@@ -16,7 +16,7 @@ import subprocess
 import os
 import sys
 import shlex
-from typing import Optional, List, Dict, Any, Callable
+from typing import Optional, List, Dict, Any, Callable, Iterable, cast
 from pathlib import Path
 import json
 import logging
@@ -82,7 +82,7 @@ def server_is_up(host: str, port: int) -> bool:
             return False
 
 
-def ensure_ollama_running(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, auto_start: bool = False, start_args: Optional[list] = None, timeout: float = 10.0) -> bool:
+def ensure_ollama_running(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, auto_start: bool = False, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> bool:
     """Ensure an Ollama server is reachable at `host:port`.
 
     If `auto_start` is True and the `ollama` binary is available on PATH,
@@ -97,7 +97,7 @@ def ensure_ollama_running(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, aut
     return bool(ok)
 
 
-def ensure_ollama_running_verbose(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, auto_start: bool = False, start_args: Optional[list] = None, timeout: float = 10.0) -> tuple[bool, str]:
+def ensure_ollama_running_verbose(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, auto_start: bool = False, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> tuple[bool, str]:
     """Ensure an Ollama server is reachable and return (success, message).
 
     The verbose variant returns a human-readable message describing the
@@ -189,7 +189,7 @@ def install_ollama(allow_install: bool = False, method: Optional[str] = None, ti
             cmd, _ = install_command_for_current_platform()
             try:
                 subprocess.run(cmd, cwd=str(ROOT), text=True,
-                                  capture_output=True, check=False, timeout=timeout)
+                               capture_output=True, check=False, timeout=timeout)
                 return get_ollama_binary() is not None
             except Exception:
                 return False
@@ -199,7 +199,7 @@ def install_ollama(allow_install: bool = False, method: Optional[str] = None, ti
         cmd, _ = install_command_for_current_platform()
         try:
             subprocess.run(cmd, cwd=str(ROOT), text=True,
-                              capture_output=True, check=False, timeout=timeout)
+                           capture_output=True, check=False, timeout=timeout)
             return get_ollama_binary() is not None
         except Exception:
             return False
@@ -207,7 +207,7 @@ def install_ollama(allow_install: bool = False, method: Optional[str] = None, ti
         return False
 
 
-def start_ollama(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, start_args: Optional[list] = None, timeout: float = 10.0) -> bool:
+def start_ollama(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> bool:
     """Start `ollama serve` and wait for it to become available."""
     return ensure_ollama_running(host=host, port=port, auto_start=True, start_args=start_args, timeout=timeout)
 
@@ -227,7 +227,8 @@ def stop_ollama(force: bool = False) -> bool:
         ``True`` on success, ``False`` otherwise.
     """
     try:
-        import psutil  # type: ignore
+        import importlib
+        psutil = importlib.import_module("psutil")
     except Exception:
         psutil = None
 
@@ -546,7 +547,7 @@ def delete_model(model_name: str) -> bool:
     return False
 
 
-def serve_model(model_name: Optional[str] = None, start_args: Optional[list] = None, timeout: float = 10.0) -> bool:
+def serve_model(model_name: Optional[str] = None, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> bool:
     """Start ``ollama serve`` and wait until a server is reachable.
 
     Uses :func:`start_detached_ollama_serve` so environment and detachment
@@ -654,7 +655,7 @@ def ollama_installed() -> bool:
     return True
 
 
-def run_ollama_command(*args: str, host: Optional[str] = None) -> subprocess.CompletedProcess:
+def run_ollama_command(*args: str, host: Optional[str] = None) -> subprocess.CompletedProcess[str]:
     """Run an Ollama CLI command and capture the Result.
 
     Args:
@@ -673,7 +674,7 @@ def run_ollama_command(*args: str, host: Optional[str] = None) -> subprocess.Com
     return subprocess.run([command, *args], cwd=str(ROOT), text=True, capture_output=True, check=False, env=env)
 
 
-def start_detached_ollama_serve(host: str, start_args: Optional[List[str]] = None) -> subprocess.Popen:
+def start_detached_ollama_serve(host: str, start_args: Optional[List[str]] = None) -> subprocess.Popen[Any]:
     """Start `ollama serve` in the background for the current platform.
 
     `start_args` are appended to the serve command and can include options
@@ -684,26 +685,44 @@ def start_detached_ollama_serve(host: str, start_args: Optional[List[str]] = Non
     if start_args:
         cmd.extend(start_args)
 
-    kwargs: Dict[str, object] = {
-        "cwd": str(ROOT),
-        "stdout": subprocess.DEVNULL,
-        "stderr": subprocess.DEVNULL,
-        "stdin": subprocess.DEVNULL,
-        "env": {**os.environ, "OLLAMA_HOST": host},
-        "text": True,
-    }
-
+    # Build common parameters explicitly to satisfy strict typing of subprocess.Popen
+    common_env: Dict[str, str] = {**os.environ, "OLLAMA_HOST": host}
     if os.name == "nt":
-        kwargs["creationflags"] = (
-            getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        creationflags_val = (
+            getattr(subprocess, "DETACHED_PROCESS", 0)
+            | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+            | getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        )
+        return cast(
+            subprocess.Popen[Any],
+            subprocess.Popen(
+                cmd,
+                cwd=str(ROOT),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                env=common_env,
+                text=True,
+                creationflags=creationflags_val,
+            ),
         )
     else:
-        kwargs["start_new_session"] = True
+        return cast(
+            subprocess.Popen[Any],
+            subprocess.Popen(
+                cmd,
+                cwd=str(ROOT),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                env=common_env,
+                text=True,
+                start_new_session=True,
+            ),
+        )
 
-    return subprocess.Popen(cmd, **kwargs)  # type: ignore[call-overload]
 
-
-def json_post(url: str, payload: dict, timeout: float = 60.0) -> dict:
+def json_post(url: str, payload: Dict[str, Any], timeout: float = 60.0) -> Dict[str, Any]:
     request = Request(url, data=json.dumps(payload).encode("utf-8"),
                       headers={"Content-Type": "application/json"}, method="POST")
     with urlopen(request, timeout=timeout) as response:
@@ -711,7 +730,7 @@ def json_post(url: str, payload: dict, timeout: float = 60.0) -> dict:
     return json.loads(body) if body else {}
 
 
-def json_get(url: str, timeout: float = 5.0) -> dict:
+def json_get(url: str, timeout: float = 5.0) -> Dict[str, Any]:
     """Read JSON from an HTTP GET endpoint and decode it to a dict."""
     with urlopen(url, timeout=timeout) as response:
         body = response.read().decode("utf-8")
@@ -758,7 +777,7 @@ def load_llm_config(path: Optional[str] = None) -> Dict[str, Any]:
     """
     load_config: Optional[Callable[[str], dict[str, Any]]] = None
     try:
-        from .config import load_config as _load_config  # type: ignore
+        from .config import load_config as _load_config
         load_config = _load_config
     except Exception:
         load_config = None
@@ -843,7 +862,7 @@ def ollama_version_text(host: Optional[str] = None) -> str:
     return (proc.stdout or proc.stderr or "").strip()
 
 
-def install_command_for_current_platform(platform_name: Optional[str] = None) -> tuple[list[str], str]:
+def install_command_for_current_platform(platform_name: Optional[str] = None) -> tuple[List[str], str]:
     platform_name = platform_name or sys.platform
     if platform_name.startswith("win"):
         command = [
@@ -943,7 +962,7 @@ def start_service(config_path: Optional[str] = None) -> int:
     return 0
 
 
-def _listener_pids_from_connections(connections, port: int) -> List[int]:
+def _listener_pids_from_connections(connections: Iterable[Any], port: int) -> List[int]:
     pids: set[int] = set()
     for conn in connections:
         try:
@@ -965,7 +984,8 @@ def _listener_pids_from_connections(connections, port: int) -> List[int]:
 def find_ollama_listener_pids(port: int) -> List[int]:
     """Return process IDs listening on the configured TCP port (best-effort)."""
     try:
-        import psutil  # type: ignore
+        import importlib
+        psutil = importlib.import_module("psutil")
     except Exception:
         psutil = None
 
@@ -1027,7 +1047,8 @@ def stop_service(host: str = "http://127.0.0.1", port: int = 11434, verbose: boo
 
     killed = False
     try:
-        import psutil  # type: ignore
+        import importlib
+        psutil = importlib.import_module("psutil")
     except Exception:
         psutil = None
 

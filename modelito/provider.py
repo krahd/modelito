@@ -22,7 +22,7 @@ class SyncProvider(Protocol):
     def list_models(self) -> List[str]:
         ...
 
-    def summarize(self, messages: Iterable[Message], settings: Optional[Dict] = None) -> str:
+    def summarize(self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None) -> str:
         ...
 
 
@@ -34,7 +34,7 @@ class AsyncProvider(Protocol):
     mirrors `summarize()` but is awaitable.
     """
 
-    async def acomplete(self, messages: Iterable[Message], settings: Optional[Dict] = None) -> str:
+    async def acomplete(self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None) -> str:
         ...
 
 
@@ -43,7 +43,7 @@ class StreamingProvider(Protocol):
     """Streaming provider surface. Yields incremental text chunks.
     """
 
-    def stream(self, messages: Iterable[Message], settings: Optional[Dict] = None) -> Iterable[str]:
+    def stream(self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None) -> Iterable[str]:
         ...
 
 

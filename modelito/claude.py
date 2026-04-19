@@ -8,7 +8,7 @@ offline-friendly behavior.
 from __future__ import annotations
 import importlib
 
-from typing import Any, List, Optional
+from typing import Any, Iterable, List, Optional
 from .messages import Message
 from types import ModuleType
 
@@ -86,7 +86,7 @@ class ClaudeProvider:
             pass
         return []
 
-    def summarize(self, messages: Any, settings: Optional[dict] = None) -> str:
+    def summarize(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> str:
         def _flatten(msgs: Any) -> str:
             try:
                 parts = []
@@ -136,7 +136,7 @@ class ClaudeProvider:
         except Exception:
             return ""
 
-    def stream(self, messages: Any, settings: Optional[dict] = None):
+    def stream(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
         """SDK-aware streaming for Claude.
 
         Try several common client shapes for streaming completions and
@@ -258,7 +258,7 @@ class ClaudeProvider:
         for i in range(0, len(text), chunk_size):
             yield text[i: i + chunk_size]
 
-    def embed(self, texts: Any, **kwargs) -> List[List[float]]:
+    def embed(self, texts: Iterable[str], **kwargs: Any) -> List[List[float]]:
         """Embedding surface for tests: delegate to the embeddings helper."""
         try:
             from .embeddings import embed_texts

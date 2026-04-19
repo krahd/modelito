@@ -12,34 +12,61 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MODEL_DIR = ROOT / "modelito"
+
+# Scan non-library files (docs, examples, tests) for literal dict-shaped
+# message examples that look like: [{ 'role': 'user', 'content': '...' }]
+TARGET_EXTS = {".py", ".md", ".rst"}
+EXCLUDE_DIRS = {"modelito", ".venv", "docs/build", "dist", ".git"}
+
 PATTERNS = [
-    # Only fail on direct `to_message(...)` usage. Many provider adapters
-    # legitimately construct small `{'role': ..., 'content': ...}` payloads
-    # for transport; we allow those.
-    re.compile(r"to_message\("),
+    # Inline list containing a dict with a `role` key: [{ "role": ... }]
+    re.compile(r"\[\s*\{\s*[\'\"]role[\'\"]\s*:")
 ]
 
-EXCLUDE_FILES = []
+
+def _is_excluded(path: Path) -> bool:
+    for part in path.parts:
+        if part in EXCLUDE_DIRS:
+            return True
+    return False
 
 
 def scan() -> int:
     matches = []
-    for p in MODEL_DIR.rglob("*.py"):
-        if any(str(p).endswith(x) for x in EXCLUDE_FILES):
+    for p in ROOT.rglob("*"):
+        if not p.is_file():
             continue
+        if p.suffix.lower() not in TARGET_EXTS:
+            continue
+        if _is_excluded(p):
+            continue
+
         text = p.read_text(encoding="utf8")
+
+        # line-by-line quick checks (common in docs/examples)
         for i, line in enumerate(text.splitlines(), start=1):
             for pat in PATTERNS:
                 if pat.search(line):
                     matches.append((p.relative_to(ROOT), i, line.strip()))
+
+        # multi-line pattern: assignments like `new_messages = [ { 'role': ... } ]`
+        if re.search(r"new_messages\s*=\s*\[.*?[\'\"]role[\'\"]", text, flags=re.DOTALL):
+            # report at the first matching line
+            idx = re.search(r"new_messages\s*=\s*\[.*?[\'\"]role[\'\"]", text, flags=re.DOTALL)
+            if idx:
+                lineno = text[: idx.start()].count("\n") + 1
+                snippet = text.splitlines()[lineno - 1].strip() if lineno - \
+                    1 < len(text.splitlines()) else ""
+                matches.append((p.relative_to(ROOT), lineno, snippet))
+
     if matches:
-        print("Legacy dict-style messages or to_message() usage detected:")
+        print("Found literal dict-shaped message examples (use `Message(...)` instead):")
         for path, lineno, line in matches:
             print(f"  {path}:{lineno}: {line}")
-        print("\nPlease migrate to `modelito.messages.Message` dataclasses.")
+        print("\nPlease update examples to use `modelito.messages.Message` dataclasses.")
         return 2
-    print("No legacy dict-usage found in modelito/.")
+
+    print("No literal dict-shaped message examples found in docs/examples/tests.")
     return 0
 
 

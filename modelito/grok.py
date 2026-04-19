@@ -5,7 +5,7 @@ and import compatibility.
 """
 from __future__ import annotations
 
-from typing import Any, List, Optional
+from typing import Any, Iterable, List, Optional
 from .messages import Message
 
 
@@ -33,7 +33,7 @@ class GrokProvider:
         except Exception:
             return []
 
-    def summarize(self, messages: Any, settings: Optional[dict] = None) -> str:
+    def summarize(self, messages: Iterable[Message], settings: Optional[dict[str, Any]] = None) -> str:
         """Return a deterministic join of message contents for tests.
 
         Args:
@@ -57,7 +57,7 @@ class GrokProvider:
         except Exception:
             return ""
 
-    def stream(self, messages: Any, settings: Optional[dict] = None):
+    def stream(self, messages: Iterable[Message], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
         """Streaming fallback for Grok provider.
 
         Yields the joined message text in sequential chunks.
@@ -74,7 +74,7 @@ class GrokProvider:
         for i in range(0, len(text), chunk_size):
             yield text[i: i + chunk_size]
 
-    def embed(self, texts: Any, **kwargs) -> List[List[float]]:
+    def embed(self, texts: Iterable[str], **kwargs: Any) -> List[List[float]]:
         """Embedding surface for tests: delegate to the embeddings helper."""
         try:
             from .embeddings import embed_texts

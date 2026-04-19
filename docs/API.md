@@ -49,8 +49,8 @@ Important `OllamaConnector` methods
 - `add_to_history(conv_id: Optional[str], role: str, content: str) -> None`
 - `get_history(conv_id: Optional[str]) -> List[Dict[str, str]]`
 - `build_prompt(conv_id: Optional[str], new_messages: Optional[List[Dict[str, str]]]=None, include_history: bool=True, max_prompt_tokens: Optional[int]=None) -> List[Dict[str,str]]`
-- `send_sync(conv_id: Optional[str], new_messages: List[Dict[str,str]], settings: Optional[dict]=None) -> str` — legacy helper that builds the prompt, calls `provider.summarize(messages, settings=settings)` and updates local history (returns `str`).
-- `complete(conv_id: Optional[str], new_messages: Optional[Iterable]=None, settings: Optional[dict]=None) -> Response` — new, typed convenience wrapper returning a `Response` dataclass.
+- `send_sync(conv_id: Optional[str], new_messages: List[Dict[str,str]], settings: Optional[dict]=None) -> str` — convenience helper that builds the prompt, calls `provider.summarize(messages, settings=settings)` and updates local history (returns `str`).
+- `complete(conv_id: Optional[str], new_messages: Optional[Iterable]=None, settings: Optional[dict]=None) -> Response` — typed convenience wrapper returning a `Response` dataclass.
 - `acomplete(conv_id: Optional[str], new_messages: Optional[Iterable]=None, settings: Optional[dict]=None) -> Response` — asynchronous variant.
 
 Provider shims
@@ -98,17 +98,27 @@ the Ollama CLI and HTTP API. The most commonly used helpers are:
 - `serve_model(model_name: Optional[str] = None, start_args: Optional[list] = None, timeout: float = 10.0) -> bool`
 - `change_ollama_config(config: dict, config_path: Optional[str] = None) -> bool`
 
+ - `endpoint_url(host: str, port: int, path: str = "/api/generate") -> str`
+ - `server_is_up(host: str, port: int) -> bool`
+ - `ensure_ollama_running(host: str = "http://127.0.0.1", port: int = 11434, auto_start: bool = False, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> bool`
+ - `get_ollama_binary() -> Optional[str]`
+ - `list_local_models() -> List[str]` and `list_remote_models() -> List[str]`
+ - `download_model(model_name: str) -> bool` and `delete_model(model_name: str) -> bool`
+ - `serve_model(model_name: Optional[str] = None, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> bool`
+ - `change_ollama_config(config: dict, config_path: Optional[str] = None) -> bool`
+
 Examples
 --------
 
-Use the `OllamaConnector` together with a provider shim for safe local tests:
+Use the `OllamaConnector` together with a provider shim for local tests:
 
 ```py
 from modelito import OllamaProvider, OllamaConnector
+from modelito.messages import Message
 
 provider = OllamaProvider()
 conn = OllamaConnector(provider=provider)
-resp = conn.send_sync(conv_id="example", new_messages=[{"role": "user", "content": "Summarize: Hello world"}])
+resp = conn.send_sync(conv_id="example", new_messages=[Message(role="user", content="Summarize: Hello world")])
 print(resp)
 ```
 
