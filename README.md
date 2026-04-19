@@ -125,9 +125,9 @@ provider surface into a small set of optional Protocols:
 - `StreamingProvider` — streaming `stream()` generator surface.
 - `EmbeddingProvider` — `embed()` surface for vector embeddings.
 
-`modelito` exposes `Message` and `Response` dataclasses; connectors now prefer
-these types while still accepting legacy dict-shaped messages for
-compatibility. Example usage with the new API:
+`modelito` exposes `Message` and `Response` dataclasses; connectors and
+provider surfaces now require `Message` instances. Legacy dict-shaped
+messages are no longer accepted. Example usage with the new API:
 
 ```py
 from modelito import Provider, Message, OllamaProvider, OllamaConnector
