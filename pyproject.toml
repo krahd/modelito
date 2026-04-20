@@ -9,7 +9,8 @@ description = "Lightweight Python abstractions and connectors for LLM providers 
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [ { name = "krahd" } ]
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 keywords = ["llm", "provider", "tokenizer", "ollama", "openai"]
 classifiers = [
 	"Development Status :: 4 - Beta",
