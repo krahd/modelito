@@ -11,9 +11,16 @@ integration into applications and CI pipelines.
 Quick start
 -----------
 
-Note: these docs are written for the repository owner / sole maintainer.
+Install
+-------
 
-Install in editable mode for development (install optional extras as needed):
+To install the latest released version from PyPI:
+
+```sh
+pip install modelito
+```
+
+For development / contributor setup (editable install and dev dependencies):
 
 ```sh
 pip install -e .[dev]
@@ -23,7 +30,7 @@ pip install -r dev-requirements.txt
 pip install -e .[ollama,tokenization,openai,anthropic]
 ```
 
-Run tests:
+Run tests (for contributors):
 
 ```sh
 pytest -q

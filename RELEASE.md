@@ -2,7 +2,9 @@
 
 Date: 2026-04-18
 
-This file documents the commands used to test TestPyPI and publish `modelito` v0.2.2.
+This file documents the release process and verification steps. These instructions
+are intended for maintainers and are not required for package consumers — see
+the `README.md` for installation and usage instructions.
 
 ## Build
 
