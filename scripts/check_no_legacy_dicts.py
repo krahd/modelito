@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""CI helper: fail if legacy dict-shaped messages are present in `modelito/`.
+"""CI helper: fail if legacy dict-shaped messages are present in docs/examples/tests.
 
-This script scans the `modelito/` package for simple patterns that indicate
-legacy dict-style messages like `{'role': 'user', 'content': '...'}` or
-calls to `to_message(...)`. If any matches are found the script exits non-zero
-so CI can fail and prevent regressions.
+This script scans the repository (docs, examples, and tests) for simple
+patterns that indicate legacy dict-style messages like
+`{'role': 'user', 'content': '...'}` or calls to `to_message(...)`.
+If any matches are found the script exits non-zero so CI can fail and
+prevent regressions.
 """
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Scan non-library files (docs, examples, tests) for literal dict-shaped
 # message examples that look like: [{ 'role': 'user', 'content': '...' }]
 TARGET_EXTS = {".py", ".md", ".rst"}
-EXCLUDE_DIRS = {"modelito", ".venv", "docs/build", "dist", ".git"}
+EXCLUDE_DIRS = {".venv", "docs/build", "dist", ".git"}
 
 PATTERNS = [
     # Inline list containing a dict with a `role` key: [{ "role": ... }]
@@ -39,6 +40,11 @@ def scan() -> int:
         if p.suffix.lower() not in TARGET_EXTS:
             continue
         if _is_excluded(p):
+            continue
+
+        # Only scan docs, examples, and tests (and top-level README files).
+        rel = p.relative_to(ROOT)
+        if not (rel.parts[0] in ("docs", "examples", "tests") or rel.name.lower() in ("readme.md", "readme.rst")):
             continue
 
         text = p.read_text(encoding="utf8")

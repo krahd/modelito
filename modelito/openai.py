@@ -154,12 +154,12 @@ class OpenAIProvider:
             except Exception:
                 pass
 
-        # Deterministic fallback
+        # Deterministic fallback — operate on the flattened `msgs` list
         try:
             parts = []
-            for m in (messages or []):
+            for m in (msgs or []):
                 if isinstance(m, dict):
-                    parts.append(m.get("content", ""))
+                    parts.append(str(m.get("content", "") or ""))
                 else:
                     parts.append(str(m))
             return "\n".join(p for p in parts if p)
