@@ -91,6 +91,12 @@ Example (local):
 RUN_OLLAMA_INTEGRATION=1 pytest tests/test_ollama_integration.py -q
 ```
 
+Provider integration tests for external services (OpenAI, Anthropic, etc.) are
+also gated and will be skipped unless the corresponding API keys are present
+in the environment or configured as repository secrets in CI (for example
+`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`). Add those secrets to your CI settings
+to enable provider integration jobs.
+
 Provider interface
 ------------------
 
