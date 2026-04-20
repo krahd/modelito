@@ -50,7 +50,15 @@ def test_list_models_and_config():
 
 def test_serve_and_stop():
     binp = osvc.get_ollama_binary()
-    assert binp is not None
+    if not binp:
+        if _env_true("ALLOW_OLLAMA_INSTALL"):
+            assert osvc.install_ollama(allow_install=True)
+            binp = osvc.get_ollama_binary()
+            if not binp:
+                pytest.skip("ollama install attempted but not found")
+        else:
+            pytest.skip("ollama not available; skipping serve/stop test")
+
     started = osvc.serve_model(timeout=30)
     assert started is True
     assert osvc.server_is_up("http://127.0.0.1", 11434)
