@@ -36,6 +36,20 @@ Run tests (for contributors):
 pytest -q
 ```
 
+Install from TestPyPI (preview builds)
+-------------------------------------
+
+If you need to test a preview build published to TestPyPI, use the TestPyPI
+index. TestPyPI packages are for testing only and may not be stable.
+
+```sh
+python -m pip install --index-url https://test.pypi.org/simple/ \
+	--extra-index-url https://pypi.org/simple modelito==<version>
+```
+
+If installation from the index fails, download the wheel from the TestPyPI
+"Files" page and install it directly.
+
 Build and install
 -----------------
 

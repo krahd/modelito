@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+## See MAINTAINER.md for full release and publishing instructions.
+## This script is a convenience wrapper for building and uploading packages.
+
 OUTDIR="dist"
 rm -rf "$OUTDIR"
 python -m pip install --upgrade build twine
