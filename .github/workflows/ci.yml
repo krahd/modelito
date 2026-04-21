@@ -65,8 +65,11 @@ jobs:
       - name: Run mypy
         if: matrix.os != 'windows-latest'
         run: mypy modelito --ignore-missing-imports || true
-      - name: Run package tests
-        run: pytest tests -q
+      - name: Run package tests (unit)
+        run: |
+          # Run only non-integration tests in the unit CI job. Integration
+          # tests are executed separately in gated workflows.
+          pytest -q -m 'not integration' tests
 
   integration:
     if: ${{ github.event.inputs.run_ollama_integration == 'yes' || github.event.inputs.run_ollama_integration == '1' }}
