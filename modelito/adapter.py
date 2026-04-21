@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import subprocess
 from typing import Any, Dict, Generator, Iterable, List, Optional
 
 from .messages import Message
@@ -85,6 +86,97 @@ class OllamaHTTPClient:
         except Exception:
             logger.debug("pull: run_ollama_command failed", exc_info=True)
             return False
+
+    def list_local(self) -> List[str]:
+        """Return locally installed models (CLI or HTTP-aware)."""
+        try:
+            from .ollama_service import list_local_models, endpoint_url, json_get, server_is_up
+
+            if server_is_up(self.host, self.port):
+                try:
+                    url = endpoint_url(self.host, self.port, "/api/models")
+                    data = json_get(url, timeout=3.0)
+                    if isinstance(data, list):
+                        return [str(x) for x in data]
+                except Exception:
+                    # fall back to CLI
+                    pass
+            return list_local_models()
+        except Exception:
+            return []
+
+    def list_remote(self) -> List[str]:
+        """Return remote models available to download (best-effort)."""
+        try:
+            from .ollama_service import list_remote_models, endpoint_url, json_get, server_is_up
+
+            if server_is_up(self.host, self.port):
+                try:
+                    url = endpoint_url(self.host, self.port, "/api/remote-models")
+                    data = json_get(url, timeout=3.0)
+                    if isinstance(data, list):
+                        return [str(x) for x in data]
+                except Exception:
+                    pass
+            return list_remote_models()
+        except Exception:
+            return []
+
+    def delete_model(self, model: str) -> bool:
+        """Delete a locally cached model (CLI-backed).
+
+        Returns True on success, False otherwise.
+        """
+        try:
+            from .ollama_service import delete_model as _delete
+
+            return bool(_delete(model))
+        except Exception:
+            # as a fallback, try CLI directly
+            try:
+                proc = subprocess.run(["ollama", "rm", model], stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE, text=True, timeout=60, check=False)
+                return proc.returncode == 0
+            except Exception:
+                return False
+
+    def download_stream(self, model: str, timeout: float = 600.0):
+        """Stream output from a `ollama pull`/`download` invocation.
+
+        Yields lines of output as they arrive. Falls back to returning a
+        single final status message when streaming is unavailable.
+        """
+        try:
+            # Try using the `ollama` binary directly for streaming output.
+            from .ollama_service import resolve_ollama_command
+
+            cmd = [resolve_ollama_command(), "pull", model]
+            env = None
+            try:
+                env = {**__import__("os").environ}
+                env["OLLAMA_HOST"] = self._host_env()
+            except Exception:
+                env = None
+
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                 stderr=subprocess.STDOUT, text=True, env=env)
+            assert p.stdout is not None
+            for line in p.stdout:
+                yield line.rstrip("\n")
+            p.wait(timeout=timeout)
+            return
+        except FileNotFoundError:
+            # ollama binary not found
+            return
+        except Exception:
+            # Fall back to non-streaming helper
+            try:
+                from .ollama_service import download_model
+
+                ok = download_model(model, timeout=timeout)
+                yield "ok" if ok else "failed"
+            except Exception:
+                return
 
     def generate(self, messages: Iterable[Message | str] | str, model: Optional[str] = None, stream: bool = False, timeout: float = 60.0) -> Generator[str, None, None]:
         """Generate text from messages.

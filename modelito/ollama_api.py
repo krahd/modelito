@@ -79,3 +79,37 @@ def api_generate(
 
 
 __all__ = ["api_version", "api_ps", "api_tags", "api_pull", "api_generate"]
+
+def api_list_local(host: Optional[str] = None, port: int = 11434) -> List[str]:
+    client = get_client(host, port)
+    try:
+        return client.list_local()
+    except Exception:
+        return []
+
+
+def api_list_remote(host: Optional[str] = None, port: int = 11434) -> List[str]:
+    client = get_client(host, port)
+    try:
+        return client.list_remote()
+    except Exception:
+        return []
+
+
+def api_delete_model(model: str, host: Optional[str] = None, port: int = 11434) -> bool:
+    client = get_client(host, port)
+    try:
+        return client.delete_model(model)
+    except Exception:
+        return False
+
+
+def api_pull_stream(model: str, host: Optional[str] = None, port: int = 11434, timeout: float = 600.0) -> Generator[str, None, None]:
+    client = get_client(host, port)
+    try:
+        for line in client.download_stream(model, timeout=timeout):
+            yield line
+    except Exception:
+        return
+
+__all__.extend(["api_list_local", "api_list_remote", "api_delete_model", "api_pull_stream"])

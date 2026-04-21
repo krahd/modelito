@@ -12,7 +12,8 @@ def test_timeout_estimator_basic():
 
 def test_timeout_with_source():
     # Ensure we can request source details and that model overrides are respected
-    t, src = timeout.estimate_remote_timeout("llama-2-70b", input_tokens=1000, concurrency=1, with_source=True)
+    t, src = timeout.estimate_remote_timeout(
+        "llama-2-70b", input_tokens=1000, concurrency=1, with_source=True)
     assert isinstance(t, int)
     assert isinstance(src, dict)
     # The bundled catalog contains a model override for llama-2-70b -> 3.2

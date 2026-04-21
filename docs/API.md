@@ -38,6 +38,20 @@ Key classes and functions
   for remote LLM calls. Reads a small catalog shipped in `modelito/data` and
   applies family/keyword multipliers when present.
 
+You can request diagnostic details about how a timeout was computed by
+calling the function with `with_source=True`. This returns a tuple
+`(timeout_seconds, source_dict)` where `source_dict` contains the matched
+catalog band, any model overrides, multipliers and other metadata useful
+for debugging and calibrating timeouts. Example:
+
+```py
+from modelito import estimate_remote_timeout
+
+timeout, info = estimate_remote_timeout("llama-2-70b", input_tokens=1000, concurrency=1, with_source=True)
+print(timeout)
+print(info)
+```
+
 `OllamaConnector(provider, shared_history: bool = False, system_message_file: Optional[str] = None, max_history_messages: int = 20, max_history_tokens: Optional[int] = None)`
 : Lightweight stateful connector that manages per-conversation histories and
   prepares `messages` lists suitable for provider `.summarize()` calls.
