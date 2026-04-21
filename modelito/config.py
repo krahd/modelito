@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, List, Optional
 
 
 def load_config(path: str) -> Dict[str, Any]:
@@ -81,3 +81,48 @@ def parse_host_port(host_url: str) -> Tuple[str, int]:
         except Exception:
             return host, 11434
     return host_url, 11434
+
+
+def _merge_dicts(a: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
+    """Deep-merge two dictionaries.
+
+    Values from ``b`` take precedence. Nested mappings are merged
+    recursively; non-mapping values are overwritten by the value from
+    ``b``.
+    """
+    out: Dict[str, Any] = dict(a or {})
+    for k, v in (b or {}).items():
+        if k in out and isinstance(out[k], dict) and isinstance(v, dict):
+            out[k] = _merge_dicts(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
+def load_config_data(path: Optional[str] = None, overlays: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    """Load configuration and apply overlay dictionaries.
+
+    This helper extends :func:`load_config` by allowing callers to supply
+    one or more overlay dictionaries that will be merged on top of the
+    loaded file. Overlays are applied in-order so later entries override
+    earlier ones.
+
+    Args:
+        path: Optional path to a JSON/YAML config file.
+        overlays: Optional list of dictionaries to merge on top of the file.
+
+    Returns:
+        A merged configuration dictionary (possibly empty).
+    """
+    data: Dict[str, Any] = {}
+    if path:
+        try:
+            data = load_config(path) or {}
+        except Exception:
+            data = {}
+    # apply overlays in order
+    if overlays:
+        for ov in overlays:
+            if isinstance(ov, dict):
+                data = _merge_dicts(data, ov)
+    return data

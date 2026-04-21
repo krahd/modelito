@@ -775,18 +775,25 @@ def load_llm_config(path: Optional[str] = None) -> Dict[str, Any]:
 
     Returns a dict with keys: last_served_model, model, model_timeouts, timeout, url, port
     """
-    load_config: Optional[Callable[[str], dict[str, Any]]] = None
+    # Prefer the new ``load_config_data`` helper which supports overlay
+    # semantics; fall back to the older ``load_config`` when unavailable.
     try:
-        from .config import load_config as _load_config
-        load_config = _load_config
+        from .config import load_config_data as _load_config_data  # type: ignore
     except Exception:
-        load_config = None
+        _load_config_data = None
+
+    try:
+        from .config import load_config as _load_config  # type: ignore
+    except Exception:
+        _load_config = None
 
     data: dict[str, Any] = {}
     if path:
         try:
-            if load_config:
-                data = load_config(path) or {}
+            if _load_config_data:
+                data = _load_config_data(path) or {}
+            elif _load_config:
+                data = _load_config(path) or {}
             else:
                 p = Path(path)
                 if p.exists():
@@ -803,8 +810,10 @@ def load_llm_config(path: Optional[str] = None) -> Dict[str, Any]:
         for c in candidates:
             if c.exists():
                 try:
-                    if load_config:
-                        data = load_config(str(c)) or {}
+                    if _load_config_data:
+                        data = _load_config_data(str(c)) or {}
+                    elif _load_config:
+                        data = _load_config(str(c)) or {}
                     else:
                         data = json.loads(c.read_text(encoding="utf-8")) or {}
                 except Exception:
