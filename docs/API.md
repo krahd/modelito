@@ -112,6 +112,27 @@ the Ollama CLI and HTTP API. The most commonly used helpers are:
 - `serve_model(model_name: Optional[str] = None, start_args: Optional[list] = None, timeout: float = 10.0) -> bool`
 - `change_ollama_config(config: dict, config_path: Optional[str] = None) -> bool`
 
+Additional helpers and CLI
+--------------------------
+
+The module also exposes a few additional convenience helpers and a minimal
+CLI entrypoint for common workflows:
+
+- `pull_model(model_name: str, timeout: float = 600.0) -> bool` — convenience wrapper for `download_model`.
+- `preload_model(url: str, port: int, model: str, timeout: float = 120.0) -> None` — warm a model via the HTTP API.
+- `load_remote_timeout_catalog(path: Optional[Path] = None) -> dict` — load the timeout catalog (falls back to the bundled catalog).
+- `common_model_timeout(model_name: str) -> Optional[float]` — returns a conservative timeout in seconds for a given model.
+- `estimate_remote_model_timeout_details(model_name: str, input_tokens: int = 2048, concurrency: int = 1) -> Tuple[int, dict]` — return `(timeout_seconds, details)` describing the catalog matches and multipliers used.
+
+CLI usage
+~~~~~~~~~
+
+The module provides a small CLI via `build_parser()`/`main()` and can be invoked
+as a module: `python -m modelito.ollama_service` to access commands such as
+`start`, `stop`, `install`, `inspect`, `pull`, `list-local`, `list-remote` and
+`version`. The CLI is intentionally minimal and intended for local tooling and
+diagnostics.
+
  - `endpoint_url(host: str, port: int, path: str = "/api/generate") -> str`
  - `server_is_up(host: str, port: int) -> bool`
  - `ensure_ollama_running(host: str = "http://127.0.0.1", port: int = 11434, auto_start: bool = False, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> bool`
