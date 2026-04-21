@@ -1,0 +1,39 @@
+name: Integration — Ollama (self-hosted)
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [ labeled ]
+
+jobs:
+  ollama-integration:
+    name: Ollama integration (self-hosted)
+    # Only run on self-hosted runners to avoid ad-hoc installs on hosted runners
+    runs-on: [self-hosted, linux]
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-integration'))
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install package + dev deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[dev]'
+
+      - name: Run Ollama integration tests
+        env:
+          # Ensure installers that check env flags are disabled by default
+          OLLAMA_ALLOW_INSTALL: '0'
+        run: |
+          pytest tests/integration -q

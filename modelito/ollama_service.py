@@ -20,6 +20,7 @@ from typing import Optional, List, Dict, Any, Callable, Iterable, cast
 from pathlib import Path
 import json
 import logging
+import argparse
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -775,18 +776,25 @@ def load_llm_config(path: Optional[str] = None) -> Dict[str, Any]:
 
     Returns a dict with keys: last_served_model, model, model_timeouts, timeout, url, port
     """
-    load_config: Optional[Callable[[str], dict[str, Any]]] = None
+    # Prefer the new ``load_config_data`` helper which supports overlay
+    # semantics; fall back to the older ``load_config`` when unavailable.
     try:
-        from .config import load_config as _load_config
-        load_config = _load_config
+        from .config import load_config_data as _load_config_data  # type: ignore
     except Exception:
-        load_config = None
+        _load_config_data = None
+
+    try:
+        from .config import load_config as _load_config  # type: ignore
+    except Exception:
+        _load_config = None
 
     data: dict[str, Any] = {}
     if path:
         try:
-            if load_config:
-                data = load_config(path) or {}
+            if _load_config_data:
+                data = _load_config_data(path) or {}
+            elif _load_config:
+                data = _load_config(path) or {}
             else:
                 p = Path(path)
                 if p.exists():
@@ -803,8 +811,10 @@ def load_llm_config(path: Optional[str] = None) -> Dict[str, Any]:
         for c in candidates:
             if c.exists():
                 try:
-                    if load_config:
-                        data = load_config(str(c)) or {}
+                    if _load_config_data:
+                        data = _load_config_data(str(c)) or {}
+                    elif _load_config:
+                        data = _load_config(str(c)) or {}
                     else:
                         data = json.loads(c.read_text(encoding="utf-8")) or {}
                 except Exception:
@@ -962,6 +972,139 @@ def start_service(config_path: Optional[str] = None) -> int:
     return 0
 
 
+def pull_model(model_name: str, timeout: float = 600.0) -> bool:
+    """Pull/download a remote model into the local cache.
+
+    This is a small convenience wrapper that delegates to :func:`download_model`.
+    """
+    return download_model(model_name, timeout=timeout)
+
+
+def load_remote_timeout_catalog(path: Optional[Path] = None) -> Dict[str, Any]:
+    """Load a timeout catalog either from `path` or the bundled catalog.
+
+    Returns a dictionary representing the catalog on success or an empty
+    dictionary on error.
+    """
+    try:
+        # prefer local file when provided
+        if path:
+            p = Path(path)
+            if p.exists():
+                try:
+                    return json.loads(p.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
+        # fall back to the package-level timeout loader
+        from . import timeout as _timeout
+
+        return _timeout.load_catalog()
+    except Exception:
+        return {}
+
+
+def common_model_timeout(model_name: str) -> Optional[float]:
+    """Return a conservative timeout (seconds) for the named model.
+
+    Returns ``None`` on error.
+    """
+    try:
+        from .timeout import estimate_remote_timeout as _estimate
+
+        return float(_estimate(model_name))
+    except Exception:
+        return None
+
+
+def estimate_remote_model_timeout_details(model_name: str, input_tokens: int = 2048, concurrency: int = 1) -> tuple[int, Dict[str, Any]]:
+    """Return a timeout estimate and diagnostic details from the catalog."""
+    from .timeout import estimate_remote_timeout as _estimate
+
+    t, src = _estimate(model_name, input_tokens=input_tokens,
+                       concurrency=concurrency, with_source=True)
+    return int(t), dict(src or {})
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="modelito-ollama",
+                                description="Manage Ollama lifecycle and models")
+    subs = p.add_subparsers(dest="cmd")
+
+    sp = subs.add_parser("start")
+    sp.add_argument("--config", "-c", dest="config", default=None)
+    sp.add_argument("--wait", type=float, default=30.0)
+
+    sp = subs.add_parser("stop")
+    sp.add_argument("--config", "-c", dest="config", default=None)
+    sp.add_argument("--host", default="http://127.0.0.1")
+    sp.add_argument("--port", type=int, default=11434)
+    sp.add_argument("--verbose", action="store_true")
+
+    sp = subs.add_parser("install")
+    sp.add_argument("--reinstall", action="store_true")
+
+    sp = subs.add_parser("inspect")
+    sp.add_argument("--config", "-c", dest="config", default=None)
+
+    sp = subs.add_parser("pull")
+    sp.add_argument("model")
+    sp.add_argument("--timeout", type=float, default=600.0)
+
+    subs.add_parser("list-local")
+    subs.add_parser("list-remote")
+    subs.add_parser("version")
+    return p
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    args = build_parser().parse_args(argv)
+    cmd = getattr(args, "cmd", None)
+
+    if cmd == "start":
+        cfg = getattr(args, "config", None)
+        return start_service(cfg)
+
+    if cmd == "stop":
+        cfg = getattr(args, "config", None)
+        host = getattr(args, "host", "http://127.0.0.1")
+        port = getattr(args, "port", 11434)
+        verbose = getattr(args, "verbose", False)
+        return stop_service(host=host, port=port, verbose=verbose, config_path=cfg)
+
+    if cmd == "install":
+        return install_service(reinstall=getattr(args, "reinstall", False))[0]
+
+    if cmd == "inspect":
+        cfg = getattr(args, "config", None)
+        import pprint
+
+        pprint.pprint(inspect_service_state(cfg))
+        return 0
+
+    if cmd == "pull":
+        ok = pull_model(args.model, timeout=getattr(args, "timeout", 600.0))
+        return 0 if ok else 1
+
+    if cmd == "list-local":
+        print("\n".join(list_local_models()))
+        return 0
+
+    if cmd == "list-remote":
+        print("\n".join(list_remote_models()))
+        return 0
+
+    if cmd == "version":
+        print(ollama_version_text())
+        return 0
+
+    build_parser().print_help()
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
 def _listener_pids_from_connections(connections: Iterable[Any], port: int) -> List[int]:
     pids: set[int] = set()
     for conn in connections:
@@ -1021,11 +1164,23 @@ def find_ollama_listener_pids(port: int) -> List[int]:
     return sorted(pids)
 
 
-def stop_service(host: str = "http://127.0.0.1", port: int = 11434, verbose: bool = False) -> int:
+def stop_service(host: str = "http://127.0.0.1", port: int = 11434, verbose: bool = False, config_path: Optional[str] = None) -> int:
     """Stop running models and terminate server processes (best-effort).
+
+    If `config_path` is provided the function will load the configured URL/port
+    from the LLM config and use that instead of the explicit `host`/`port`
+    values.
 
     Returns 0 on success, non-zero on failure.
     """
+    if config_path:
+        try:
+            cfg = load_llm_config(config_path)
+            host = str(cfg.get("url") or host)
+            port = int(cfg.get("port") or port)
+        except Exception:
+            # Fall back to explicit host/port on any load failure
+            pass
     host_url = host
     host_env = f"{host_url.replace('http://', '').replace('https://', '')}:{port}"
     try:
