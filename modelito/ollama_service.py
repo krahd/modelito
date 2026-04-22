@@ -11,6 +11,7 @@ import socket
 from urllib.request import urlopen
 from urllib.request import Request
 import time
+import asyncio
 import shutil
 import subprocess
 import os
@@ -577,6 +578,33 @@ def serve_model(model_name: Optional[str] = None, start_args: Optional[List[str]
     return False
 
 
+def ensure_model_available(model_name: str, allow_download: bool = False, timeout: float = 600.0) -> bool:
+    """Ensure a model is available locally, optionally attempting to download it.
+
+    Args:
+        model_name: Name of the model to check.
+        allow_download: If True, try to download the model when missing.
+        timeout: Timeout for download operations in seconds.
+
+    Returns:
+        True if the model is available locally (or successfully downloaded), else False.
+    """
+    try:
+        local = list_local_models()
+    except Exception:
+        local = []
+    if model_name in local:
+        return True
+    if not allow_download:
+        return False
+    return download_model(model_name, timeout=timeout)
+
+
+async def async_ensure_model_available(model_name: str, allow_download: bool = False, timeout: float = 600.0) -> bool:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, ensure_model_available, model_name, allow_download, timeout)
+
+
 def change_ollama_config(config: Dict[str, Any], config_path: Optional[str] = None) -> bool:
     """Write the provided configuration dictionary to the Ollama config file.
 
@@ -736,6 +764,38 @@ def json_get(url: str, timeout: float = 5.0) -> Dict[str, Any]:
     with urlopen(url, timeout=timeout) as response:
         body = response.read().decode("utf-8")
     return json.loads(body) if body else {}
+
+
+async def async_preload_model(url: str, port: int, model: str, timeout: float = 120.0) -> None:
+    """Async wrapper around :func:`preload_model` using an executor."""
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, preload_model, url, port, model, timeout)
+
+
+async def async_list_local_models() -> List[str]:
+    """Async wrapper for :func:`list_local_models`."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, list_local_models)
+
+
+async def async_list_remote_models() -> List[str]:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, list_remote_models)
+
+
+async def async_download_model(model_name: str, timeout: float = 600.0) -> bool:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, download_model, model_name, timeout)
+
+
+async def async_delete_model(model_name: str) -> bool:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, delete_model, model_name)
+
+
+async def async_serve_model(model_name: Optional[str] = None, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> bool:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, serve_model, model_name, start_args, timeout)
 
 
 def wait_until_ready(url: str, port: int, timeout_seconds: float = 60.0) -> None:

@@ -4,10 +4,14 @@ Provides JSON/YAML loading and simple host:port parsing.
 """
 
 from __future__ import annotations
+from typing import Any, Dict, Tuple, Optional, Union
+from typing import Any, Dict, Tuple, List, Optional, Union
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Tuple, List, Optional
+<< << << < HEAD
+== == == =
+>>>>>> > f1078c8(Phase B / C: config merge, timeout diagnostics & calibration, async Ollama wrappers, docs, release helper)
 
 
 def load_config(path: str) -> Dict[str, Any]:
@@ -83,46 +87,96 @@ def parse_host_port(host_url: str) -> Tuple[str, int]:
     return host_url, 11434
 
 
-def _merge_dicts(a: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
-    """Deep-merge two dictionaries.
+<< << << < HEAD
+def _deep_merge(a: dict, b: dict) -> dict:
+    """Recursively merge dict `b` into dict `a` and return the result.
 
-    Values from ``b`` take precedence. Nested mappings are merged
-    recursively; non-mapping values are overwritten by the value from
-    ``b``.
+    Values from `b` take precedence. Nested dicts are merged recursively.
+    Non-dict values in `b` replace values from `a`.
     """
-    out: Dict[str, Any] = dict(a or {})
-    for k, v in (b or {}).items():
-        if k in out and isinstance(out[k], dict) and isinstance(v, dict):
-            out[k] = _merge_dicts(out[k], v)
+    result = dict(a)
+    for key, val in b.items():
+        if key in result and isinstance(result[key], dict) and isinstance(val, dict):
+            result[key] = _deep_merge(result[key], val)
         else:
-            out[k] = v
-    return out
+            result[key] = val
+    return result
 
 
-def load_config_data(path: Optional[str] = None, overlays: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
-    """Load configuration and apply overlay dictionaries.
+def load_config_data(*paths: Union[str, Path], default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Load and merge configuration files from multiple paths.
 
-    This helper extends :func:`load_config` by allowing callers to supply
-    one or more overlay dictionaries that will be merged on top of the
-    loaded file. Overlays are applied in-order so later entries override
-    earlier ones.
+    Paths are applied in the order given; later paths override earlier ones.
+    Each path may be a JSON or YAML file (when PyYAML is installed). If a
+    path does not exist it is skipped. An optional ``default`` dict may be
+    provided as the base configuration.
 
-    Args:
-        path: Optional path to a JSON/YAML config file.
-        overlays: Optional list of dictionaries to merge on top of the file.
-
-    Returns:
-        A merged configuration dictionary (possibly empty).
+    Returns the merged configuration as a dict.
     """
-    data: Dict[str, Any] = {}
-    if path:
+    base: Dict[str, Any] = dict(default or {})
+    for p in paths:
+        if not p:
+            continue
+        pth = Path(p)
+        if not pth.exists():
+            continue
         try:
-            data = load_config(path) or {}
+            data = load_config(str(pth))
         except Exception:
-            data = {}
-    # apply overlays in order
-    if overlays:
-        for ov in overlays:
-            if isinstance(ov, dict):
-                data = _merge_dicts(data, ov)
-    return data
+            try:
+                # fallback to direct JSON read if load_config is unavailable
+                text = pth.read_text(encoding="utf-8")
+                data = json.loads(text) if text else {}
+            except Exception:
+                data = {}
+        if not isinstance(data, dict):
+            continue
+        base = _deep_merge(base, data)
+    return base
+== == == =
+def _deep_merge(a: dict, b: dict) -> dict:
+    """Recursively merge dict `b` into dict `a` and return the result.
+
+    Values from `b` take precedence. Nested dicts are merged recursively.
+    Non-dict values in `b` replace values from `a`.
+    """
+    result = dict(a)
+    for key, val in b.items():
+        if key in result and isinstance(result[key], dict) and isinstance(val, dict):
+            result[key] = _deep_merge(result[key], val)
+        else:
+            result[key] = val
+    return result
+
+
+def load_config_data(*paths: Union[str, Path], default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Load and merge configuration files from multiple paths.
+
+    Paths are applied in the order given; later paths override earlier ones.
+    Each path may be a JSON or YAML file (when PyYAML is installed). If a
+    path does not exist it is skipped. An optional ``default`` dict may be
+    provided as the base configuration.
+
+    Returns the merged configuration as a dict.
+    """
+    base: Dict[str, Any] = dict(default or {})
+    for p in paths:
+        if not p:
+            continue
+        pth = Path(p)
+        if not pth.exists():
+            continue
+        try:
+            data = load_config(str(pth))
+        except Exception:
+            try:
+                # fallback to direct JSON read if load_config is unavailable
+                text = pth.read_text(encoding="utf-8")
+                data = json.loads(text) if text else {}
+            except Exception:
+                data = {}
+        if not isinstance(data, dict):
+            continue
+        base = _deep_merge(base, data)
+    return base
+>>>>>> > f1078c8(Phase B / C: config merge, timeout diagnostics & calibration, async Ollama wrappers, docs, release helper)

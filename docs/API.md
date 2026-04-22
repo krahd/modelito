@@ -22,6 +22,9 @@ import *`) are:
   `summarize()` fallback useful for tests.
 - `GeminiProvider`, `GrokProvider`, `OpenAIProvider`, `ClaudeProvider` — minimal provider shims with the same `list_models()` / `summarize()` surface.
 - `load_config(path: str) -> dict` — JSON/YAML loader for small config files.
+- `load_config_data(*paths) -> dict` — merge multiple config files with later
+  paths taking precedence; performs a deep merge of nested dicts and supports
+  JSON/YAML parsing.
 - `parse_host_port(host_url: str) -> Tuple[str, int]` — parse `host:port` or URL into `(host, port)`.
 - `LLMProviderError` — base exception used by connector/provider helpers.
 - Ollama helpers: `server_is_up`, `endpoint_url`, `ensure_ollama_running`, `get_ollama_binary`, `install_ollama`, `start_ollama`, `stop_ollama`, `update_ollama`, `list_local_models`, `list_remote_models`, `download_model`, `delete_model`, `serve_model`, `change_ollama_config`, `run_ollama_command`, etc.
@@ -36,7 +39,10 @@ Key classes and functions
 `estimate_remote_timeout(model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1) -> int`
 : Returns an integer number of seconds to use as a conservative request timeout
   for remote LLM calls. Reads a small catalog shipped in `modelito/data` and
-  applies family/keyword multipliers when present.
+  applies family/keyword multipliers when present. For a diagnostic breakdown
+  use `estimate_remote_timeout_details(...)`; a CLI wrapper is available at
+  `modelito.timeout_cli`, and a small calibration harness lives at
+  `modelito.timeout_calibrate`.
 
 You can request diagnostic details about how a timeout was computed by
 calling the function with `with_source=True`. This returns a tuple
@@ -110,30 +116,31 @@ the Ollama CLI and HTTP API. The most commonly used helpers are:
 - `list_local_models() -> List[str]` and `list_remote_models() -> List[str]`
 - `download_model(model_name: str) -> bool` and `delete_model(model_name: str) -> bool`
 - `serve_model(model_name: Optional[str] = None, start_args: Optional[list] = None, timeout: float = 10.0) -> bool`
+- `ensure_model_available(model_name: str, allow_download: bool = False, timeout: float = 600.0) -> bool` — convenience helper to ensure a model is present locally, optionally downloading it.
+- Async wrappers: `async_preload_model`, `async_list_local_models`, `async_list_remote_models`, `async_download_model`, `async_delete_model`, `async_serve_model`, `async_ensure_model_available` — simple asyncio-friendly wrappers that run the synchronous helpers in an executor.
 - `change_ollama_config(config: dict, config_path: Optional[str] = None) -> bool`
 
 Additional helpers and CLI
 --------------------------
 
-The module also exposes a few additional convenience helpers and a minimal
-CLI entrypoint for common workflows:
+The module exposes a few additional convenience helpers and CLI entrypoints
+useful for diagnostics and local workflows:
 
 - `pull_model(model_name: str, timeout: float = 600.0) -> bool` — convenience wrapper for `download_model`.
 - `preload_model(url: str, port: int, model: str, timeout: float = 120.0) -> None` — warm a model via the HTTP API.
 - `load_remote_timeout_catalog(path: Optional[Path] = None) -> dict` — load the timeout catalog (falls back to the bundled catalog).
 - `common_model_timeout(model_name: str) -> Optional[float]` — returns a conservative timeout in seconds for a given model.
-- `estimate_remote_model_timeout_details(model_name: str, input_tokens: int = 2048, concurrency: int = 1) -> Tuple[int, dict]` — return `(timeout_seconds, details)` describing the catalog matches and multipliers used.
 
 CLI usage
-~~~~~~~~~
+---------
 
-The module provides a small CLI via `build_parser()`/`main()` and can be invoked
-as a module: `python -m modelito.ollama_service` to access commands such as
-`start`, `stop`, `install`, `inspect`, `pull`, `list-local`, `list-remote` and
-`version`. The CLI is intentionally minimal and intended for local tooling and
-diagnostics.
+`modelito` exposes two small module-level CLIs useful during development:
 
- - `endpoint_url(host: str, port: int, path: str = "/api/generate") -> str`
+- `python -m modelito.ollama_service` — minimal Ollama lifecycle CLI (`start`, `stop`, `install`, `inspect`, `pull`, `list-local`, `list-remote`, `version`).
+- `python -m modelito.timeout_cli` — print estimated timeouts and diagnostic details for a model.
+- `python -m modelito.timeout_calibrate` — write calibration prompts and (optionally) exercise a local Ollama server to collect timing samples.
+
+ `endpoint_url(host: str, port: int, path: str = "/api/generate") -> str`
  - `server_is_up(host: str, port: int) -> bool`
  - `ensure_ollama_running(host: str = "http://127.0.0.1", port: int = 11434, auto_start: bool = False, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> bool`
  - `get_ollama_binary() -> Optional[str]`
