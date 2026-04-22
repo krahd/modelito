@@ -7,11 +7,18 @@ on:
   pull_request:
     types: [ labeled ]
 
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   ollama-integration:
     name: Ollama integration (self-hosted)
     # Only run on self-hosted runners to avoid ad-hoc installs on hosted runners
     runs-on: [self-hosted, linux]
+    timeout-minutes: 120
     if: |
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'push' ||

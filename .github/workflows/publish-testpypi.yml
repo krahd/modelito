@@ -3,9 +3,13 @@ name: Publish to TestPyPI
 on:
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   publish-testpypi:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -19,6 +23,14 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --upgrade build twine
           python -m build --sdist --wheel
+      - name: Check TestPyPI token
+        run: |
+          if [ -z "${{ secrets.TEST_PYPI_API_TOKEN }}" ]; then
+            echo "Missing TEST_PYPI_API_TOKEN secret"
+            exit 1
+          else
+            echo "TEST_PYPI_API_TOKEN present"
+          fi
       - name: Publish to TestPyPI
         run: |
           python -m pip install --upgrade twine
