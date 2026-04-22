@@ -34,6 +34,26 @@ DEFAULT_PORT = 11434
 logger = logging.getLogger(__name__)
 
 
+def _ensure_pythonpath_env(env: Dict[str, str]) -> None:
+    """Ensure the repository root is present in `PYTHONPATH` inside `env`.
+
+    This helps when the resolved `ollama` entrypoint is a Python module
+    (for example `python -m llm.service`) so that consumers that invoke
+    the CLI via the helpers get a PYTHONPATH that can import the local
+    package tree.
+    """
+    try:
+        cur = env.get("PYTHONPATH", "") or ""
+        parts = [p for p in cur.split(os.pathsep) if p]
+        root_str = str(ROOT)
+        if root_str not in parts:
+            parts.append(root_str)
+            env["PYTHONPATH"] = os.pathsep.join(parts)
+    except Exception:
+        # Best-effort only; do not raise for environment adjustments.
+        pass
+
+
 def endpoint_url(host: str, port: int, path: str = "/api/generate") -> str:
     """Return a fully-qualified endpoint URL for the Ollama HTTP API.
 
@@ -669,7 +689,15 @@ def ollama_binary_candidates() -> List[Path]:
 
 
 def resolve_ollama_command() -> str:
-    """Find the best available `ollama` CLI path or raise FileNotFoundError."""
+    """Find the best available `ollama` CLI path or raise FileNotFoundError.
+
+    The resolver probes candidates returned by :func:`ollama_binary_candidates`,
+    which includes a PATH lookup via :func:`shutil.which` and a small set of
+    common platform-specific locations (macOS app bundles, Homebrew paths,
+    common UNIX locations, and Windows Program Files candidates). The first
+    candidate that exists on the filesystem is returned. If no candidate is
+    present a :class:`FileNotFoundError` is raised.
+    """
     for candidate in ollama_binary_candidates():
         if candidate.exists():
             return str(candidate)
@@ -684,30 +712,43 @@ def ollama_installed() -> bool:
     return True
 
 
-def run_ollama_command(*args: str, host: Optional[str] = None) -> subprocess.CompletedProcess[str]:
+def run_ollama_command(*args: str, host: Optional[str] = None, env: Optional[Dict[str, str]] = None) -> subprocess.CompletedProcess[str]:
     """Run an Ollama CLI command and capture the Result.
 
     Args:
         *args: Arguments to pass to the resolved ``ollama`` binary.
         host: Optional host string to set as ``OLLAMA_HOST`` in the subprocess
             environment (e.g. ``"127.0.0.1:11434"``).
+        env: Optional environment mapping to merge into the child process
+            environment. When provided it overlays on top of the current
+            environment. The helper also ensures the repository root is
+            present in ``PYTHONPATH`` to support entrypoints that import
+            local modules via ``python -m``.
 
     Returns:
         A :class:`subprocess.CompletedProcess` instance containing stdout/stderr
         and return code.
     """
-    env = os.environ.copy()
+    base_env = os.environ.copy()
+    if env:
+        base_env.update(env)
     if host:
-        env["OLLAMA_HOST"] = host
+        base_env["OLLAMA_HOST"] = host
+    _ensure_pythonpath_env(base_env)
     command = resolve_ollama_command()
-    return subprocess.run([command, *args], cwd=str(ROOT), text=True, capture_output=True, check=False, env=env)
+    return subprocess.run([command, *args], cwd=str(ROOT), text=True, capture_output=True, check=False, env=base_env)
 
 
-def start_detached_ollama_serve(host: str, start_args: Optional[List[str]] = None) -> subprocess.Popen[Any]:
+def start_detached_ollama_serve(host: str, start_args: Optional[List[str]] = None, env: Optional[Dict[str, str]] = None) -> subprocess.Popen[Any]:
     """Start `ollama serve` in the background for the current platform.
 
     `start_args` are appended to the serve command and can include options
     such as `--model <name>`.
+
+    Args:
+        host: Host:port string to set as ``OLLAMA_HOST`` in the child env.
+        start_args: Optional list of extra args to append to ``serve``.
+        env: Optional environment mapping to merge into the child process.
     """
     command = resolve_ollama_command()
     cmd = [command, "serve"]
@@ -715,7 +756,8 @@ def start_detached_ollama_serve(host: str, start_args: Optional[List[str]] = Non
         cmd.extend(start_args)
 
     # Build common parameters explicitly to satisfy strict typing of subprocess.Popen
-    common_env: Dict[str, str] = {**os.environ, "OLLAMA_HOST": host}
+    common_env: Dict[str, str] = {**os.environ, **(env or {}), "OLLAMA_HOST": host}
+    _ensure_pythonpath_env(common_env)
     if os.name == "nt":
         creationflags_val = (
             getattr(subprocess, "DETACHED_PROCESS", 0)
@@ -986,11 +1028,7 @@ def start_service(config_path: Optional[str] = None) -> int:
     url = str(llm["url"])
     port = int(llm["port"])
     host = f"{url.replace('http://', '').replace('https://', '')}:{port}"
-
-    if not model:
-        print(f"No model configured in {config_path}", file=sys.stderr)
-        return 1
-
+    # Ensure the CLI is available and responding before attempting to start
     try:
         version_proc = run_ollama_command("--version", host=host)
     except FileNotFoundError:
@@ -1013,6 +1051,16 @@ def start_service(config_path: Optional[str] = None) -> int:
             print(f"Failed to start ollama serve: {exc}", file=sys.stderr)
             return 1
         started = True
+
+    # If no model configured, starting the server successfully is a valid
+    # outcome — return success rather than failing early.
+    if not model:
+        print(f"No model configured in {config_path}", file=sys.stderr)
+        if started:
+            print(f"Completed: started ollama at {host} (no model configured).")
+        else:
+            print(f"Completed: ollama already running at {host} (no model configured).")
+        return 0
 
     pull_proc = run_ollama_command("pull", model, host=host)
     if pull_proc.returncode != 0:
