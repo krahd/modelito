@@ -17,7 +17,7 @@ import subprocess
 import os
 import sys
 import shlex
-from typing import Optional, List, Dict, Any, Iterable, cast
+from typing import Optional, List, Dict, Any, Iterable, cast, Callable
 from pathlib import Path
 import json
 import logging
@@ -838,6 +838,8 @@ def load_llm_config(path: Optional[str] = None) -> Dict[str, Any]:
     """
     # Prefer the new ``load_config_data`` helper which supports overlay
     # semantics; fall back to the older ``load_config`` when unavailable.
+    _load_config_data: Optional[Callable[..., Dict[str, Any]]] = None
+    _load_config: Optional[Callable[..., Dict[str, Any]]] = None
     try:
         from .config import load_config_data as _load_config_data  # type: ignore
     except Exception:
@@ -1071,7 +1073,13 @@ def common_model_timeout(model_name: str) -> Optional[float]:
     try:
         from .timeout import estimate_remote_timeout as _estimate
 
-        return float(_estimate(model_name))
+        res = _estimate(model_name)
+        # _estimate may return either a numeric value or a (value, source) tuple
+        if isinstance(res, tuple):
+            t = res[0]
+        else:
+            t = res
+        return float(t)
     except Exception:
         return None
 
@@ -1080,8 +1088,13 @@ def estimate_remote_model_timeout_details(model_name: str, input_tokens: int = 2
     """Return a timeout estimate and diagnostic details from the catalog."""
     from .timeout import estimate_remote_timeout as _estimate
 
-    t, src = _estimate(model_name, input_tokens=input_tokens,
-                       concurrency=concurrency, with_source=True)
+    res = _estimate(model_name, input_tokens=input_tokens,
+                    concurrency=concurrency, with_source=True)
+    if isinstance(res, tuple):
+        t, src = res
+    else:
+        t = res
+        src = {}
     return int(t), dict(src or {})
 
 

@@ -235,6 +235,7 @@ class OllamaHTTPClient:
                     return
 
             # Streaming path: prefer httpx when available for robust iter_lines
+            httpx: Any = None
             try:
                 import httpx  # type: ignore
             except Exception:
@@ -325,13 +326,13 @@ class OllamaHTTPClient:
             prompt = str(payload.get("prompt") or "")
         elif "messages" in payload:
             try:
-                parts: List[str] = []
+                msg_parts: List[str] = []
                 for m in payload.get("messages", []):
                     if isinstance(m, dict) and "content" in m:
-                        parts.append(str(m.get("content") or ""))
+                        msg_parts.append(str(m.get("content") or ""))
                     else:
-                        parts.append(str(m))
-                prompt = "\n".join(p for p in parts if p)
+                        msg_parts.append(str(m))
+                prompt = "\n".join(p for p in msg_parts if p)
             except Exception:
                 prompt = ""
 
