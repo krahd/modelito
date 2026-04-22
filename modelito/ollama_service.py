@@ -17,7 +17,7 @@ import subprocess
 import os
 import sys
 import shlex
-from typing import Optional, List, Dict, Any, Callable, Iterable, cast
+from typing import Optional, List, Dict, Any, Iterable, cast
 from pathlib import Path
 import json
 import logging

@@ -1,6 +1,5 @@
 import subprocess
 
-import pytest
 
 from modelito.ollama_api import api_generate, api_version, api_ps, api_pull, api_tags
 

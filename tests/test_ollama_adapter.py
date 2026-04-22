@@ -1,9 +1,7 @@
 import subprocess
 
-import pytest
 
 from modelito.adapter import get_client
-from modelito.messages import Message
 
 
 def test_client_basic_methods_exist():

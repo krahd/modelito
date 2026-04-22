@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from typing import Iterable, List
-from typing import Iterable, List, AsyncIterable
-import asyncio
+from typing import AsyncIterable
 
 
 def collect_stream(chunks: Iterable[str]) -> str:

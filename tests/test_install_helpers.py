@@ -1,7 +1,6 @@
 import subprocess
 import sys
 
-import pytest
 
 import modelito.ollama_service as ms
 

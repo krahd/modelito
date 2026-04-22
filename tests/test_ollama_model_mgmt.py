@@ -1,6 +1,4 @@
-import subprocess
 
-import pytest
 
 from modelito.ollama_api import api_list_local, api_list_remote, api_delete_model, api_pull_stream
 

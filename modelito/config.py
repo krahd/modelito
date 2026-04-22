@@ -4,7 +4,7 @@ Provides JSON/YAML loading and simple host:port parsing.
 """
 
 from __future__ import annotations
-from typing import Any, Dict, Tuple, List, Optional, Union
+from typing import Any, Dict, Tuple, Optional, Union
 
 import json
 from pathlib import Path
