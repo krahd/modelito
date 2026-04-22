@@ -55,7 +55,7 @@ jobs:
         run: pytest -q -m integration --maxfail=1
 
       - name: Cleanup Ollama and models
-        if: always()
+        if: ${{ always() }}
         run: |
           set -euo pipefail
           echo "Integration cleanup: attempting to remove Ollama models and uninstall if allowed"
