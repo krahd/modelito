@@ -58,39 +58,38 @@ def load_catalog() -> Dict[str, Any]:
 def estimate_remote_timeout(model_name: str | None, input_tokens: int = 2048, concurrency: int = 1, with_source: bool = False) -> "int | Tuple[int, Dict[str, Any]]":
     """Estimate a conservative timeout (in seconds) for calling a remote model.
 
-    The estimator uses a small catalog of size bands and optional family or
-    keyword multipliers to return a conservative timeout suitable for use as
-    an RPC/network timeout.
-
-    Args:
-        model_name: Optional model name used to match family or keyword
-            overrides (case-insensitive). If ``None`` a sensible default is
-            returned.
-        input_tokens: Approximate number of input tokens for the request.
-        concurrency: Number of concurrent requests to account for.
-
-    Returns:
-        Conservative timeout in seconds as an integer.
+    This wrapper returns the integer timeout. For a diagnostic breakdown of
+    how the timeout was computed, use :func:`estimate_remote_timeout_details`.
     """
+    t, _ = estimate_remote_timeout_details(
+        model_name, input_tokens=input_tokens, concurrency=concurrency)
+    return t
+
+
+def estimate_remote_timeout_details(
+    model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1
+) -> Tuple[int, Dict[str, Any]]:
+    """Return a detailed timeout estimate and diagnostic info.
+
+    The returned tuple is ``(timeout_seconds, details_dict)`` where
+    ``details_dict`` contains the catalog-derived base timeout, the
+    multipliers considered (family/model/keyword/pattern), and the final
+    computed timeout.
+    """
+<< << << < HEAD
     if not model_name:
         if with_source:
             return 60, {"reason": "no model_name", "catalog_source": load_catalog().get("source")}
         return 60
     model = model_name.lower()
+== == == =
+>>>>>> > f1078c8(Phase B / C: config merge, timeout diagnostics & calibration, async Ollama wrappers, docs, release helper)
     catalog = load_catalog()
     size_bands = catalog.get("size_bands", []) or []
 
-    base_timeout = None
-    for band in size_bands:
-        if input_tokens <= int(band.get("max_input_tokens", 0)):
-            base_timeout = int(band.get("timeout_seconds", 60))
-            break
-    if base_timeout is None:
-        if size_bands:
-            base_timeout = int(size_bands[-1].get("timeout_seconds", 300))
-        else:
-            base_timeout = 60
+    model = (model_name or "").lower()
 
+<< << << < HEAD
     # Compute multiplier using a prioritized set of overrides. We record
     # matching choices in the `source` structure so callers can understand
     # why a particular timeout was chosen.
@@ -102,87 +101,109 @@ def estimate_remote_timeout(model_name: str | None, input_tokens: int = 2048, co
         "pattern_matches": [],
         "family_match": None,
         "keyword_matches": [],
-        "concurrency": int(concurrency),
-    }
+        catalog = load_catalog()
+        size_bands = catalog.get("size_bands", []) or []
 
-    # matched size band for diagnostics
-    matched_band: Optional[Dict[str, Any]] = None
-    for band in size_bands:
-        if input_tokens <= int(band.get("max_input_tokens", 0)):
-            matched_band = band
-            break
-    if matched_band is None and size_bands:
-        matched_band = size_bands[-1]
-    source["matched_band"] = matched_band
+        model = (model_name or "").lower()
 
-    # Exact model overrides (highest priority)
-    model_overrides = catalog.get("model_overrides", {}) or {}
-    if model_overrides:
-        mv = model_overrides.get(model)
-        if mv is None:
-            # try case-insensitive exact matches
-            for k, v in model_overrides.items():
-                if k.lower() == model:
-                    mv = v
+        base_timeout = None
+        used_band = None
+        for band in size_bands:
+            try:
+                if input_tokens <= int(band.get("max_input_tokens", 0)):
+                    base_timeout = int(band.get("timeout_seconds", 60))
+                    used_band = band
                     break
-        if mv is not None:
-            try:
-                multiplier = float(mv)
-                source["matched_model_override"] = float(mv)
-            except Exception:
-                pass
-
-    # If an exact model override is present we treat it as authoritative
-    # and skip additional pattern/family/keyword adjustments so the model
-    # override remains the primary driver for the multiplier.
-    if source.get("matched_model_override") is None:
-        # Pattern-based overrides
-        pattern_overrides = catalog.get("pattern_overrides", []) or []
-        for entry in pattern_overrides:
-            try:
-                pat = entry.get("pattern")
-                mult = float(entry.get("multiplier", 1.0))
-                if pat and re.search(pat, model):
-                    multiplier *= mult
-                    source["pattern_matches"].append({"pattern": pat, "multiplier": mult})
             except Exception:
                 continue
+        if base_timeout is None:
+            base_timeout = int(size_bands[-1].get("timeout_seconds", 300)) if size_bands else 60
 
-        # Family substring overrides
+        details: Dict[str, Any] = {
+            "model": model_name,
+            "input_tokens": int(input_tokens),
+            "concurrency": int(concurrency),
+            "base_timeout": base_timeout,
+            "used_size_band": used_band,
+        }
+
+        # family overrides
+        family_mult = 1.0
         fam_over = catalog.get("family_overrides", {}) or {}
         for fam, mult in fam_over.items():
+            if fam in model:
+                try:
+                    family_mult = float(mult)
+                    details["family_matched"] = fam
+                except Exception:
+                    pass
+
+        # exact model overrides
+        model_overrides = catalog.get("model_overrides", {}) or {}
+        model_mult = None
+        if model_name and model_name in model_overrides:
             try:
-                if fam in model:
-                    multiplier *= float(mult)
-                    source["family_match"] = fam
-                    break
+                model_mult = float(model_overrides[model_name])
+                details["model_override_matched"] = model_name
+            except Exception:
+                model_mult = None
+
+        # pattern overrides (regex)
+        pattern_mult = None
+        for patt in (catalog.get("pattern_overrides") or []):
+            try:
+                if re.match(patt.get("pattern", ""), model or ""):
+                    pattern_mult = float(patt.get("multiplier", 1.0))
+                    details.setdefault("pattern_overrides_matched", []).append(patt.get("pattern"))
             except Exception:
                 continue
 
-        # Keyword adjustments (multiply for each keyword found)
+        # keyword adjustments (pick highest)
         kw_adj = catalog.get("keyword_adjustments", {}) or {}
+        kw_mult = 1.0
+        kw_matches = []
         for kw, mult in kw_adj.items():
-            try:
-                if kw in model:
-                    multiplier *= float(mult)
-                    source["keyword_matches"].append({"keyword": kw, "multiplier": float(mult)})
-            except Exception:
-                continue
+            if kw in model:
+                try:
+                    kw_mult = max(kw_mult, float(mult))
+                    kw_matches.append(kw)
+                except Exception:
+                    pass
+        if kw_matches:
+            details["keyword_matches"] = kw_matches
 
-    # Concurrency factor from catalog (per extra request multiplier)
-    try:
-        per_extra = float(catalog.get("concurrency_factor", {}).get("per_extra_request", 1.0))
-    except Exception:
-        per_extra = 1.0
-    if int(concurrency) > 1 and per_extra and per_extra != 1.0:
-        multiplier *= per_extra ** (int(concurrency) - 1)
+        # choose the most conservative multiplier among family/model/pattern/keyword
+        multipliers = [1.0, family_mult, kw_mult]
+        if model_mult is not None:
+            multipliers.append(model_mult)
+        if pattern_mult is not None:
+            multipliers.append(pattern_mult)
+        final_multiplier = max(float(m) for m in multipliers)
 
-    # As a compatibility measure, also account for concurrency linearly
-    timeout = int(max(5, base_timeout * multiplier * max(1, int(concurrency))))
+        # concurrency adjustment (linear fallback)
+        per_extra = float((catalog.get("concurrency_factor") or {}).get("per_extra_request", 1.15))
+        concurrency_multiplier = 1.0 + max(0, int(concurrency) - 1) * per_extra
 
-    if with_source:
-        source["multiplier"] = multiplier
-        source["base_timeout"] = base_timeout
-        source["input_tokens"] = int(input_tokens)
-        return timeout, source
-    return timeout
+        timeout = int(max(5, base_timeout * final_multiplier * concurrency_multiplier))
+
+        details.update(
+            {
+                "family_multiplier": family_mult,
+                "keyword_multiplier": kw_mult,
+                "model_multiplier": model_mult,
+                "pattern_multiplier": pattern_mult,
+                "chosen_multiplier": final_multiplier,
+                "concurrency_multiplier": concurrency_multiplier,
+                "estimated_timeout": timeout,
+            }
+        )
+
+        # include catalog source info when available
+        details["catalog_source"] = "bundled" if _catalog_path().exists() else "fallback"
+
+        return timeout, details
+    # include catalog source info when available
+    details["catalog_source"] = "bundled" if _catalog_path().exists() else "fallback"
+
+    return timeout, details
+>> >>>> > f1078c8(Phase B / C: config merge, timeout diagnostics & calibration, async Ollama wrappers, docs, release helper)

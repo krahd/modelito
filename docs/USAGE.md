@@ -67,3 +67,19 @@ Run any example from the repository root, for example:
 ```sh
 python examples/openai_example.py
 ```
+
+Timeout estimation and calibration
+-------------------------------
+
+Modelito includes a small timeout estimator and diagnostic tooling useful for
+choosing conservative network/RPC timeouts for remote models. Quick usage:
+
+```sh
+# Estimate timeout
+python -m modelito.timeout_cli --model llama-2-13b --input-tokens 2048
+
+# Write calibration prompts and (optionally) execute against a local Ollama server
+python -m modelito.timeout_calibrate --model llama-2-13b --outdir ./calib
+python -m modelito.timeout_calibrate --model llama-2-13b --execute
+```
+
