@@ -16,6 +16,7 @@ jobs:
   smoke:
     name: Run smoke tests
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]

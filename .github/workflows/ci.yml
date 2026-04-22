@@ -86,6 +86,7 @@ jobs:
   integration:
     if: ${{ github.event.inputs.run_ollama_integration == 'yes' || github.event.inputs.run_ollama_integration == '1' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     needs: test
     steps:
       - uses: actions/checkout@v4
@@ -140,6 +141,7 @@ jobs:
   integration-gated:
     name: Integration (gated)
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     needs: test
     strategy:
       matrix:
