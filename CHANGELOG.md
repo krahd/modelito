@@ -1,6 +1,11 @@
 ## 1.0.5 - 2026-04-21
 - Bump version and release notes placeholder.
 
+## 1.0.6 - 2026-04-21
+- Fix: resolve several stray git-merge conflict markers that caused import-time SyntaxErrors.
+- Fix: restore `estimate_remote_timeout` behavior and include `matched_model_override` in diagnostic details.
+- Docs: update API docs to document `with_source` optional argument and returned diagnostic tuple.
+
 # Changelog
 
 All notable changes to this project will be documented in this file.

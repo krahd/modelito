@@ -11,7 +11,7 @@ Overview
 variety of LLM providers. The public API includes:
 
 - `count_tokens(text: str) -> int`
-- `estimate_remote_timeout(model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1) -> int`
+- `estimate_remote_timeout(model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1, with_source: bool = False) -> int | Tuple[int, Dict[str, Any]]`
 - `OllamaConnector` and a set of minimal provider shims (`OllamaProvider`,
   `OpenAIProvider`, `ClaudeProvider`, `GeminiProvider`, `GrokProvider`).
 - A small collection of `ollama_service` helpers to interact with the Ollama

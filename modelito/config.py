@@ -4,14 +4,10 @@ Provides JSON/YAML loading and simple host:port parsing.
 """
 
 from __future__ import annotations
-from typing import Any, Dict, Tuple, Optional, Union
 from typing import Any, Dict, Tuple, List, Optional, Union
 
 import json
 from pathlib import Path
-<< << << < HEAD
-== == == =
->>>>>> > f1078c8(Phase B / C: config merge, timeout diagnostics & calibration, async Ollama wrappers, docs, release helper)
 
 
 def load_config(path: str) -> Dict[str, Any]:
@@ -87,7 +83,6 @@ def parse_host_port(host_url: str) -> Tuple[str, int]:
     return host_url, 11434
 
 
-<< << << < HEAD
 def _deep_merge(a: dict, b: dict) -> dict:
     """Recursively merge dict `b` into dict `a` and return the result.
 
@@ -133,50 +128,3 @@ def load_config_data(*paths: Union[str, Path], default: Optional[Dict[str, Any]]
             continue
         base = _deep_merge(base, data)
     return base
-== == == =
-def _deep_merge(a: dict, b: dict) -> dict:
-    """Recursively merge dict `b` into dict `a` and return the result.
-
-    Values from `b` take precedence. Nested dicts are merged recursively.
-    Non-dict values in `b` replace values from `a`.
-    """
-    result = dict(a)
-    for key, val in b.items():
-        if key in result and isinstance(result[key], dict) and isinstance(val, dict):
-            result[key] = _deep_merge(result[key], val)
-        else:
-            result[key] = val
-    return result
-
-
-def load_config_data(*paths: Union[str, Path], default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Load and merge configuration files from multiple paths.
-
-    Paths are applied in the order given; later paths override earlier ones.
-    Each path may be a JSON or YAML file (when PyYAML is installed). If a
-    path does not exist it is skipped. An optional ``default`` dict may be
-    provided as the base configuration.
-
-    Returns the merged configuration as a dict.
-    """
-    base: Dict[str, Any] = dict(default or {})
-    for p in paths:
-        if not p:
-            continue
-        pth = Path(p)
-        if not pth.exists():
-            continue
-        try:
-            data = load_config(str(pth))
-        except Exception:
-            try:
-                # fallback to direct JSON read if load_config is unavailable
-                text = pth.read_text(encoding="utf-8")
-                data = json.loads(text) if text else {}
-            except Exception:
-                data = {}
-        if not isinstance(data, dict):
-            continue
-        base = _deep_merge(base, data)
-    return base
->>>>>> > f1078c8(Phase B / C: config merge, timeout diagnostics & calibration, async Ollama wrappers, docs, release helper)

@@ -12,7 +12,7 @@ import *`) are:
 
 - `__version__` — package version string.
 - `count_tokens(text: str) -> int` — estimate token count (uses `tiktoken` if available).
-- `estimate_remote_timeout(model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1) -> int` — conservative timeout estimator.
+- `estimate_remote_timeout(model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1, with_source: bool = False) -> int | Tuple[int, Dict[str, Any]]` — conservative timeout estimator. When `with_source=True` the function returns a `(timeout_seconds, details_dict)` tuple with diagnostic metadata.
 - `OllamaConnector` — small conversation history manager and prompt builder. Connectors now prefer typed `Message`/`Response` dataclasses and provide both sync (`complete`) and async (`acomplete`) surfaces in addition to the legacy `send_sync` helper.
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama HTTP
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama HTTP
@@ -36,7 +36,7 @@ Key classes and functions
 : Returns an estimated token count. If `tiktoken` is installed it uses a real
   encoding; otherwise a conservative heuristic is used.
 
-`estimate_remote_timeout(model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1) -> int`
+`estimate_remote_timeout(model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1, with_source: bool = False) -> int | Tuple[int, Dict[str, Any]]`
 : Returns an integer number of seconds to use as a conservative request timeout
   for remote LLM calls. Reads a small catalog shipped in `modelito/data` and
   applies family/keyword multipliers when present. For a diagnostic breakdown
