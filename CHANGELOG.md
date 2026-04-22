@@ -1,3 +1,6 @@
+## 1.0.5 - 2026-04-21
+- Bump version and release notes placeholder.
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
