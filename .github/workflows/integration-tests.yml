@@ -20,7 +20,11 @@ jobs:
   integration:
     name: Run integration tests (manual)
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
     env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
       RUN_OLLAMA_INTEGRATION: '1'
       ALLOW_OLLAMA_INSTALL: ${{ github.event.inputs.allow_install }}
       ALLOW_OLLAMA_UPDATE: ${{ github.event.inputs.allow_update }}

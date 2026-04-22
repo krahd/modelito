@@ -4,9 +4,13 @@ on:
   push:
     tags: [ 'v*' ]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     concurrency:
       group: publish-${{ github.ref }}
       cancel-in-progress: true
@@ -24,8 +28,19 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --upgrade build twine
           python -m build --sdist --wheel
+      - name: Check PyPI token
+        run: |
+          if [ -z "${{ secrets.PYPI_API_TOKEN }}" ]; then
+            echo "Missing PYPI_API_TOKEN secret"
+            exit 1
+          else
+            echo "PYPI_API_TOKEN present"
+          fi
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.14.0
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
+          skip_existing: true
+          attestations: false
+          verbose: true
