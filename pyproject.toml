@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modelito"
-version = "1.0.6"
+version = "1.0.7"
 description = "Lightweight Python abstractions and connectors for LLM providers (OpenAI, Claude, Gemini, Ollama)."
 readme = "README.md"
 requires-python = ">=3.10"
