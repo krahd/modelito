@@ -1,40 +1,60 @@
-# Audit Report — Deeper Code & Docs Audit
+# Audit Report — Codebase, Docs, and CI/Workflow Review
 
-Date: 2026-04-19
+Date: 2026-04-24
 
-Summary
--------
-- Performed a deeper repository audit, linters, type checks, unit tests, and a safe integration test run.
-- Removed local CI run logs saved under `run_logs/`.
+## High-level understanding
 
-Checks performed
-----------------
-- Unit tests: `pytest` — 37 passed, 4 skipped.
-- Integration tests (local, safe-mode): `pytest tests/integration` — 3 skipped (no provider secrets).
-- Linter: `ruff check .` — All checks passed.
-- Type checks: `mypy modelito --ignore-missing-imports` — Success: no issues in 16 files.
-- Legacy-dict detector: `scripts/check_no_legacy_dicts.py` — scanned `docs/`, `examples/`, `tests/` and found no literal dict-shaped message examples.
-- Grep audit: looked for `TODO|FIXME|XXX`, `deprecated|legacy|to_message`, and `isinstance(..., dict)` occurrences.
+Modelito is intentionally a compact, dependency-light compatibility layer for
+LLM provider access. The project optimizes for:
 
-Findings
---------
-- No actionable TODO/FIXME items discovered.
-- References to legacy/compatibility handling exist intentionally in provider adapters and tests (e.g. compatibility with older SDK shapes). These are expected for robust SDK support.
-- `isinstance(..., dict)` occurrences are mostly in provider response parsing and configuration code — acceptable given the need to support multiple SDK response shapes.
-- CI helper `scripts/check_no_legacy_dicts.py` now targets only docs/examples/tests to avoid false positives and reports clean.
+- **Provider-agnostic APIs** with lightweight protocol surfaces.
+- **Deterministic/offline-friendly fallback behavior** when SDKs/services are
+  unavailable.
+- **Practical CI safety** by gating external-service and side-effectful tests.
 
-Recommendations / Next steps
----------------------------
-1. Run provider integration tests on a self-hosted runner with provider credentials (OpenAI, Anthropic, Ollama) to validate end-to-end provider surfaces.
-2. Consider adding a small README section listing where dict-handling occurs for maintainers to avoid accidental regressions.
-3. Keep `scripts/check_no_legacy_dicts.py` in CI as-is; it effectively prevents regressions in docs/examples/tests.
+This philosophy is consistent across `README.md`, test structure, and provider
+implementations.
 
-Files changed during audit
--------------------------
-- `scripts/check_no_legacy_dicts.py` — narrowed scope and improved docstring.
-- `modelito/openai.py` — deterministic fallback uses flattened messages list for consistent behavior.
-- Deleted `run_logs/` directory containing saved CI logs.
+## Current status assessment
 
-If you want, I can open a small PR with these changes and the audit report, or run the provider integration jobs on a self-hosted runner next.
+### Strengths
 
-— Audit run automated by GitHub Copilot assistant
+- Broad provider and adapter coverage in tests and docs.
+- Clear separation between unit/smoke and integration test intent.
+- Maintainer-oriented release docs and publish workflows are present.
+
+### Key issues identified (and fixed)
+
+1. **Redundant/overlapping workflows**
+   - `smoke-tests.yml` and `integration-tests.yml` overlapped with `ci.yml` and
+     increased maintenance burden.
+2. **Integration workflow duplication in `ci.yml`**
+   - Integration checks were duplicated across jobs and included an inefficient
+     matrix setup that could repeat provider checks unnecessarily.
+3. **Marker consistency risk**
+   - Integration tests under `tests/integration/` did not have explicit
+     `@pytest.mark.integration` markers, which made marker-driven runs brittle.
+
+## Improvements implemented in this audit pass
+
+- Consolidated CI behavior in `.github/workflows/ci.yml`:
+  - Maintains lint + mypy + unit tests on standard hosted runners.
+  - Uses path-based exclusion for integration tests in default unit job.
+  - Keeps docs builds on non-PR runs.
+  - Keeps Ollama integration in a separate self-hosted workflow.
+- Deleted unnecessary workflows:
+  - `.github/workflows/smoke-tests.yml`
+  - `.github/workflows/integration-tests.yml`
+- Added explicit `pytest.mark.integration` to all tests in `tests/integration/`.
+- Updated docs to match actual CI behavior:
+  - `README.md`
+  - `TESTING.md`
+
+## Recommended next steps
+
+1. Add branch protection to require `lint`, `test`, and `docs` jobs from `CI`.
+2. Consider enforcing formatting checks (e.g., `black --check .`) in `lint`.
+3. Consider moving provider integration checks to a dedicated scheduled workflow
+   if runtime costs on PRs become high.
+4. Add a short architecture note documenting the explicit tradeoff between
+   deterministic fallbacks vs. strict SDK hard-fail behavior.

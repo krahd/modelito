@@ -1,6 +1,8 @@
 import os
 import pytest
 
+pytestmark = pytest.mark.integration
+
 
 def test_anthropic_integration_basic():
     api_key = os.environ.get("ANTHROPIC_API_KEY")

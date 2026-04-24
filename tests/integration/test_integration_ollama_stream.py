@@ -1,6 +1,8 @@
 import os
 import pytest
 
+pytestmark = pytest.mark.integration
+
 
 def test_ollama_integration_streaming():
     from modelito.ollama_service import server_is_up

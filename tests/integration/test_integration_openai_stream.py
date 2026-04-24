@@ -1,6 +1,8 @@
 import os
 import pytest
 
+pytestmark = pytest.mark.integration
+
 
 def test_openai_integration_stream_and_embed():
     api_key = os.environ.get("OPENAI_API_KEY")

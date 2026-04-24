@@ -95,8 +95,9 @@ the included `LICENSE` file for the full MIT license text.
 CI / Integration Tests
 ----------------------
 
-This repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`.
-The workflow runs `mypy` and the unit test suite on push and pull requests.
+This repository includes a consolidated GitHub Actions workflow at
+`.github/workflows/ci.yml`. It runs linting/type checks and unit tests for pull
+requests and pushes to `main`, and builds docs on non-PR runs.
 
 Ollama integration tests are intentionally gated and will only run when you
 explicitly enable them. To run integration tests locally or in CI set the
@@ -113,10 +114,12 @@ RUN_OLLAMA_INTEGRATION=1 pytest tests/test_ollama_integration.py -q
 ```
 
 Provider integration tests for external services (OpenAI, Anthropic, etc.) are
-also gated and will be skipped unless the corresponding API keys are present
-in the environment or configured as repository secrets in CI (for example
-`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`). Add those secrets to your CI settings
-to enable provider integration jobs.
+intentionally not part of default hosted CI to keep pull requests fast and low
+noise. Use local/manual execution for those checks when needed.
+
+There is a dedicated self-hosted Ollama workflow at
+`.github/workflows/integration-ollama.yml` for maintainers who want broader
+integration checks on controlled infrastructure.
 
 Provider interface
 ------------------
@@ -197,4 +200,3 @@ Behavioral notes:
 	those token deltas as text fragments.
 - Offline/deterministic fallbacks yield the full text in a single chunk.
 ```
-
