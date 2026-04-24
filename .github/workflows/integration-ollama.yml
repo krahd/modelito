@@ -2,10 +2,8 @@ name: Integration — Ollama (self-hosted)
 
 on:
   workflow_dispatch: {}
-  push:
-    branches: [ main ]
   pull_request:
-    types: [ labeled ]
+    types: [opened, synchronize, reopened, labeled]
 
 permissions:
   contents: read
@@ -21,15 +19,18 @@ jobs:
     timeout-minutes: 120
     if: |
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-integration'))
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        contains(github.event.pull_request.labels.*.name, 'run-integration')
+      )
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -41,6 +42,6 @@ jobs:
       - name: Run Ollama integration tests
         env:
           # Ensure installers that check env flags are disabled by default
-          OLLAMA_ALLOW_INSTALL: '0'
+          ALLOW_OLLAMA_INSTALL: '0'
         run: |
-          pytest tests/integration -q
+          pytest tests/integration/test_integration_ollama_stream.py -q

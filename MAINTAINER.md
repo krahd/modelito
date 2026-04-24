@@ -19,12 +19,8 @@ python -m build
 
 ## Upload to TestPyPI
 
-Use a token stored in `TESTPYPI_API_TOKEN`:
-
-```bash
-TWINE_USERNAME="__token__" TWINE_PASSWORD="$TESTPYPI_API_TOKEN" \
-  python -m twine upload --repository testpypi dist/*
-```
+Preferred: use the GitHub Actions workflow
+`.github/workflows/publish-testpypi.yml` (OIDC trusted publishing).
 
 If pip can't find the version via the simple index, download the wheel from
 TestPyPI's "Files" page and install it locally. Example:
@@ -51,11 +47,21 @@ PY
 
 ## Upload to PyPI
 
-Use a token stored in `PYPI_API_TOKEN`:
+Preferred: push a version tag (`v*`) so `.github/workflows/publish.yml`
+publishes via OIDC trusted publishing.
+
+## Pre-release checklist
+
+Before tagging a release:
+
+1. Ensure required CI checks pass on `main` (`Lint` + unit matrix).
+2. Trigger the self-hosted Ollama integration workflow (or apply
+   `run-integration` on the release PR) and confirm pass.
+3. Verify build metadata locally with:
 
 ```bash
-TWINE_USERNAME="__token__" TWINE_PASSWORD="$PYPI_API_TOKEN" \
-  python -m twine upload dist/modelito-<version>*
+python -m build
+python -m twine check dist/*
 ```
 
 ## Verify install from PyPI
@@ -72,10 +78,8 @@ PY
 
 ## Notes
 
-- Ensure `TESTPYPI_API_TOKEN` and `PYPI_API_TOKEN` are exported in your
-  environment before running `twine upload`.
-- Use the `TWINE_USERNAME="__token__" TWINE_PASSWORD="$TOKEN"` pattern for
-  token authentication.
+- Keep trusted publishing configured for both TestPyPI and PyPI in repository
+  settings.
 - TestPyPI's `simple` index may show older cached versions; installing the
   wheel directly works if index resolution fails.
 

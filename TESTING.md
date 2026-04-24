@@ -30,7 +30,7 @@ pytest -q tests/test_import_modelito.py
 ```
 
 Notes:
-- CI runs the workflow defined in `.github/workflows/smoke-tests.yml` which installs the package and runs `pytest -m smoke` on `ubuntu-latest`.  
+- CI runs the consolidated workflow in `.github/workflows/ci.yml`, which installs the package and runs hosted unit tests (including smoke tests) while excluding `tests/integration/` by default.  
 - We limit test collection to `tests/` using `pytest.ini` to avoid executing external test suites under `_external/`.  
 - To run the full test suite locally:
 
@@ -51,4 +51,4 @@ RUN_OLLAMA_INTEGRATION=1 pytest -q -m integration
 RUN_OLLAMA_INTEGRATION=1 ALLOW_OLLAMA_INSTALL=1 ALLOW_OLLAMA_UPDATE=1 ALLOW_OLLAMA_DOWNLOAD=1 pytest -q -m integration
 ```
 
-CI note: the smoke workflow runs only the `smoke` marker by default. Integration tests are intentionally excluded from that workflow to keep CI fast and side-effect free.
+CI note: integration tests are intentionally excluded from default hosted CI to keep pull-request feedback fast and side-effect free; use the self-hosted integration workflow for CI-based integration coverage.
