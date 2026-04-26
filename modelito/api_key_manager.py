@@ -44,4 +44,5 @@ class APIKeyManager:
         key = self.get_api_key(provider)
         if not self.validate_api_key(provider, key):
             raise ValueError(f"Missing or invalid API key for provider: {provider}")
+        assert key is not None
         return key

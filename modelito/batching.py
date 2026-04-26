@@ -2,7 +2,7 @@
 Batching utilities for Modelito
 - Supports batching requests (e.g., for embeddings)
 """
-from typing import Iterable, List, Callable, Any
+from typing import Iterable, List, Any
 
 def batch_iterable(iterable: Iterable[Any], batch_size: int) -> Iterable[List[Any]]:
     """Yield successive batches from an iterable."""

@@ -3,7 +3,7 @@ Provider registry and factory for Modelito.
 Allows runtime selection and instantiation of providers by name.
 """
 from typing import Any, Dict, Optional, Type
-from .provider import SyncProvider, StreamingProvider, EmbeddingProvider
+from .provider import SyncProvider
 from .openai import OpenAIProvider
 from .claude import ClaudeProvider
 from .gemini import GeminiProvider
