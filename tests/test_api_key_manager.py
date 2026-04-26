@@ -1,5 +1,4 @@
 from modelito.api_key_manager import APIKeyManager
-import os
 
 def test_env_var_override(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "envkey1234567890")

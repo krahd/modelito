@@ -9,7 +9,7 @@ Unified Client interface for all providers.
 - Provider-specific features accessible via .provider
 """
 from __future__ import annotations
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union, cast
 from .provider_registry import get_provider, list_providers
 from .provider import Provider
 from .messages import Message
@@ -21,9 +21,10 @@ class Client:
     """
     def __init__(self, provider: Union[str, Provider] = "openai", model: Optional[str] = None, **kwargs):
         if isinstance(provider, str):
-            self.provider = get_provider(provider, model=model, **kwargs)
-            if self.provider is None:
+            resolved_provider = get_provider(provider, model=model, **kwargs)
+            if resolved_provider is None:
                 raise ValueError(f"Unknown provider: {provider}")
+            self.provider = resolved_provider
         else:
             self.provider = provider
         self.model = model or getattr(self.provider, "model", None)
@@ -36,13 +37,13 @@ class Client:
 
     def stream(self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None) -> Iterable[str]:
         if hasattr(self.provider, "stream"):
-            return self.provider.stream(messages, settings)
+            return cast(Any, self.provider).stream(messages, settings)
         # Fallback: yield the full result as one chunk
         yield self.summarize(messages, settings)
 
     def embed(self, texts: Iterable[str], **kwargs) -> List[List[float]]:
         if hasattr(self.provider, "embed"):
-            return self.provider.embed(texts, **kwargs)
+            return cast(Any, self.provider).embed(texts, **kwargs)
         raise NotImplementedError("This provider does not support embeddings.")
 
     @property
