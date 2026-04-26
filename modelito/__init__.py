@@ -51,6 +51,7 @@ from .grok import GrokProvider
 from .openai import OpenAIProvider
 from .claude import ClaudeProvider
 from .provider import Provider
+from .client import Client
 from .messages import Message, Messages, Response
 
 __all__ = [
@@ -64,6 +65,7 @@ __all__ = [
     "OpenAIProvider",
     "ClaudeProvider",
     "Provider",
+    "Client",
     "Message",
     "Messages",
     "Response",
