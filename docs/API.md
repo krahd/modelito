@@ -171,3 +171,39 @@ Notes
   intended for tests and simple local workflows.
 - For production usage you should replace provider shims with real SDK-backed
   implementations that implement the same `list_models()` / `summarize()` surface.
+
+Advanced API Features
+--------------------
+
+### Unified Provider Abstraction
+- All providers (OpenAI, Anthropic, Google, Ollama, etc.) accessed via a consistent interface.
+- Runtime provider/model switching: `from modelito.provider_registry import get_provider, list_providers`.
+
+### Local Model Management
+- Auto-discovery and health checks for local models (Ollama, etc.): `LocalModelManager`.
+- Dynamic model selection without restart.
+
+### API Key Management
+- Secure, user-friendly API key management: `APIKeyManager`.
+- Supports environment variable overrides and config files.
+- Validation and error reporting.
+
+### Streaming & Partial Results
+- All streaming-capable providers expose a `stream()` method for incremental results.
+- See `StreamingProvider` protocol.
+
+### Error Handling & Diagnostics
+- Standardized error messages and diagnostics: see `modelito.errors`.
+- Structured error objects for troubleshooting.
+
+### Model Capabilities Discovery
+- Expose model metadata (context window, function/tool support, etc.): `get_model_metadata()`.
+
+### Testing & Mocking
+- Built-in mock mode for testing/CI/offline: `MockProvider`.
+
+### Performance & Caching
+- Optional in-memory response caching: `ResponseCache`.
+- Batching utilities for embeddings and batchable operations: `batch_iterable`.
+
+See the `tests/` directory for usage examples and coverage for all features.
