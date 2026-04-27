@@ -53,6 +53,7 @@ from .claude import ClaudeProvider
 from .provider import Provider
 from .client import Client
 from .messages import Message, Messages, Response
+from .normalization import normalize_models, normalize_metadata
 
 __all__ = [
     "__version__",
@@ -69,6 +70,8 @@ __all__ = [
     "Message",
     "Messages",
     "Response",
+    "normalize_models",
+    "normalize_metadata",
     "load_config",
     "parse_host_port",
     "LLMProviderError",

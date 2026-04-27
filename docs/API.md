@@ -21,6 +21,8 @@ import *`) are:
   fallback (using `run_ollama_command`) before exposing a safe deterministic
   `summarize()` fallback useful for tests.
 - `GeminiProvider`, `GrokProvider`, `OpenAIProvider`, `ClaudeProvider` — minimal provider shims with the same `list_models()` / `summarize()` surface.
+- `normalize_models(raw) -> List[Dict[str, Any]]` — normalize provider model listings into dictionaries with an `id` field.
+- `normalize_metadata(raw) -> Dict[str, Any]` — normalize provider metadata into a plain dictionary, wrapping scalar values when needed.
 - `load_config(path: str) -> dict` — JSON/YAML loader for small config files.
 - `load_config_data(*paths) -> dict` — merge multiple config files with later
   paths taking precedence; performs a deep merge of nested dicts and supports

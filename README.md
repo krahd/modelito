@@ -225,6 +225,7 @@ Advanced Features
 
 ### Model Capabilities Discovery
 - Expose model metadata (context window, function/tool support, etc.) via `get_model_metadata()`.
+- Normalize provider model lists and metadata for application APIs via `normalize_models()` and `normalize_metadata()`.
 
 ### Testing & Mocking
 - Built-in mock mode for testing clients without real API calls (`MockProvider`).
