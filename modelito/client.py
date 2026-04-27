@@ -13,6 +13,8 @@ from typing import Any, Dict, Iterable, List, Optional, Union, cast
 from .provider_registry import get_provider, list_providers
 from .provider import Provider
 from .messages import Message
+from .model_metadata import get_model_metadata
+from .normalization import normalize_metadata
 
 class Client:
     """
@@ -37,9 +39,19 @@ class Client:
 
     def stream(self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None) -> Iterable[str]:
         if hasattr(self.provider, "stream"):
-            return cast(Any, self.provider).stream(messages, settings)
+            yield from cast(Any, self.provider).stream(messages, settings)
+            return
         # Fallback: yield the full result as one chunk
         yield self.summarize(messages, settings)
+
+    def model_metadata(self, model: Optional[str] = None) -> Dict[str, Any]:
+        target_model = model or self.model
+        if hasattr(self.provider, "model_metadata"):
+            raw_metadata = cast(Any, self.provider).model_metadata(target_model)
+            return normalize_metadata(raw_metadata)
+        if target_model is None:
+            return {}
+        return get_model_metadata(target_model)
 
     def embed(self, texts: Iterable[str], **kwargs) -> List[List[float]]:
         if hasattr(self.provider, "embed"):
