@@ -21,7 +21,7 @@ pip install modelito
 Install a specific version:
 
 ```bash
-pip install modelito==1.2.1
+pip install modelito==1.2.2
 ```
 
 If you need a pre-release or testing artifact from TestPyPI (for previewing

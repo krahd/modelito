@@ -13,15 +13,18 @@ from urllib.request import Request
 import time
 import asyncio
 import shutil
+import re
 import subprocess
 import os
 import sys
 import shlex
+import threading
 from typing import Optional, List, Dict, Any, Iterable, cast, Callable
 from pathlib import Path
 import json
 import logging
 import argparse
+from dataclasses import dataclass, field
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,6 +35,187 @@ DEFAULT_PORT = 11434
 
 # Module logger
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class RemoteModelCatalogEntry:
+    """Structured metadata for a remote Ollama model listing entry."""
+
+    name: str
+    family: str
+    tag: Optional[str] = None
+    installed: bool = False
+    source: str = "remote"
+    raw: str = ""
+
+
+@dataclass(frozen=True)
+class ModelLifecycleState:
+    """Best-effort lifecycle state keyed by model name.
+
+    The state is intentionally lightweight so callers can poll it without
+    depending on any background worker or external persistence layer.
+    """
+
+    model: str
+    phase: str
+    message: str = ""
+    progress: Optional[float] = None
+    completed: Optional[int] = None
+    total: Optional[int] = None
+    error: Optional[str] = None
+    source: str = "cli"
+    updated_at: float = field(default_factory=time.time)
+
+
+_MODEL_STATE_LOCK = threading.Lock()
+_MODEL_LIFECYCLE_STATES: Dict[str, ModelLifecycleState] = {}
+_PERCENT_RE = re.compile(r"(?P<pct>\d{1,3}(?:\.\d+)?)%")
+_COUNT_RE = re.compile(r"(?P<completed>\d+)\s*/\s*(?P<total>\d+)")
+
+
+def _record_model_state(
+    model_name: str,
+    phase: str,
+    *,
+    message: str = "",
+    progress: Optional[float] = None,
+    completed: Optional[int] = None,
+    total: Optional[int] = None,
+    error: Optional[str] = None,
+    source: str = "cli",
+) -> ModelLifecycleState:
+    state = ModelLifecycleState(
+        model=model_name,
+        phase=phase,
+        message=message,
+        progress=progress,
+        completed=completed,
+        total=total,
+        error=error,
+        source=source,
+    )
+    with _MODEL_STATE_LOCK:
+        _MODEL_LIFECYCLE_STATES[model_name] = state
+    return state
+
+
+def get_model_lifecycle_state(model_name: str) -> Optional[ModelLifecycleState]:
+    """Return the latest tracked lifecycle state for `model_name`."""
+    with _MODEL_STATE_LOCK:
+        return _MODEL_LIFECYCLE_STATES.get(model_name)
+
+
+def list_model_lifecycle_states() -> Dict[str, ModelLifecycleState]:
+    """Return a snapshot of all tracked per-model lifecycle states."""
+    with _MODEL_STATE_LOCK:
+        return dict(_MODEL_LIFECYCLE_STATES)
+
+
+def clear_model_lifecycle_state(model_name: str) -> bool:
+    """Remove the cached lifecycle state for `model_name`."""
+    with _MODEL_STATE_LOCK:
+        return _MODEL_LIFECYCLE_STATES.pop(model_name, None) is not None
+
+
+def _parse_progress_from_line(line: str) -> tuple[Optional[float], Optional[int], Optional[int]]:
+    progress: Optional[float] = None
+    completed: Optional[int] = None
+    total: Optional[int] = None
+
+    match = _PERCENT_RE.search(line)
+    if match:
+        try:
+            progress = max(0.0, min(100.0, float(match.group("pct"))))
+        except Exception:
+            progress = None
+
+    count_match = _COUNT_RE.search(line)
+    if count_match:
+        try:
+            completed = int(count_match.group("completed"))
+            total = int(count_match.group("total"))
+            if progress is None and total > 0:
+                progress = max(0.0, min(100.0, (completed / total) * 100.0))
+        except Exception:
+            completed = None
+            total = None
+
+    return progress, completed, total
+
+
+def _phase_from_progress_line(line: str) -> str:
+    low = line.strip().lower()
+    if not low:
+        return "downloading"
+    if "verifying" in low:
+        return "verifying"
+    if "manifest" in low or "finaliz" in low:
+        return "finalizing"
+    if "error" in low or "failed" in low:
+        return "error"
+    if "done" in low or "success" in low or "complete" in low:
+        return "downloaded"
+    return "downloading"
+
+
+def detect_install_method(platform_name: Optional[str] = None) -> str:
+    """Return the preferred install backend for the current platform.
+
+    The helper prefers package managers when they are present and falls back to
+    the official Ollama install scripts otherwise.
+    """
+    platform_name = platform_name or sys.platform
+    if platform_name.startswith("win"):
+        return "choco" if shutil.which("choco") else "powershell"
+    if platform_name == "darwin":
+        return "brew" if shutil.which("brew") else "script"
+    if shutil.which("apt-get"):
+        return "apt"
+    return "script"
+
+
+def _install_command_for_method(method: str) -> tuple[List[str], str]:
+    if method == "choco":
+        return ["choco", "install", "ollama", "-y"], "choco install ollama -y"
+    if method == "powershell":
+        command = [
+            "powershell.exe",
+            "-NoExit",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            f"irm {WINDOWS_INSTALL_URL} | iex",
+        ]
+        return command, f"irm {WINDOWS_INSTALL_URL} | iex"
+    if method == "brew":
+        return ["brew", "install", "ollama"], "brew install ollama"
+    if method == "apt":
+        shell_command = "sudo apt-get update && sudo apt-get install -y ollama"
+        return ["/bin/sh", "-lc", shell_command], shell_command
+    install_command = f"export OLLAMA_NO_START=1; curl -fsSL {shlex.quote(UNIX_INSTALL_URL)} | sh"
+    return ["/bin/sh", "-lc", install_command], install_command
+
+
+def _extract_model_name(raw_item: str) -> str:
+    token = str(raw_item or "").strip().split()[0] if str(raw_item or "").strip() else ""
+    return token.strip()
+
+
+def _catalog_entry(raw_item: str, installed_models: set[str]) -> Optional[RemoteModelCatalogEntry]:
+    name = _extract_model_name(raw_item)
+    if not name:
+        return None
+    family, _, tag = name.partition(":")
+    if "/" in family:
+        family = family.split("/", 1)[0]
+    return RemoteModelCatalogEntry(
+        name=name,
+        family=family or name,
+        tag=tag or None,
+        installed=name in installed_models,
+        raw=str(raw_item or ""),
+    )
 
 
 def _ensure_pythonpath_env(env: Dict[str, str]) -> None:
@@ -194,37 +378,23 @@ def install_ollama(allow_install: bool = False, method: Optional[str] = None, ti
         return False
 
     try:
-        import sys
+        selected = method or detect_install_method()
+        attempted_methods: List[str] = [selected]
+        fallback_method = "script" if selected in (
+            "brew", "apt") else "powershell" if selected == "choco" else None
+        if fallback_method and fallback_method not in attempted_methods:
+            attempted_methods.append(fallback_method)
 
-        # Prefer platform-specific package manager when appropriate, but
-        # fall back to the official install script which is cross-platform.
-        if sys.platform == "darwin":
-            if method == "brew" or (method is None and shutil.which("brew")):
-                try:
-                    subprocess.run(["brew", "install", "ollama"], check=True,
-                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=timeout)
-                    return get_ollama_binary() is not None
-                except Exception:
-                    # fall through to script fallback
-                    pass
-            # fallback to the official script installer
-            cmd, _ = install_command_for_current_platform()
+        for candidate_method in attempted_methods:
+            cmd, _ = _install_command_for_method(candidate_method)
             try:
                 subprocess.run(cmd, cwd=str(ROOT), text=True,
                                capture_output=True, check=False, timeout=timeout)
-                return get_ollama_binary() is not None
             except Exception:
-                return False
-
-        # For other UNIX-like systems prefer the official script; package
-        # managers may not provide an `ollama` package.
-        cmd, _ = install_command_for_current_platform()
-        try:
-            subprocess.run(cmd, cwd=str(ROOT), text=True,
-                           capture_output=True, check=False, timeout=timeout)
-            return get_ollama_binary() is not None
-        except Exception:
-            return False
+                continue
+            if get_ollama_binary() is not None:
+                return True
+        return False
     except Exception:
         return False
 
@@ -508,6 +678,104 @@ def list_remote_models() -> List[str]:
     return []
 
 
+def list_remote_model_catalog(query: Optional[str] = None) -> List[RemoteModelCatalogEntry]:
+    """Return a structured remote model catalog with light metadata.
+
+    The helper builds on `list_remote_models()` and adds a stable object shape
+    for higher-level tooling, including a simple query filter and whether the
+    model appears to already be installed locally.
+    """
+    try:
+        installed = set(list_local_models())
+    except Exception:
+        installed = set()
+
+    query_text = (query or "").strip().lower()
+    entries: List[RemoteModelCatalogEntry] = []
+    seen: set[str] = set()
+    for raw_item in list_remote_models():
+        entry = _catalog_entry(raw_item, installed)
+        if entry is None or entry.name in seen:
+            continue
+        haystack = " ".join([entry.name, entry.family, entry.raw]).lower()
+        if query_text and query_text not in haystack:
+            continue
+        entries.append(entry)
+        seen.add(entry.name)
+    return sorted(entries, key=lambda item: item.name)
+
+
+def download_model_progress(model_name: str, timeout: float = 600.0) -> Iterable[ModelLifecycleState]:
+    """Yield structured lifecycle updates while downloading a model.
+
+    The function tracks the latest state in the in-memory lifecycle registry so
+    UI or automation can poll by model name while a download is in progress.
+    """
+    binp = get_ollama_binary()
+    if not binp:
+        yield _record_model_state(model_name, "error", error="ollama binary not found", message="ollama binary not found")
+        return
+
+    yield _record_model_state(model_name, "downloading", message=f"Starting download for {model_name}", progress=0.0)
+
+    commands = [[binp, "pull", model_name], [binp, "download", model_name]]
+    for index, cmd in enumerate(commands):
+        process: Optional[subprocess.Popen[str]] = None
+        last_line = ""
+        try:
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            assert process.stdout is not None
+            for raw_line in process.stdout:
+                line = raw_line.rstrip("\n")
+                if not line:
+                    continue
+                last_line = line
+                progress, completed, total = _parse_progress_from_line(line)
+                phase = _phase_from_progress_line(line)
+                yield _record_model_state(
+                    model_name,
+                    phase,
+                    message=line,
+                    progress=progress,
+                    completed=completed,
+                    total=total,
+                )
+            returncode = process.wait(timeout=timeout)
+            if returncode == 0:
+                yield _record_model_state(model_name, "downloaded", message=last_line or f"Downloaded {model_name}", progress=100.0)
+                return
+            if index == len(commands) - 1:
+                yield _record_model_state(
+                    model_name,
+                    "error",
+                    message=last_line or f"Download failed for {model_name}",
+                    error=f"download command exited with status {returncode}",
+                )
+                return
+            yield _record_model_state(model_name, "retrying", message=f"Retrying download for {model_name} with fallback command")
+        except FileNotFoundError:
+            yield _record_model_state(model_name, "error", error="ollama binary not found", message="ollama binary not found")
+            return
+        except subprocess.TimeoutExpired:
+            if process is not None:
+                try:
+                    process.kill()
+                except Exception:
+                    pass
+            yield _record_model_state(model_name, "error", error=f"download timed out after {timeout} seconds", message=f"download timed out after {timeout} seconds")
+            return
+        except Exception as exc:
+            if index == len(commands) - 1:
+                yield _record_model_state(model_name, "error", error=str(exc), message=str(exc))
+                return
+            yield _record_model_state(model_name, "retrying", message=f"Retrying download for {model_name}: {exc}")
+
+
 def download_model(model_name: str, timeout: float = 600.0) -> bool:
     """Download a remote model into the local Ollama cache using the CLI.
 
@@ -521,25 +789,17 @@ def download_model(model_name: str, timeout: float = 600.0) -> bool:
     Returns:
         ``True`` on success, else ``False``.
     """
-    binp = get_ollama_binary()
-    if not binp:
-        logger.debug("download_model: ollama binary not found")
+    final_state: Optional[ModelLifecycleState] = None
+    for state in download_model_progress(model_name, timeout=timeout):
+        final_state = state
+    if final_state is None:
+        logger.debug("download_model produced no lifecycle updates for %s", model_name)
         return False
-    cmds = [[binp, "pull", model_name], [binp, "download", model_name]]
-    for cmd in cmds:
-        try:
-            res = subprocess.run(cmd, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, text=True, timeout=timeout, check=False)
-            if res.returncode == 0:
-                logger.debug("download_model succeeded for %s via %s", model_name, cmd)
-                return True
-            else:
-                logger.warning("download_model failed for %s via %s: returncode=%s stdout=%s stderr=%s",
-                               model_name, cmd, res.returncode, (res.stdout or '')[:1000], (res.stderr or '')[:1000])
-        except Exception as exc:
-            logger.debug("Exception running download command %s for %s: %s", cmd, model_name, exc)
-            continue
-    return False
+    ok = final_state.phase == "downloaded"
+    if not ok:
+        logger.warning("download_model failed for %s: %s", model_name,
+                       final_state.error or final_state.message)
+    return ok
 
 
 def delete_model(model_name: str) -> bool:
@@ -620,9 +880,79 @@ def ensure_model_available(model_name: str, allow_download: bool = False, timeou
     return download_model(model_name, timeout=timeout)
 
 
+def ensure_model_ready(
+    model_name: str,
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
+    auto_start: bool = False,
+    allow_download: bool = False,
+    timeout: float = 120.0,
+) -> bool:
+    """Ensure a specific model is downloaded, warmed, and ready to serve.
+
+    This helper goes beyond server liveness by optionally starting Ollama,
+    downloading the selected model, issuing a warm-up request, and confirming a
+    follow-up model-scoped generate call succeeds.
+    """
+    deadline = time.time() + float(timeout)
+    _record_model_state(model_name, "preparing", message=f"Preparing model {model_name}")
+
+    ok, message = ensure_ollama_running_verbose(
+        host=host, port=port, auto_start=auto_start, timeout=min(timeout, 30.0))
+    if not ok:
+        _record_model_state(model_name, "error", message=message, error=message)
+        return False
+
+    remaining = max(1.0, deadline - time.time())
+    if not ensure_model_available(model_name, allow_download=allow_download, timeout=remaining):
+        error = f"Model {model_name} is not available locally"
+        _record_model_state(model_name, "error", message=error, error=error)
+        return False
+
+    _record_model_state(model_name, "warming", message=f"Warming model {model_name}")
+    try:
+        preload_model(host, port, model_name, timeout=min(remaining, 60.0))
+    except Exception as exc:
+        _record_model_state(model_name, "error", message=str(exc), error=str(exc), source="http")
+        return False
+
+    host_env = f"{host.replace('http://', '').replace('https://', '')}:{port}"
+    running = running_model_names(host_env)
+    if model_name in running:
+        _record_model_state(
+            model_name, "ready", message=f"Model {model_name} is warmed and running", progress=100.0, source="http")
+        return True
+
+    try:
+        json_post(
+            endpoint_url(host, port, "/api/generate"),
+            {"model": model_name, "prompt": "ping", "stream": False, "keep_alive": "30m"},
+            timeout=min(max(1.0, deadline - time.time()), 30.0),
+        )
+    except Exception as exc:
+        _record_model_state(model_name, "error", message=str(exc), error=str(exc), source="http")
+        return False
+
+    _record_model_state(
+        model_name, "ready", message=f"Model {model_name} responded to readiness probe", progress=100.0, source="http")
+    return True
+
+
 async def async_ensure_model_available(model_name: str, allow_download: bool = False, timeout: float = 600.0) -> bool:
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, ensure_model_available, model_name, allow_download, timeout)
+
+
+async def async_ensure_model_ready(
+    model_name: str,
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
+    auto_start: bool = False,
+    allow_download: bool = False,
+    timeout: float = 120.0,
+) -> bool:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, ensure_model_ready, model_name, host, port, auto_start, allow_download, timeout)
 
 
 def change_ollama_config(config: Dict[str, Any], config_path: Optional[str] = None) -> bool:
@@ -977,19 +1307,8 @@ def ollama_version_text(host: Optional[str] = None) -> str:
 
 
 def install_command_for_current_platform(platform_name: Optional[str] = None) -> tuple[List[str], str]:
-    platform_name = platform_name or sys.platform
-    if platform_name.startswith("win"):
-        command = [
-            "powershell.exe",
-            "-NoExit",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            f"irm {WINDOWS_INSTALL_URL} | iex",
-        ]
-        return command, f"irm {WINDOWS_INSTALL_URL} | iex"
-    install_command = f"export OLLAMA_NO_START=1; curl -fsSL {shlex.quote(UNIX_INSTALL_URL)} | sh"
-    return ["/bin/sh", "-lc", install_command], install_command
+    selected_method = detect_install_method(platform_name=platform_name)
+    return _install_command_for_method(selected_method)
 
 
 def install_service(reinstall: bool = False) -> tuple[int, str]:

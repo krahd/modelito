@@ -2,17 +2,28 @@
 
 This document describes the platform install helper functions provided in `modelito.ollama_service`.
 
+- `detect_install_method(platform_name: Optional[str] = None)`
+  - Returns the preferred install backend for the current platform.
+  - Current choices are:
+    - macOS: `brew` when Homebrew is present, otherwise script fallback.
+    - Linux: `apt` when `apt-get` is present, otherwise script fallback.
+    - Windows: `choco` when Chocolatey is present, otherwise PowerShell script fallback.
+
 - `install_command_for_current_platform(platform_name: Optional[str] = None)`
   - Returns a tuple `(command_list, display_string)` suitable for running the platform-specific installer.
-  - On Windows it returns a `powershell.exe` invocation referencing the `install.ps1` script.
-  - On Unix-like platforms it returns a `/bin/sh -lc "curl ... | sh"` style invocation.
+  - On Windows it returns either a `choco install ollama -y` command or a `powershell.exe` invocation referencing the `install.ps1` script.
+  - On Linux it returns either an `apt-get install -y ollama` flow or a `/bin/sh -lc "curl ... | sh"` style invocation.
+  - On macOS it returns either `brew install ollama` or the script fallback.
 
 - `install_ollama(allow_install: bool = True, method: Optional[str] = None, timeout: float = 30.0)`
   - Attempts to ensure an `ollama` binary is available on the PATH.
   - Behavior:
     - If `ollama` is already present, returns `True` immediately.
-    - On macOS, when `method=="brew"` (or `method is None` and `brew` is available), a `brew install ollama` is attempted first.
-    - Falls back to the official install script (cross-platform) if package-manager installation is not appropriate or fails.
+    - When `method is None`, the helper auto-detects a preferred backend via `detect_install_method()`.
+    - On macOS it prefers `brew install ollama`.
+    - On Linux it prefers `apt-get install -y ollama` when `apt-get` is available.
+    - On Windows it prefers `choco install ollama -y` when Chocolatey is available.
+    - Falls back to the official install script when package-manager installation is not appropriate or fails.
     - When `allow_install` is False, the function will not attempt to run installers and returns `False` if binary not found.
   - NOTE: The function executes external commands; tests and CI should mock subprocess execution. It will not start the Ollama service by default when using the official script (the function sets `OLLAMA_NO_START=1`).
 

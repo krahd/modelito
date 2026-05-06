@@ -112,4 +112,30 @@ def api_pull_stream(model: str, host: Optional[str] = None, port: int = 11434, t
     except Exception:
         return
 
-__all__.extend(["api_list_local", "api_list_remote", "api_delete_model", "api_pull_stream"])
+
+def api_pull_progress(model: str, timeout: float = 600.0):
+    from .ollama_service import download_model_progress
+
+    yield from download_model_progress(model, timeout=timeout)
+
+
+def api_remote_catalog(query: Optional[str] = None):
+    from .ollama_service import list_remote_model_catalog
+
+    return list_remote_model_catalog(query=query)
+
+
+def api_model_state(model: str):
+    from .ollama_service import get_model_lifecycle_state
+
+    return get_model_lifecycle_state(model)
+
+__all__.extend([
+    "api_list_local",
+    "api_list_remote",
+    "api_delete_model",
+    "api_pull_stream",
+    "api_pull_progress",
+    "api_remote_catalog",
+    "api_model_state",
+])

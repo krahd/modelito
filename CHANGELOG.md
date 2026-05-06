@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.2.2 - 2026-05-06
+
+- Add a broader Ollama administration surface for local model operations.
+- Add platform-aware install backend detection with `brew`, `apt`, and
+	`choco` support plus script fallback.
+- Add structured remote catalog, download lifecycle tracking, and explicit
+	model readiness helpers for Ollama.
+- Export and document the new Ollama admin helpers across the package root,
+	API docs, install docs, and usage docs.
+- Add focused unit coverage for the new Ollama administration helpers.
+- Set `asyncio_default_fixture_loop_scope = function` in `pytest.ini` to
+	remove the local `pytest-asyncio` deprecation warning.
+
 ## 1.2.1 - 2026-05-06
 
 - Fix package version fallback to avoid stale runtime version reporting when

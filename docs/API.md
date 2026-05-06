@@ -115,11 +115,13 @@ the Ollama CLI and HTTP API. The most commonly used helpers are:
 - `server_is_up(host: str, port: int) -> bool`
 - `ensure_ollama_running(host: str = "http://127.0.0.1", port: int = 11434, auto_start: bool = False, start_args: Optional[list] = None, timeout: float = 10.0) -> bool`
 - `get_ollama_binary() -> Optional[str]`
-- `list_local_models() -> List[str]` and `list_remote_models() -> List[str]`
-- `download_model(model_name: str) -> bool` and `delete_model(model_name: str) -> bool`
+- `list_local_models() -> List[str]`, `list_remote_models() -> List[str]`, and `list_remote_model_catalog(query: Optional[str] = None) -> List[RemoteModelCatalogEntry]`
+- `download_model(model_name: str) -> bool`, `download_model_progress(model_name: str) -> Iterable[ModelLifecycleState]`, and `delete_model(model_name: str) -> bool`
 - `serve_model(model_name: Optional[str] = None, start_args: Optional[list] = None, timeout: float = 10.0) -> bool`
 - `ensure_model_available(model_name: str, allow_download: bool = False, timeout: float = 600.0) -> bool` — convenience helper to ensure a model is present locally, optionally downloading it.
-- Async wrappers: `async_preload_model`, `async_list_local_models`, `async_list_remote_models`, `async_download_model`, `async_delete_model`, `async_serve_model`, `async_ensure_model_available` — simple asyncio-friendly wrappers that run the synchronous helpers in an executor.
+- `ensure_model_ready(model_name: str, host: str = "http://127.0.0.1", port: int = 11434, auto_start: bool = False, allow_download: bool = False, timeout: float = 120.0) -> bool` — ensure a specific model is downloaded, warmed, and responsive.
+- `get_model_lifecycle_state(model_name: str) -> Optional[ModelLifecycleState]`, `list_model_lifecycle_states() -> Dict[str, ModelLifecycleState]`, and `clear_model_lifecycle_state(model_name: str) -> bool` — inspect or reset the in-memory per-model lifecycle tracker.
+- Async wrappers: `async_preload_model`, `async_list_local_models`, `async_list_remote_models`, `async_download_model`, `async_delete_model`, `async_serve_model`, `async_ensure_model_available`, `async_ensure_model_ready` — simple asyncio-friendly wrappers that run the synchronous helpers in an executor.
 - `change_ollama_config(config: dict, config_path: Optional[str] = None) -> bool`
 
 Additional helpers and CLI
@@ -128,10 +130,19 @@ Additional helpers and CLI
 The module exposes a few additional convenience helpers and CLI entrypoints
 useful for diagnostics and local workflows:
 
+- `detect_install_method(platform_name: Optional[str] = None) -> str` — pick the preferred install backend (`brew`, `apt`, `choco`, or script-based fallback) for the current platform.
 - `pull_model(model_name: str, timeout: float = 600.0) -> bool` — convenience wrapper for `download_model`.
 - `preload_model(url: str, port: int, model: str, timeout: float = 120.0) -> None` — warm a model via the HTTP API.
 - `load_remote_timeout_catalog(path: Optional[Path] = None) -> dict` — load the timeout catalog (falls back to the bundled catalog).
 - `common_model_timeout(model_name: str) -> Optional[float]` — returns a conservative timeout in seconds for a given model.
+
+Structured admin helpers
+------------------------
+
+For higher-level tooling, `ollama_service` now exposes two small dataclasses:
+
+- `RemoteModelCatalogEntry` — structured remote catalog item with `name`, `family`, `tag`, `installed`, and `raw` fields.
+- `ModelLifecycleState` — in-memory state snapshot with `phase`, `message`, `progress`, `error`, and `updated_at` fields.
 
 CLI usage
 ---------

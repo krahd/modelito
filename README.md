@@ -86,6 +86,12 @@ Provided shims and utilities:
 - `OpenAIProvider`, `ClaudeProvider` — will use the official SDKs when
 	installed, falling back to deterministic behavior otherwise.
 
+The package also exposes a small Ollama administration layer for local model
+operations, including install backend detection, remote catalog metadata,
+download lifecycle tracking, and explicit model readiness confirmation through
+helpers such as `detect_install_method`, `list_remote_model_catalog`,
+`download_model_progress`, and `ensure_model_ready`.
+
 License / AS IS
 ---------------
 

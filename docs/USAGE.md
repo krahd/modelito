@@ -106,6 +106,23 @@ environment concerns:
     return codes indicate failures such as a missing CLI, CLI startup
     failure, or a startup timeout.
 
+- `detect_install_method()` and `install_ollama(allow_install=True)` —
+    choose and execute a platform-aware install flow. The helper now prefers
+    `brew` on macOS, `apt` on Linux when available, and `choco` on Windows,
+    falling back to the official Ollama install scripts when needed.
+
+- `list_remote_model_catalog(query=None)` — Return structured remote model
+    entries instead of a flat list when callers need stable metadata such as
+    `family`, `tag`, and whether the model already exists locally.
+
+- `download_model_progress(model_name)` and
+    `get_model_lifecycle_state(model_name)` — Stream or poll structured
+    lifecycle state for pull operations keyed by model name.
+
+- `ensure_model_ready(model_name, auto_start=False, allow_download=False)` —
+    ensure a specific model is installed, warmed, and responsive instead of
+    only checking whether the Ollama server itself is reachable.
+
 Examples
 --------
 
@@ -123,6 +140,17 @@ entrypoints to import local modules via the helper's PYTHONPATH handling:
 
 ```sh
 python -m modelito.ollama_service start --config /path/to/config.json
+```
+
+Track a model download and then confirm readiness:
+
+```py
+from modelito import download_model_progress, ensure_model_ready
+
+for state in download_model_progress("llama3.1:8b"):
+    print(state.phase, state.progress, state.message)
+
+print(ensure_model_ready("llama3.1:8b", auto_start=True, allow_download=False))
 ```
 
 ```sh

@@ -6,12 +6,12 @@ utilities used by downstream projects.
 try:
     from importlib.metadata import version, PackageNotFoundError
 except Exception:
-    __version__ = "1.2.1"
+    __version__ = "1.2.2"
 else:
     try:
         __version__ = version("modelito")
     except PackageNotFoundError:
-        __version__ = "1.2.1"
+        __version__ = "1.2.2"
 
 from .tokenizer import count_tokens
 from .timeout import estimate_remote_timeout, estimate_remote_timeout_details
@@ -21,6 +21,9 @@ from .exceptions import LLMProviderError
 from .ollama_service import server_is_up, endpoint_url
 from .ollama_service import ensure_ollama_running
 from .ollama_service import (
+    RemoteModelCatalogEntry,
+    ModelLifecycleState,
+    detect_install_method,
     get_ollama_binary,
     install_ollama,
     start_ollama,
@@ -28,7 +31,9 @@ from .ollama_service import (
     update_ollama,
     list_local_models,
     list_remote_models,
+    list_remote_model_catalog,
     download_model,
+    download_model_progress,
     delete_model,
     serve_model,
     change_ollama_config,
@@ -39,11 +44,16 @@ from .ollama_service import (
     start_detached_ollama_serve,
     wait_until_ready,
     preload_model,
+    ensure_model_ready,
     running_model_names,
+    get_model_lifecycle_state,
+    list_model_lifecycle_states,
+    clear_model_lifecycle_state,
     find_ollama_listener_pids,
     stop_service,
     install_service,
     ensure_ollama_running_verbose,
+    async_ensure_model_ready,
 )
 from .ollama import OllamaProvider
 from .gemini import GeminiProvider
@@ -79,6 +89,9 @@ __all__ = [
     "server_is_up",
     "endpoint_url",
     "ensure_ollama_running",
+    "RemoteModelCatalogEntry",
+    "ModelLifecycleState",
+    "detect_install_method",
     "get_ollama_binary",
     "install_ollama",
     "start_ollama",
@@ -86,7 +99,9 @@ __all__ = [
     "update_ollama",
     "list_local_models",
     "list_remote_models",
+    "list_remote_model_catalog",
     "download_model",
+    "download_model_progress",
     "delete_model",
     "serve_model",
     "change_ollama_config",
@@ -97,9 +112,14 @@ __all__ = [
     "start_detached_ollama_serve",
     "wait_until_ready",
     "preload_model",
+    "ensure_model_ready",
     "running_model_names",
+    "get_model_lifecycle_state",
+    "list_model_lifecycle_states",
+    "clear_model_lifecycle_state",
     "find_ollama_listener_pids",
     "stop_service",
     "install_service",
     "ensure_ollama_running_verbose",
+    "async_ensure_model_ready",
 ]
