@@ -29,11 +29,11 @@ print("modelito", __version__)
 # token counting
 print(count_tokens("Hello world"))
 
-# create a connector (does not start any external process)
-conn = OllamaConnector(host="localhost", port=11434)
-
 # create a provider instance (compatibility shim)
-provider = OllamaProvider(connector=conn)
+provider = OllamaProvider()
+
+# create a connector (does not start any external process)
+conn = OllamaConnector(provider=provider)
 ```
 
 Installation

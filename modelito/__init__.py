@@ -6,15 +6,15 @@ utilities used by downstream projects.
 try:
     from importlib.metadata import version, PackageNotFoundError
 except Exception:
-    __version__ = "1.0.0"
+    __version__ = "1.2.1"
 else:
     try:
         __version__ = version("modelito")
     except PackageNotFoundError:
-        __version__ = "1.0.0"
+        __version__ = "1.2.1"
 
 from .tokenizer import count_tokens
-from .timeout import estimate_remote_timeout
+from .timeout import estimate_remote_timeout, estimate_remote_timeout_details
 from .connector import OllamaConnector
 from .config import load_config, parse_host_port
 from .exceptions import LLMProviderError
@@ -59,6 +59,7 @@ __all__ = [
     "__version__",
     "count_tokens",
     "estimate_remote_timeout",
+    "estimate_remote_timeout_details",
     "OllamaConnector",
     "OllamaProvider",
     "GeminiProvider",

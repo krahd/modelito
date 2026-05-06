@@ -146,7 +146,8 @@ def _iter_model_mapping(data: Mapping[str, Any]) -> Iterable[dict[str, Any]]:
             items.append({"id": key_str, "value": value})
             continue
 
-        normalized = {str(payload_key): payload_value for payload_key, payload_value in payload.items()}
+        normalized = {str(payload_key): payload_value for payload_key,
+                      payload_value in payload.items()}
         normalized.setdefault("id", key_str)
         items.append(normalized)
     return items
@@ -160,13 +161,13 @@ def _normalize_model_item(item: Any) -> dict[str, Any] | None:
         item = item.decode("utf-8", errors="replace")
 
     if isinstance(item, str):
-        model_id = item.strip()
-        return {"id": model_id} if model_id else None
+        model_id_str = item.strip()
+        return {"id": model_id_str} if model_id_str else None
 
     data = _coerce_mapping(item)
     if data is None:
-        model_id = str(item).strip()
-        return {"id": model_id} if model_id else None
+        model_id_str = str(item).strip()
+        return {"id": model_id_str} if model_id_str else None
 
     payload = {str(key): value for key, value in data.items()}
     model_id = _first_present(payload, _MODEL_ID_KEYS)

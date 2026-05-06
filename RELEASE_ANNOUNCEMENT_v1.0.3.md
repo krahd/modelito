@@ -1,5 +1,8 @@
 # modelito v1.0.3 — Audit and small fixes
 
+Archived historical release announcement. Current release status is tracked in
+`RELEASE.md`, `CHANGELOG.md`, and `STATUS.md`.
+
 Release date: 2026-04-19
 
 Summary

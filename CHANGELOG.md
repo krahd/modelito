@@ -1,14 +1,37 @@
-## 1.0.5 - 2026-04-21
-- Bump version and release notes placeholder.
-
-## 1.0.6 - 2026-04-21
-- Fix: resolve several stray git-merge conflict markers that caused import-time SyntaxErrors.
-- Fix: restore `estimate_remote_timeout` behavior and include `matched_model_override` in diagnostic details.
-- Docs: update API docs to document `with_source` optional argument and returned diagnostic tuple.
-
 # Changelog
 
 All notable changes to this project will be documented in this file.
+
+## 1.2.1 - 2026-05-06
+
+- Fix package version fallback to avoid stale runtime version reporting when
+	metadata is unavailable.
+- Export `estimate_remote_timeout_details` in package exports and align API
+	documentation with implementation.
+- Fix `OllamaConnector` usage examples in docs to reflect current constructor
+	signature.
+- Fix mypy typing issue in `modelito/normalization.py`.
+- Normalize changelog/release documentation and mark historical v1.0.3 release
+	docs as archived records.
+- Update project status reporting with comprehensive audit remediation results.
+
+## 1.2.0 - 2026-05-06
+
+- Current package metadata version in `pyproject.toml`.
+- Runtime and docs consistency audit completed; release history normalization
+	initiated for maintainability.
+
+## 1.0.6 - 2026-04-21
+
+- Fix: resolve stray git-merge conflict markers that caused import-time
+	`SyntaxError`s.
+- Fix: restore `estimate_remote_timeout` behavior and include
+	`matched_model_override` in diagnostic details.
+- Docs: document the `with_source` argument and diagnostic tuple behavior.
+
+## 1.0.5 - 2026-04-21
+
+- Version bump and release notes placeholder.
 
 ## 1.0.0 - 2026-04-19
 
@@ -51,3 +74,8 @@ All notable changes to this project will be documented in this file.
 - Export runtime `__version__` from the package
 - Build wheel and sdist artifacts
 - Add concise usage docs and install/build instructions
+
+## Notes
+
+- Historical entries between `1.0.6` and `1.2.0` are being backfilled from
+	release records as available.

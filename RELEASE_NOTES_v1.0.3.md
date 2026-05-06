@@ -1,5 +1,8 @@
 # Release v1.0.3
 
+Archived historical release record. Current release status is tracked in
+`RELEASE.md`, `CHANGELOG.md`, and `STATUS.md`.
+
 Release date: 2026-04-19
 
 Summary

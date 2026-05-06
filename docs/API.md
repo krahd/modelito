@@ -13,8 +13,8 @@ import *`) are:
 - `__version__` — package version string.
 - `count_tokens(text: str) -> int` — estimate token count (uses `tiktoken` if available).
 - `estimate_remote_timeout(model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1, with_source: bool = False) -> int | Tuple[int, Dict[str, Any]]` — conservative timeout estimator. When `with_source=True` the function returns a `(timeout_seconds, details_dict)` tuple with diagnostic metadata.
+- `estimate_remote_timeout_details(model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1) -> Tuple[int, Dict[str, Any]]` — diagnostic timeout estimator returning both timeout and computation details.
 - `OllamaConnector` — small conversation history manager and prompt builder. Connectors now prefer typed `Message`/`Response` dataclasses and provide both sync (`complete`) and async (`acomplete`) surfaces in addition to the legacy `send_sync` helper.
-- `OllamaProvider` — HTTP-aware provider that will call a local Ollama HTTP
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama HTTP
   API when available (via the bundled `ollama_service` helpers). If the HTTP
   API is not reachable it will attempt the Ollama CLI as a best-effort
