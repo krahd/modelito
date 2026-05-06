@@ -1,6 +1,6 @@
 # modelito status report
 
-Last updated: 2026-05-06 17:39
+Last updated: 2026-05-06 17:40
 
 ## Current state
 
@@ -186,10 +186,29 @@ Outstanding minor observations:
    still be worth adding if downstream tooling needs cross-process or
    long-running operation tracking.
 
-## Questions
+## Architectural decisions
 
-1. Should modelito store securely the API keys somewhere / somehow (i.e. encrypted db)?
-2. Do we need more functionality than the "lightweight shims" offered to the cloud providers?
+1. API key storage should not move into a built-in encrypted database in the
+   core package.
+   - The project's current value is that it is dependency-light,
+     provider-agnostic, and easy to embed.
+   - Secure secret storage is platform-specific and is better delegated to
+     environment variables, OS keychains, container/orchestrator secrets, or
+     dedicated secret managers such as Keychain, Secret Service, Windows
+     Credential Manager, Vault, or cloud secret stores.
+   - If demand appears, the right extension point is an optional pluggable
+     key-provider or keyring integration, not a mandatory encrypted database in
+     `modelito` itself.
+
+2. Cloud-provider integrations should remain lightweight shims by default.
+   - `modelito` should keep focusing on a stable common surface: request/response
+     normalization, streaming behavior, timeout handling, embeddings, and small
+     provider-specific compatibility helpers.
+   - Deeper provider features should only be added when they either map cleanly
+     across providers or clearly belong as optional, provider-specific helpers.
+   - Secret management, deployment orchestration, large admin surfaces, and
+     provider-console workflows should stay outside the core library unless the
+     project intentionally broadens scope.
 
 ## Next prioritized steps
 
@@ -197,5 +216,7 @@ Outstanding minor observations:
    tag pushes can publish without the manual `twine upload` fallback.
 2. Optionally add a persistent lifecycle-storage flavour or runtime option if
    downstream tooling needs cross-process or long-running operation tracking.
-3. Decide whether the in-memory lifecycle tracker should remain the default
-   surface or eventually gain an alternate persistent backend.
+3. If secret-storage demand grows, design an optional pluggable key-provider
+   interface rather than embedding encrypted storage in the core package.
+4. Keep reviewing provider additions against the "portable common surface first,
+   optional provider-specific helper second" rule.
