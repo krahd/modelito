@@ -1,6 +1,6 @@
 # modelito status report
 
-Last updated: 2026-05-06 16:59
+Last updated: 2026-05-06 17:38
 
 ## Current state
 
@@ -23,7 +23,7 @@ Repository health after implementing all previously listed remediation steps:
 
 ## Current focus
 
-- Publish release `v1.2.2` for the expanded Ollama administration surface.
+- Stabilize the release pipeline after publishing `v1.2.2`.
 - Keep release artifacts (`CHANGELOG.md`, `RELEASE.md`, `STATUS.md`) aligned.
 
 ## Audit scope
@@ -142,8 +142,31 @@ Validation executed during this audit and implementation pass:
    fix in the new apt install-command branch of `ollama_service.py`.
 - `/Users/tom/devel/ml-llm/llm/modelito/.venv/bin/python -m build` -> built `modelito-1.2.2.tar.gz` and `modelito-1.2.2-py3-none-any.whl` successfully.
 - `/Users/tom/devel/ml-llm/llm/modelito/.venv/bin/python -m twine check dist/*` -> passed.
+- `gh release create v1.2.2` -> GitHub release created successfully.
+- `gh run view 25457971984 --log-failed` -> publish workflow failed only at the
+   trusted-publishing exchange step with `invalid-publisher`.
+- `python -m twine upload --skip-existing dist/*` -> manual PyPI upload
+   succeeded.
+- `https://pypi.org/pypi/modelito/1.2.2/json` -> version-specific PyPI metadata
+   resolves to `1.2.2`.
+- Fresh install verification from PyPI succeeded after index propagation:
+   `pip install --no-cache-dir modelito==1.2.2` followed by `import modelito`
+   reported `1.2.2`.
 - Historical validation from the earlier audit in the same session remains:
    `python -m build` completed successfully.
+
+## Release outcome
+
+Release `v1.2.2` has been completed.
+
+- Release commit created and pushed to `main`.
+- Tag `v1.2.2` created and pushed.
+- GitHub release created successfully.
+- PyPI publish workflow triggered automatically from the tag push.
+- Automatic trusted publishing failed becauste the PyPI trusted publisher
+   configuration does not match this repository/workflow claims.
+- The release was published to PyPI successfully via manual `twine upload`
+   using maintainer credentials available on the local machine.
 
 ## Code/docs consistency assessment
 
@@ -163,10 +186,15 @@ Outstanding minor observations:
    still be worth adding if downstream tooling needs cross-process or
    long-running operation tracking.
 
+## Questions
+
+1. Should modelito store securely the API keys somewhere / somehow encryp?
+2. Do we need more functionality than the "lightweight shims" offered to the cloud providers?
+
 ## Next prioritized steps
 
-1. Push the `v1.2.2` release commit and tag so the GitHub publish workflow can
-   publish to PyPI via trusted publishing.
+1. Fix PyPI trusted publishing for `.github/workflows/publish.yml` so future
+   tag pushes can publish without the manual `twine upload` fallback.
 2. Optionally add a persistent lifecycle-storage flavour or runtime option if
    downstream tooling needs cross-process or long-running operation tracking.
 3. Decide whether the in-memory lifecycle tracker should remain the default
