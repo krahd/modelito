@@ -1,6 +1,6 @@
 # modelito status report
 
-Last updated: 2026-05-06 17:38
+Last updated: 2026-05-06 17:39
 
 ## Current state
 
@@ -163,7 +163,7 @@ Release `v1.2.2` has been completed.
 - Tag `v1.2.2` created and pushed.
 - GitHub release created successfully.
 - PyPI publish workflow triggered automatically from the tag push.
-- Automatic trusted publishing failed becauste the PyPI trusted publisher
+- Automatic trusted publishing failed because the PyPI trusted publisher
    configuration does not match this repository/workflow claims.
 - The release was published to PyPI successfully via manual `twine upload`
    using maintainer credentials available on the local machine.
@@ -188,7 +188,7 @@ Outstanding minor observations:
 
 ## Questions
 
-1. Should modelito store securely the API keys somewhere / somehow encryp?
+1. Should modelito store securely the API keys somewhere / somehow (i.e. encrypted db)?
 2. Do we need more functionality than the "lightweight shims" offered to the cloud providers?
 
 ## Next prioritized steps
