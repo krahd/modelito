@@ -1,6 +1,6 @@
 # modelito status report
 
-Last updated: 2026-05-06 21:55
+Last updated: 2026-05-06 22:00
 
 ## Current state
 
@@ -45,7 +45,9 @@ Repository health after implementing all previously listed remediation steps:
 
 - Release v1.4.0 with usability improvements to PyPI.
 
-## Release 1.4.0 — Ready for Publication
+## Release 1.4.0 — Published to PyPI
+
+Release completed successfully on 2026-05-06 at 22:00 UTC.
 
 All changes implemented, tested, and committed:
 
@@ -58,6 +60,11 @@ All changes implemented, tested, and committed:
 ✓ Package builds successfully
 ✓ Exports properly included in `__init__.py`
 ✓ CHANGELOG and documentation updated
+✓ Git changes pushed to GitHub (main branch)
+✓ Release tag v1.4.0 created and pushed to GitHub
+✓ Distribution packages built and validated
+✓ Uploaded to PyPI: https://pypi.org/project/modelito/1.4.0/
+✓ Confirmed available as latest version on PyPI
 
 ## Visual overview
 
@@ -354,3 +361,6 @@ Acceptance criteria outcome:
    interface rather than embedding encrypted storage in the core package.
 3. If embedding use grows, consider adding async embedding support while keeping
    vector stores, chunking pipelines, and RAG orchestration out of core scope.
+
+
+Last updated: 2026-05-06 21:55
