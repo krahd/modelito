@@ -72,6 +72,22 @@ class ModelLifecycleState:
     updated_at: float = field(default_factory=time.time)
 
 
+@dataclass(frozen=True)
+class ReadinessResult:
+    """Structured result from model readiness checks.
+
+    Combines success status, lifecycle phase, message, source, and elapsed time
+    into a single result object for cleaner UI integration and reduced polling.
+    """
+
+    success: bool
+    phase: str  # e.g., "ready", "preparing", "error"
+    message: str = ""
+    source: str = "http"  # e.g., "ollama", "http", "cli"
+    elapsed_seconds: float = 0.0
+    error: Optional[str] = None
+
+
 _MODEL_STATE_LOCK = threading.Lock()
 _MODEL_LIFECYCLE_STATES: Dict[str, ModelLifecycleState] = {}
 _PERCENT_RE = re.compile(r"(?P<pct>\d{1,3}(?:\.\d+)?)%")
@@ -898,34 +914,92 @@ def ensure_model_ready(
     downloading the selected model, issuing a warm-up request, and confirming a
     follow-up model-scoped generate call succeeds.
     """
-    deadline = time.time() + float(timeout)
+    result = ensure_model_ready_detailed(
+        model_name,
+        host=host,
+        port=port,
+        auto_start=auto_start,
+        allow_download=allow_download,
+        timeout=timeout,
+    )
+    return result.success
+
+
+def ensure_model_ready_detailed(
+    model_name: str,
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
+    auto_start: bool = False,
+    allow_download: bool = False,
+    timeout: float = 120.0,
+) -> ReadinessResult:
+    """Ensure a specific model is downloaded, warmed, and ready; return structured result.
+
+    Similar to `ensure_model_ready()` but returns a structured `ReadinessResult`
+    object with success, phase, message, source, elapsed time, and error details.
+    This is useful for UI integration and detailed diagnostics without polling.
+    """
+    start_time = time.time()
+    deadline = start_time + float(timeout)
     _record_model_state(model_name, "preparing", message=f"Preparing model {model_name}")
 
     ok, message = ensure_ollama_running_verbose(
         host=host, port=port, auto_start=auto_start, timeout=min(timeout, 30.0))
     if not ok:
         _record_model_state(model_name, "error", message=message, error=message)
-        return False
+        elapsed = time.time() - start_time
+        return ReadinessResult(
+            success=False,
+            phase="error",
+            message=message,
+            source="ollama",
+            elapsed_seconds=elapsed,
+            error=message,
+        )
 
     remaining = max(1.0, deadline - time.time())
     if not ensure_model_available(model_name, allow_download=allow_download, timeout=remaining):
         error = f"Model {model_name} is not available locally"
         _record_model_state(model_name, "error", message=error, error=error)
-        return False
+        elapsed = time.time() - start_time
+        return ReadinessResult(
+            success=False,
+            phase="error",
+            message=error,
+            source="cli",
+            elapsed_seconds=elapsed,
+            error=error,
+        )
 
     _record_model_state(model_name, "warming", message=f"Warming model {model_name}")
     try:
         preload_model(host, port, model_name, timeout=min(remaining, 60.0))
     except Exception as exc:
         _record_model_state(model_name, "error", message=str(exc), error=str(exc), source="http")
-        return False
+        elapsed = time.time() - start_time
+        return ReadinessResult(
+            success=False,
+            phase="error",
+            message=str(exc),
+            source="http",
+            elapsed_seconds=elapsed,
+            error=str(exc),
+        )
 
     host_env = f"{host.replace('http://', '').replace('https://', '')}:{port}"
     running = running_model_names(host_env)
     if model_name in running:
+        msg = f"Model {model_name} is warmed and running"
         _record_model_state(
-            model_name, "ready", message=f"Model {model_name} is warmed and running", progress=100.0, source="http")
-        return True
+            model_name, "ready", message=msg, progress=100.0, source="http")
+        elapsed = time.time() - start_time
+        return ReadinessResult(
+            success=True,
+            phase="ready",
+            message=msg,
+            source="http",
+            elapsed_seconds=elapsed,
+        )
 
     try:
         json_post(
@@ -935,11 +1009,27 @@ def ensure_model_ready(
         )
     except Exception as exc:
         _record_model_state(model_name, "error", message=str(exc), error=str(exc), source="http")
-        return False
+        elapsed = time.time() - start_time
+        return ReadinessResult(
+            success=False,
+            phase="error",
+            message=str(exc),
+            source="http",
+            elapsed_seconds=elapsed,
+            error=str(exc),
+        )
 
+    msg = f"Model {model_name} responded to readiness probe"
     _record_model_state(
-        model_name, "ready", message=f"Model {model_name} responded to readiness probe", progress=100.0, source="http")
-    return True
+        model_name, "ready", message=msg, progress=100.0, source="http")
+    elapsed = time.time() - start_time
+    return ReadinessResult(
+        success=True,
+        phase="ready",
+        message=msg,
+        source="http",
+        elapsed_seconds=elapsed,
+    )
 
 
 def ensure_model_loaded(
@@ -980,6 +1070,18 @@ async def async_ensure_model_ready(
 ) -> bool:
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, ensure_model_ready, model_name, host, port, auto_start, allow_download, timeout)
+
+
+async def async_ensure_model_ready_detailed(
+    model_name: str,
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
+    auto_start: bool = False,
+    allow_download: bool = False,
+    timeout: float = 120.0,
+) -> ReadinessResult:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, ensure_model_ready_detailed, model_name, host, port, auto_start, allow_download, timeout)
 
 
 def change_ollama_config(config: Dict[str, Any], config_path: Optional[str] = None) -> bool:
@@ -1474,7 +1576,16 @@ def inspect_service_state(config_path: Optional[str] = None) -> Dict[str, Any]:
     }
 
 
-def start_service(config_path: Optional[str] = None) -> int:
+def start_service(config_path: Optional[str] = None, warmup_timeout: float = 30.0) -> int:
+    """Start Ollama service with optional model preload and configurable warmup timeout.
+
+    Args:
+        config_path: Optional path to LLM configuration file.
+        warmup_timeout: Timeout in seconds for server warmup. Default is 30.0.
+
+    Returns:
+        0 on success, non-zero on failure.
+    """
     llm = load_llm_config(config_path)
     model = preferred_start_model(llm)
     url = str(llm["url"])
@@ -1498,7 +1609,14 @@ def start_service(config_path: Optional[str] = None) -> int:
         print(f"Starting ollama serve at {host} ...")
         start_detached_ollama_serve(host)
         try:
-            wait_until_ready(url, port)
+            deadline = time.time() + float(warmup_timeout)
+            while time.time() < deadline:
+                if server_is_up(url, port):
+                    break
+                time.sleep(0.5)
+            if not server_is_up(url, port):
+                print(f"Timeout waiting for ollama serve at {host}", file=sys.stderr)
+                return 1
         except Exception as exc:
             print(f"Failed to start ollama serve: {exc}", file=sys.stderr)
             return 1
@@ -1605,6 +1723,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = subs.add_parser("start")
     sp.add_argument("--config", "-c", dest="config", default=None)
+    sp.add_argument("--warmup-timeout", type=float, default=30.0,
+                    help="Server warmup timeout in seconds (default: 30.0)")
     sp.add_argument("--wait", type=float, default=30.0)
 
     sp = subs.add_parser("stop")
@@ -1635,7 +1755,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if cmd == "start":
         cfg = getattr(args, "config", None)
-        return start_service(cfg)
+        warmup_timeout = getattr(args, "warmup_timeout", 30.0)
+        return start_service(cfg, warmup_timeout=warmup_timeout)
 
     if cmd == "stop":
         cfg = getattr(args, "config", None)

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.4.0 - 2026-05-06
+
+- Add `ensure_model_ready_detailed()` function with structured `ReadinessResult`
+  return type for richer readiness diagnostics (success, phase, message, source,
+  elapsed_seconds, error). Async wrapper `async_ensure_model_ready_detailed()`
+  also available.
+- Make `start_service()` warmup timeout configurable via `warmup_timeout`
+  parameter (default: 30.0 seconds) and CLI `--warmup-timeout` argument.
+- Document platform-specific installer policies in API reference: macOS prefers
+  `brew`, Linux prefers `apt`, Windows prefers `choco`, with script-based fallbacks.
+- Refactor `ensure_model_ready()` to delegate to `ensure_model_ready_detailed()`
+  internally for code reuse and consistency.
+
 ## 1.3.0 - 2026-05-06
 
 - Add first-class embedder runtime API with `Embedder` wrapper, embedder

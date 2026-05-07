@@ -1,13 +1,13 @@
 # modelito status report
 
-Last updated: 2026-05-06 19:34
+Last updated: 2026-05-06 21:45
 
 ## Current state
 
 modelito remains a compact, provider-agnostic Python library with optional
 SDK integrations and strong local/offline fallback behavior.
 
-Current package metadata version is `1.3.0` (`pyproject.toml`).
+Current package metadata version is `1.4.0` (`pyproject.toml`) — under development.
 
 The package now includes a broader Ollama administration surface alongside the
 existing provider/runtime helpers.
@@ -18,9 +18,22 @@ API via `Embedder`, `EmbeddingProvider`, and embedder registry helpers.
 Transport/retry plumbing and stable response/error envelopes are now implemented
 for wrapper-style Ollama operations through shared provider-agnostic helpers.
 
+**Recent usability improvements** (this session):
+
+1. Configurable warmup timeout in `start_service()` — users can now customize
+   server startup timeout via parameter or CLI `--warmup-timeout` argument.
+
+2. Structured readiness result object via new `ensure_model_ready_detailed()`
+   function — returns `ReadinessResult` with success, phase, message, source,
+   elapsed_seconds, and error details for cleaner UI integration without polling.
+
+3. Documented platform-specific installer policies — explicit policy docs in
+   API reference clarify macOS (`brew`-first), Linux (`apt`-first), and Windows
+   (`choco`-first) preference ordering for package managers.
+
 Repository health after implementing all previously listed remediation steps:
 
-- Runtime tests pass locally.
+- Runtime tests pass locally (109 passed, 3 skipped).
 - Lint checks pass locally.
 - Packaging build succeeds locally.
 - Type checking now passes cleanly.
@@ -30,8 +43,9 @@ Repository health after implementing all previously listed remediation steps:
 
 ## Current focus
 
-- Stabilize the release pipeline after publishing `v1.2.2`.
-- Keep release artifacts (`CHANGELOG.md`, `RELEASE.md`, `STATUS.md`) aligned.
+- Incorporate recent usability improvements (warmup timeout, readiness result,
+  installer policy docs).
+- Bump version to 1.4.0 and prepare release.
 
 ## Visual overview
 

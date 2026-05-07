@@ -167,6 +167,21 @@ useful for diagnostics and local workflows:
 - `load_remote_timeout_catalog(path: Optional[Path] = None) -> dict` — load the timeout catalog (falls back to the bundled catalog).
 - `common_model_timeout(model_name: str) -> Optional[float]` — returns a conservative timeout in seconds for a given model.
 
+Platform-specific installer policies
+-------------------------------------
+
+The `detect_install_method()` and `install_ollama()` helpers implement a
+platform-aware preference order to ensure consistent behavior across environments:
+
+- **macOS:** `brew` (if available) → script-based fallback
+- **Linux:** `apt` (if available) → script-based fallback  
+- **Windows:** `choco` (if available) → PowerShell-based fallback
+
+This policy ensures the most commonly available package manager is preferred on
+each platform. To override and use a specific method, pass the `method` parameter
+explicitly to `install_ollama(method="script")` or `detect_install_method()` will
+return the best-effort choice for your platform.
+
 Structured admin helpers
 ------------------------
 

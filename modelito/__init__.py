@@ -32,6 +32,7 @@ from .ollama_service import ensure_ollama_running
 from .ollama_service import (
     RemoteModelCatalogEntry,
     ModelLifecycleState,
+    ReadinessResult,
     detect_install_method,
     get_ollama_binary,
     install_ollama,
@@ -54,6 +55,7 @@ from .ollama_service import (
     wait_until_ready,
     preload_model,
     ensure_model_ready,
+    ensure_model_ready_detailed,
     ensure_model_loaded,
     ollama_health_check,
     ollama_readiness_probe,
@@ -66,6 +68,7 @@ from .ollama_service import (
     install_service,
     ensure_ollama_running_verbose,
     async_ensure_model_ready,
+    async_ensure_model_ready_detailed,
 )
 from .ollama import OllamaProvider
 from .gemini import GeminiProvider
@@ -98,6 +101,9 @@ __all__ = [
     "ClaudeProvider",
     "Provider",
     "EmbeddingProvider",
+    "RemoteModelCatalogEntry",
+    "ModelLifecycleState",
+    "ReadinessResult",
     "Client",
     "Embedder",
     "StubEmbeddingProvider",
@@ -137,6 +143,7 @@ __all__ = [
     "wait_until_ready",
     "preload_model",
     "ensure_model_ready",
+    "ensure_model_ready_detailed",
     "ensure_model_loaded",
     "ollama_health_check",
     "ollama_readiness_probe",
@@ -149,4 +156,5 @@ __all__ = [
     "install_service",
     "ensure_ollama_running_verbose",
     "async_ensure_model_ready",
+    "async_ensure_model_ready_detailed",
 ]
