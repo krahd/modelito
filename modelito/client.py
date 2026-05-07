@@ -10,7 +10,7 @@ Unified Client interface for all providers.
 """
 from __future__ import annotations
 from typing import Any, Dict, Iterable, List, Optional, Union, cast
-from .provider_registry import get_provider, list_providers
+from .provider_registry import get_provider, list_embedders, list_providers
 from .provider import Provider
 from .messages import Message
 from .model_metadata import get_model_metadata
@@ -65,6 +65,10 @@ class Client:
     @staticmethod
     def available_providers() -> List[str]:
         return list_providers()
+
+    @staticmethod
+    def available_embedders() -> List[str]:
+        return list_embedders()
 
     # Expose provider-specific features if needed
     def __getattr__(self, item):

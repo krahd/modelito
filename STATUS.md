@@ -1,16 +1,22 @@
 # modelito status report
 
-Last updated: 2026-05-06 17:40
+Last updated: 2026-05-06 19:34
 
 ## Current state
 
 modelito remains a compact, provider-agnostic Python library with optional
 SDK integrations and strong local/offline fallback behavior.
 
-Current package metadata version is `1.2.2` (`pyproject.toml`).
+Current package metadata version is `1.3.0` (`pyproject.toml`).
 
 The package now includes a broader Ollama administration surface alongside the
 existing provider/runtime helpers.
+
+The embeddings surface is now also exposed as a first-class runtime-selectable
+API via `Embedder`, `EmbeddingProvider`, and embedder registry helpers.
+
+Transport/retry plumbing and stable response/error envelopes are now implemented
+for wrapper-style Ollama operations through shared provider-agnostic helpers.
 
 Repository health after implementing all previously listed remediation steps:
 
@@ -20,11 +26,22 @@ Repository health after implementing all previously listed remediation steps:
 - Type checking now passes cleanly.
 - Local pytest runs no longer emit the pytest-asyncio loop-scope deprecation warning.
 - Previously identified docs/release-history inconsistencies were remediated.
+- Markdown diagnostics are clean for `README.md`, `CHANGELOG.md`, `docs/API.md`, `docs/INSTALL.md`, `docs/USAGE.md`, and `RELEASE.md`.
 
 ## Current focus
 
 - Stabilize the release pipeline after publishing `v1.2.2`.
 - Keep release artifacts (`CHANGELOG.md`, `RELEASE.md`, `STATUS.md`) aligned.
+
+## Visual overview
+
+Architecture diagram:
+
+![modelito architecture](docs/source/assets/status-architecture.svg)
+
+Flow chart:
+
+![modelito flow chart](docs/source/assets/status-flow.svg)
 
 ## Audit scope
 
@@ -152,6 +169,7 @@ Validation executed during this audit and implementation pass:
 - Fresh install verification from PyPI succeeded after index propagation:
    `pip install --no-cache-dir modelito==1.2.2` followed by `import modelito`
    reported `1.2.2`.
+- `pytest -q tests/test_plumbing.py tests/test_ollama_plumbing.py tests/test_ollama_admin_helpers.py tests/test_client.py tests/test_embeddings.py` -> 23 passed.
 - Historical validation from the earlier audit in the same session remains:
    `python -m build` completed successfully.
 
@@ -167,6 +185,44 @@ Release `v1.2.2` has been completed.
    configuration does not match this repository/workflow claims.
 - The release was published to PyPI successfully via manual `twine upload`
    using maintainer credentials available on the local machine.
+
+## Trusted publishing follow-up
+
+Root cause of the failed `v1.2.2` PyPI trusted-publishing run was confirmed
+from the GitHub Actions logs: the OIDC token reached PyPI without an
+`environment` claim, and PyPI reported `environment: MISSING` alongside
+`invalid-publisher`.
+
+Remediation applied in this session:
+
+- Updated `.github/workflows/publish.yml` so the publish job runs inside the
+   dedicated GitHub Actions environment `pypi`.
+
+Expected effect:
+
+- Future tag-triggered PyPI publishes should now present the `environment: pypi`
+   claim expected by the configured trusted publisher, removing the previous
+   need for a manual `twine upload` fallback if the PyPI-side publisher record is
+   otherwise correct.
+
+## Embeddings API refinement
+
+The package previously supported embeddings only as an optional provider method
+and a small deterministic stub helper. That surface is now promoted into a
+small explicit public API without widening the project scope into a broader RAG
+or vector-database framework.
+
+Completed in this session:
+
+- Added provider-registry helpers `get_embedder()` and `list_embedders()`.
+- Added `Embedder`, a narrow embeddings-only runtime wrapper parallel to the
+   existing `Client` runtime-selection surface.
+- Exported `EmbeddingProvider`, `Embedder`, `StubEmbeddingProvider`, and
+   `embed_texts` from the top-level package.
+- Added client-level discoverability through `Client.available_embedders()`.
+- Added focused tests for the embedder registry and runtime wrapper.
+- Updated `README.md`, `docs/API.md`, and `docs/USAGE.md` to document the new
+   public surface.
 
 ## Code/docs consistency assessment
 
@@ -210,13 +266,65 @@ Outstanding minor observations:
      provider-console workflows should stay outside the core library unless the
      project intentionally broadens scope.
 
+3. Keep reviewing provider additions against the "portable common surface first,
+   optional provider-specific helper second" rule.
+
 ## Next prioritized steps
 
-1. Fix PyPI trusted publishing for `.github/workflows/publish.yml` so future
-   tag pushes can publish without the manual `twine upload` fallback.
-2. Optionally add a persistent lifecycle-storage flavour or runtime option if
+1. Exercise the updated publish workflow on the next release tag to confirm the
+   PyPI trusted publisher now matches successfully.
+
+## Implementation spec (completed)
+
+This session implemented and validated two buckets of runtime infrastructure
+while keeping the package dependency-light and provider-agnostic.
+
+Implemented deliverables:
+
+1. Generic Ollama lifecycle mechanics
+    - Added explicit health-check and readiness-probe helpers for local Ollama
+       (`ollama_health_check`, `ollama_readiness_probe`).
+    - Added explicit ensure-loaded lifecycle primitive (`ensure_model_loaded`)
+       while preserving `ensure_model_ready` behavior.
+    - Kept pull/delete/list/running operations and added envelope wrappers in
+       `ollama_api` for these operations.
+    - Added retry/backoff mechanics for HTTP probe operations in `json_get` and
+       `json_post` through shared transport policy helpers.
+    - Normalized network/transport failures into stable error objects.
+
+2. Provider-agnostic plumbing
+      - Introduced transport policy primitives (timeouts, attempts, backoff) via
+         `TransportPolicy` and `retry_with_backoff`.
+      - Introduced consistent response/error envelopes (`ResponseEnvelope`,
+         `ErrorEnvelope`, `envelope_ok`, `envelope_error`).
+      - Added thin command wrappers in `ollama_api`, including `api_health`,
+         `api_readiness`, `api_ensure_model_loaded`, and envelope variants for
+         list/pull/delete/running-model operations.
+
+Implemented API shapes:
+
+- `TransportPolicy`: timeout, max attempts, base/max delay, backoff factor.
+- `retry_with_backoff(...)`: reusable retry execution helper.
+- `normalize_network_error(...)`: map socket/timeout/HTTP failures to stable
+   error codes and retryability flags.
+- `ResponseEnvelope` / `ErrorEnvelope`: stable envelope dataclasses.
+- Ollama wrappers:
+   `api_health()`, `api_readiness()`, `api_ensure_model_loaded()`, and
+   envelope variants for list/pull/delete/running operations.
+
+Acceptance criteria outcome:
+
+- Met. New mechanics are additive and backward-compatible with existing public
+   functions.
+- Met. Existing targeted tests used in this scope keep passing.
+- Met. New tests cover retry behavior, error normalization, envelopes, and new
+   command wrappers.
+
+## Future steps pending evaluation and demand / usefulness analysis
+
+1. Optionally add a persistent lifecycle-storage flavour or runtime option if
    downstream tooling needs cross-process or long-running operation tracking.
-3. If secret-storage demand grows, design an optional pluggable key-provider
+2. If secret-storage demand grows, design an optional pluggable key-provider
    interface rather than embedding encrypted storage in the core package.
-4. Keep reviewing provider additions against the "portable common surface first,
-   optional provider-specific helper second" rule.
+3. If embedding use grows, consider adding async embedding support while keeping
+   vector stores, chunking pipelines, and RAG orchestration out of core scope.

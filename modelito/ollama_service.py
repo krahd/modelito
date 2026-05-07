@@ -25,6 +25,10 @@ import json
 import logging
 import argparse
 from dataclasses import dataclass, field
+from urllib.error import HTTPError, URLError
+
+from .errors import ProviderError
+from .plumbing import TransportPolicy, normalize_network_error, retry_with_backoff
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -938,6 +942,29 @@ def ensure_model_ready(
     return True
 
 
+def ensure_model_loaded(
+    model_name: str,
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
+    auto_start: bool = False,
+    allow_download: bool = False,
+    timeout: float = 120.0,
+) -> bool:
+    """Ensure a model is available locally and loaded/warmed for inference.
+
+    This is an explicit alias for `ensure_model_ready()` to provide a clearer
+    lifecycle primitive for callers that reason in "loaded" terminology.
+    """
+    return ensure_model_ready(
+        model_name,
+        host=host,
+        port=port,
+        auto_start=auto_start,
+        allow_download=allow_download,
+        timeout=timeout,
+    )
+
+
 async def async_ensure_model_available(model_name: str, allow_download: bool = False, timeout: float = 600.0) -> bool:
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, ensure_model_available, model_name, allow_download, timeout)
@@ -1123,19 +1150,125 @@ def start_detached_ollama_serve(host: str, start_args: Optional[List[str]] = Non
         )
 
 
-def json_post(url: str, payload: Dict[str, Any], timeout: float = 60.0) -> Dict[str, Any]:
-    request = Request(url, data=json.dumps(payload).encode("utf-8"),
-                      headers={"Content-Type": "application/json"}, method="POST")
-    with urlopen(request, timeout=timeout) as response:
-        body = response.read().decode("utf-8")
-    return json.loads(body) if body else {}
+def _raise_normalized_network_error(exc: Exception, operation: str) -> None:
+    err = normalize_network_error(exc, provider="ollama", operation=operation)
+    raise ProviderError(err.message, provider="ollama", code=err.code, details=err.details) from exc
 
 
-def json_get(url: str, timeout: float = 5.0) -> Dict[str, Any]:
-    """Read JSON from an HTTP GET endpoint and decode it to a dict."""
-    with urlopen(url, timeout=timeout) as response:
-        body = response.read().decode("utf-8")
-    return json.loads(body) if body else {}
+def json_post(
+    url: str,
+    payload: Dict[str, Any],
+    timeout: float = 60.0,
+    policy: Optional[TransportPolicy] = None,
+) -> Dict[str, Any]:
+    """POST JSON payload with timeout + retry/backoff support."""
+
+    merged_policy = policy or TransportPolicy(timeout=timeout)
+
+    def _op() -> Dict[str, Any]:
+        request = Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urlopen(request, timeout=merged_policy.timeout) as response:
+            body = response.read().decode("utf-8")
+        return json.loads(body) if body else {}
+
+    try:
+        return retry_with_backoff(
+            _op,
+            policy=merged_policy,
+            is_retryable=lambda exc: normalize_network_error(exc).retryable,
+        )
+    except Exception as exc:
+        _raise_normalized_network_error(exc, "json_post")
+
+
+def json_get(
+    url: str,
+    timeout: float = 5.0,
+    policy: Optional[TransportPolicy] = None,
+) -> Dict[str, Any]:
+    """Read JSON from an HTTP GET endpoint with timeout + retry/backoff."""
+
+    merged_policy = policy or TransportPolicy(timeout=timeout)
+
+    def _op() -> Dict[str, Any]:
+        with urlopen(url, timeout=merged_policy.timeout) as response:
+            body = response.read().decode("utf-8")
+        return json.loads(body) if body else {}
+
+    try:
+        return retry_with_backoff(
+            _op,
+            policy=merged_policy,
+            is_retryable=lambda exc: normalize_network_error(exc).retryable,
+        )
+    except Exception as exc:
+        _raise_normalized_network_error(exc, "json_get")
+
+
+def ollama_health_check(
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
+    timeout: float = 2.0,
+    policy: Optional[TransportPolicy] = None,
+) -> Dict[str, Any]:
+    """Return a best-effort health snapshot for the local Ollama service."""
+    started = time.time()
+    host_env = f"{host.replace('http://', '').replace('https://', '')}:{port}"
+    reachable = server_is_up(host, port)
+    version = ""
+    http_ok = False
+    error: Optional[str] = None
+
+    if reachable:
+        try:
+            version_payload = json_get(
+                endpoint_url(host, port, "/api/version"),
+                timeout=timeout,
+                policy=policy,
+            )
+            http_ok = True
+            if isinstance(version_payload, dict):
+                version = str(version_payload.get("version")
+                              or version_payload.get("ollama_version") or "")
+        except Exception as exc:
+            error = str(exc)
+
+    try:
+        running = running_model_names(host_env)
+    except Exception:
+        running = []
+
+    return {
+        "host": host,
+        "port": port,
+        "reachable": bool(reachable),
+        "http_ok": bool(http_ok),
+        "version": version,
+        "running_models": running,
+        "ready": bool(reachable and (http_ok or len(running) > 0)),
+        "duration_ms": int((time.time() - started) * 1000),
+        "error": error,
+    }
+
+
+def ollama_readiness_probe(
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
+    timeout: float = 2.0,
+    policy: Optional[TransportPolicy] = None,
+) -> bool:
+    """Probe whether the local Ollama service is ready for request handling."""
+    merged_policy = policy or TransportPolicy(timeout=timeout)
+    try:
+        json_get(endpoint_url(host, port, "/api/tags"), timeout=timeout, policy=merged_policy)
+        return True
+    except Exception:
+        return False
 
 
 async def async_preload_model(url: str, port: int, model: str, timeout: float = 120.0) -> None:

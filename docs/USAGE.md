@@ -9,7 +9,7 @@ real SDKs, otherwise the shims provide deterministic fallbacks suitable for
 testing and offline use.
 
 Usage
-=====
+-----
 
 Quick examples showing how to import and use the public API in `modelito`.
 
@@ -20,6 +20,7 @@ Basic imports
 from modelito import (
     __version__,
     count_tokens,
+    Embedder,
     OllamaConnector,
     OllamaProvider,
 )
@@ -31,6 +32,10 @@ print(count_tokens("Hello world"))
 
 # create a provider instance (compatibility shim)
 provider = OllamaProvider()
+
+# create an embeddings-only runtime wrapper
+embedder = Embedder(provider="openai")
+print(embedder.embed(["hello world"]))
 
 # create a connector (does not start any external process)
 conn = OllamaConnector(provider=provider)
@@ -72,7 +77,6 @@ Timeout estimation and calibration
 
 Modelito includes a small timeout estimator and diagnostic tooling useful for
 choosing conservative network/RPC timeouts for remote models. Quick usage:
-
 
 Ollama CLI helpers
 ------------------
@@ -161,4 +165,3 @@ python -m modelito.timeout_cli --model llama-2-13b --input-tokens 2048
 python -m modelito.timeout_calibrate --model llama-2-13b --outdir ./calib
 python -m modelito.timeout_calibrate --model llama-2-13b --execute
 ```
-

@@ -15,12 +15,15 @@ import *`) are:
 - `estimate_remote_timeout(model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1, with_source: bool = False) -> int | Tuple[int, Dict[str, Any]]` — conservative timeout estimator. When `with_source=True` the function returns a `(timeout_seconds, details_dict)` tuple with diagnostic metadata.
 - `estimate_remote_timeout_details(model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1) -> Tuple[int, Dict[str, Any]]` — diagnostic timeout estimator returning both timeout and computation details.
 - `OllamaConnector` — small conversation history manager and prompt builder. Connectors now prefer typed `Message`/`Response` dataclasses and provide both sync (`complete`) and async (`acomplete`) surfaces in addition to the legacy `send_sync` helper.
+- `Embedder` — small embeddings-only runtime wrapper that mirrors the provider-selection behavior of `Client` for callers that only need vector embeddings.
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama HTTP
   API when available (via the bundled `ollama_service` helpers). If the HTTP
   API is not reachable it will attempt the Ollama CLI as a best-effort
   fallback (using `run_ollama_command`) before exposing a safe deterministic
   `summarize()` fallback useful for tests.
 - `GeminiProvider`, `GrokProvider`, `OpenAIProvider`, `ClaudeProvider` — minimal provider shims with the same `list_models()` / `summarize()` surface.
+- `EmbeddingProvider` — structural protocol for provider implementations that expose `embed(texts, **kwargs)`.
+- `embed_texts(texts, dim=8) -> List[List[float]]` and `StubEmbeddingProvider` — deterministic test-friendly embedding helpers.
 - `normalize_models(raw) -> List[Dict[str, Any]]` — normalize provider model listings into dictionaries with an `id` field.
 - `normalize_metadata(raw) -> Dict[str, Any]` — normalize provider metadata into a plain dictionary, wrapping scalar values when needed.
 - `load_config(path: str) -> dict` — JSON/YAML loader for small config files.
@@ -85,6 +88,34 @@ Provider adapters implement the small provider surfaces used by the connectors. 
 - `acomplete(messages, settings: Optional[dict] = None) -> str` — asynchronous completion surface (optional).
 - `stream(messages, settings: Optional[dict] = None) -> Iterable[str]` — streaming generator (optional).
 - `embed(texts: Iterable[str], **kwargs) -> List[List[float]]` — embeddings surface (optional).
+
+Embeddings-only wrapper
+-----------------------
+
+`Embedder(provider: str | EmbeddingProvider = "openai", model: Optional[str] = None, **kwargs)`
+: Small embeddings-only runtime selector. It resolves a named embedder from
+  `modelito.provider_registry` and exposes the narrow `embed()` surface.
+
+Important `Embedder` methods and attributes:
+
+- `embed(texts: Iterable[str], **kwargs) -> List[List[float]]`
+- `provider_name -> str`
+- `available_embedders() -> List[str]`
+
+Registry helpers:
+
+- `from modelito.provider_registry import get_embedder, list_embedders`
+
+Example:
+
+```py
+from modelito import Embedder
+
+embedder = Embedder(provider="mock")
+vectors = embedder.embed(["one", "two"])
+print(vectors)
+print(Embedder.available_embedders())
+```
 
 Streaming semantics
 -------------------
@@ -153,15 +184,6 @@ CLI usage
 - `python -m modelito.timeout_cli` — print estimated timeouts and diagnostic details for a model.
 - `python -m modelito.timeout_calibrate` — write calibration prompts and (optionally) exercise a local Ollama server to collect timing samples.
 
- `endpoint_url(host: str, port: int, path: str = "/api/generate") -> str`
- - `server_is_up(host: str, port: int) -> bool`
- - `ensure_ollama_running(host: str = "http://127.0.0.1", port: int = 11434, auto_start: bool = False, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> bool`
- - `get_ollama_binary() -> Optional[str]`
- - `list_local_models() -> List[str]` and `list_remote_models() -> List[str]`
- - `download_model(model_name: str) -> bool` and `delete_model(model_name: str) -> bool`
- - `serve_model(model_name: Optional[str] = None, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> bool`
- - `change_ollama_config(config: dict, config_path: Optional[str] = None) -> bool`
-
 Examples
 --------
 
@@ -188,34 +210,43 @@ Notes
 Advanced API Features
 --------------------
 
-### Unified Provider Abstraction
+Unified Provider Abstraction:
+
 - All providers (OpenAI, Anthropic, Google, Ollama, etc.) accessed via a consistent interface.
 - Runtime provider/model switching: `from modelito.provider_registry import get_provider, list_providers`.
+- Runtime embedder selection: `from modelito.provider_registry import get_embedder, list_embedders`.
 
-### Local Model Management
+Local Model Management:
+
 - Auto-discovery and health checks for local models (Ollama, etc.): `LocalModelManager`.
 - Dynamic model selection without restart.
 
-### API Key Management
+API Key Management:
+
 - Secure, user-friendly API key management: `APIKeyManager`.
 - Supports environment variable overrides and config files.
 - Validation and error reporting.
 
-### Streaming & Partial Results
+Streaming & Partial Results:
+
 - All streaming-capable providers expose a `stream()` method for incremental results.
 - See `StreamingProvider` protocol.
 
-### Error Handling & Diagnostics
+Error Handling & Diagnostics:
+
 - Standardized error messages and diagnostics: see `modelito.errors`.
 - Structured error objects for troubleshooting.
 
-### Model Capabilities Discovery
+Model Capabilities Discovery:
+
 - Expose model metadata (context window, function/tool support, etc.): `get_model_metadata()`.
 
-### Testing & Mocking
+Testing & Mocking:
+
 - Built-in mock mode for testing/CI/offline: `MockProvider`.
 
-### Performance & Caching
+Performance & Caching:
+
 - Optional in-memory response caching: `ResponseCache`.
 - Batching utilities for embeddings and batchable operations: `batch_iterable`.
 

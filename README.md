@@ -44,7 +44,7 @@ index. TestPyPI packages are for testing only and may not be stable.
 
 ```sh
 python -m pip install --index-url https://test.pypi.org/simple/ \
-	--extra-index-url https://pypi.org/simple modelito==<version>
+    --extra-index-url https://pypi.org/simple modelito==<version>
 ```
 
 If installation from the index fails, download the wheel from the TestPyPI
@@ -79,12 +79,12 @@ shims provide safe offline-friendly fallbacks suitable for testing.
 Provided shims and utilities:
 
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama
-	HTTP API when available. If the HTTP API is unavailable the provider will
-	attempt to use the local Ollama CLI as a best-effort fallback before
-	returning a deterministic stub useful for tests and examples.
+  HTTP API when available. If the HTTP API is unavailable the provider will
+  attempt to use the local Ollama CLI as a best-effort fallback before
+  returning a deterministic stub useful for tests and examples.
 - `GeminiProvider`, `GrokProvider` — lightweight shims.
 - `OpenAIProvider`, `ClaudeProvider` — will use the official SDKs when
-	installed, falling back to deterministic behavior otherwise.
+  installed, falling back to deterministic behavior otherwise.
 
 The package also exposes a small Ollama administration layer for local model
 operations, including install backend detection, remote catalog metadata,
@@ -151,10 +151,11 @@ from modelito import Provider, OllamaProvider
 
 p: Provider = OllamaProvider()
 if isinstance(p, Provider):
-	from modelito.messages import Message
-	resp = p.summarize([Message(role="user", content="hello")])
-	print(resp)
+    from modelito.messages import Message
+    resp = p.summarize([Message(role="user", content="hello")])
+    print(resp)
 ```
+
 The package provides typed `Message`/`Response` dataclasses and exposes a
 small set of optional Protocols for provider surfaces:
 
@@ -162,6 +163,19 @@ small set of optional Protocols for provider surfaces:
 - `AsyncProvider` — async `acomplete()` surface for providers that support awaitable calls.
 - `StreamingProvider` — streaming `stream()` generator surface.
 - `EmbeddingProvider` — `embed()` surface for vector embeddings.
+
+Embeddings can also be selected at runtime through the dedicated `Embedder`
+wrapper when you only need the embedding surface instead of the full text
+generation client:
+
+```py
+from modelito import Embedder
+
+embedder = Embedder(provider="openai")
+vectors = embedder.embed(["hello", "world"])
+print(len(vectors), len(vectors[0]))
+print(Embedder.available_embedders())
+```
 
 `modelito` exposes `Message` and `Response` dataclasses; connectors and
 provider surfaces accept `Message` instances. Example usage with the current API:
@@ -188,56 +202,64 @@ helpers attempt to normalize these into a sequence of text chunks that are
 safe to concatenate to form the final output. Common shapes you will encounter:
 
 - **Token-level**: Backends (e.g., OpenAI SDK) may stream individual token
-	deltas. These are emitted as short text fragments; consumers should append
-	fragments in order to reconstruct the full output.
+  deltas. These are emitted as short text fragments; consumers should append
+  fragments in order to reconstruct the full output.
 - **Chunk-level**: Some providers deliver logical chunks or events (for
-	example, chunked JSON payloads). Modelito extracts the textual portion and
-	yields it as incremental chunks.
+  example, chunked JSON payloads). Modelito extracts the textual portion and
+  yields it as incremental chunks.
 - **Line-delimited / SSE**: HTTP services (like Ollama's `/api/generate`) may
-	send newline-delimited JSON or SSE frames. Modelito reads and normalizes the
-	frames and yields textual content as it becomes available.
+  send newline-delimited JSON or SSE frames. Modelito reads and normalizes the
+  frames and yields textual content as it becomes available.
 
 Behavioral notes:
 
 - The `stream()` generator yields `str` pieces; each yielded item is intended
-	to be appended to reconstruct the response incrementally.
+  to be appended to reconstruct the response incrementally.
 - When you need token-level control (e.g., streaming token-by-token), prefer
-	providers that expose token deltas (OpenAI SDK). Modelito will still yield
-	those token deltas as text fragments.
+  providers that expose token deltas (OpenAI SDK). Modelito will still yield
+  those token deltas as text fragments.
 - Offline/deterministic fallbacks yield the full text in a single chunk.
 
 Advanced Features
 ----------------
 
-### Unified Provider Abstraction
+Unified Provider Abstraction:
+
 - All providers (OpenAI, Anthropic, Google, Ollama, etc.) are accessed through a consistent interface.
 - Runtime provider/model switching is supported via `modelito.provider_registry.get_provider()`.
 
-### Local Model Management
+Local Model Management:
+
 - Auto-discovers local models (Ollama, etc.) and performs health checks.
 - Dynamic model selection without restarting clients via `LocalModelManager`.
 
-### API Key Management
+API Key Management:
+
 - Secure, user-friendly API key management with environment variable and config file support.
 - Validation utilities and error reporting via `APIKeyManager`.
 
-### Streaming & Partial Results
+Streaming & Partial Results:
+
 - All streaming-capable providers expose a `stream()` method for incremental results.
 - See `StreamingProvider` protocol and examples above.
 
-### Error Handling & Diagnostics
+Error Handling & Diagnostics:
+
 - Standardized error messages and diagnostics for easier troubleshooting.
 - Structured error objects (see `modelito.errors`).
 
-### Model Capabilities Discovery
+Model Capabilities Discovery:
+
 - Expose model metadata (context window, function/tool support, etc.) via `get_model_metadata()`.
 - Normalize provider model lists and metadata for application APIs via `normalize_models()` and `normalize_metadata()`.
 
-### Testing & Mocking
+Testing & Mocking:
+
 - Built-in mock mode for testing clients without real API calls (`MockProvider`).
 - Useful for CI and offline development.
 
-### Performance & Caching
+Performance & Caching:
+
 - Optional in-memory response caching for repeated prompts (`ResponseCache`).
 - Batching utilities for embeddings and other batchable operations.
 

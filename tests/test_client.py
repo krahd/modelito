@@ -53,3 +53,10 @@ def test_client_model_metadata_falls_back_to_registry():
     assert metadata["context_window"] == 4096
     assert metadata["functions"] is True
     assert metadata["tools"] is True
+
+
+def test_client_available_embedders_exposes_embedder_registry():
+    embedders = Client.available_embedders()
+
+    assert "openai" in embedders
+    assert "mock" in embedders
