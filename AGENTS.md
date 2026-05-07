@@ -1,101 +1,110 @@
 # AGENTS.md
 
-Canonical guidance for automated coding agents working in this repository.
-These instructions apply to GitHub Copilot, OpenAI Codex, Claude, and other
-compatible agents.
+Repository instructions for AI coding agents working in this project.
 
-## Project Shape
+This file is the durable source of truth for GitHub Copilot, OpenAI Codex, Claude Code, and compatible coding agents. Read it before making changes.
 
-`modelito` is a dependency-light Python library that provides a unified,
-provider-agnostic interface for LLM usage across hosted and local backends.
-The codebase includes:
+## 1: Non-negotiable rules
 
-- Core provider abstractions and implementations under `modelito/`
-- User and developer docs under `docs/`
-- Examples under `examples/`
-- Tests under `tests/`
-- Release and maintenance metadata at repo root
+- Keep `STATUS.md` accurate at all times.
+- `STATUS.md` must exist in the repository root.
+- Do not finish a task that changes the project without reviewing and, when needed, updating `STATUS.md`.
+- Do not invent project facts. Inspect the repository and record uncertainty explicitly.
+- Do not overwrite user work or unrelated changes.
+- Do not commit secrets, credentials, tokens, private keys, local environment files, build artefacts, package artefacts, or generated sensitive data.
+- Prefer small, focused changes over broad rewrites.
+- Preserve public APIs unless the task explicitly requires change.
+- Verify meaningful changes with the narrowest reliable command available.
+- Do not claim tests passed unless they were actually run.
 
-## Important Paths
+## 2: Communication style
 
-- `modelito/client.py`: primary client integration surface
-- `modelito/provider.py`: provider protocol and interface contract
-- `modelito/provider_registry.py`: provider lookup and registration logic
-- `modelito/openai.py`, `modelito/claude.py`, `modelito/gemini.py`, `modelito/ollama.py`: provider adapters
-- `modelito/ollama_api.py`, `modelito/ollama_service.py`: local Ollama API and service helpers
-- `modelito/messages.py`: shared message datamodels
-- `modelito/streaming.py`: streaming normalization helpers
-- `modelito/timeout.py`, `modelito/timeout_calibrate.py`: timeout behavior and calibration
-- `tests/`: unit and integration-style coverage
-- `README.md`, `docs/`: user-facing and maintainer-facing documentation
-- `STATUS.md`: complete, current project status report (mandatory upkeep; see below)
+Use terse, factual, technical communication. Do not use playful, whimsical, cute, decorative, or filler progress phrases such as "combobulating", "cooking", "thinking...", "working on it", "let me dive in", "I'll get started", or "working my magic".
 
-## Development Rules
+Allowed status-update style: "Reading files." "Found the issue." "Applying patch." "Tests passed." "Tests failed: <reason>."
 
-- Preserve existing public APIs unless the task explicitly requires change.
-- Keep edits focused and avoid unrelated refactors or formatting churn.
-- Prefer deterministic, testable behavior and explicit error handling.
-- Keep provider behavior consistent through shared abstractions rather than
-  per-provider special cases when possible.
-- Do not commit generated artifacts from `build/`, `dist/`, cache folders, or
-  egg-info folders.
+No jokes, metaphors, fake enthusiasm, anthropomorphising, or decorative progress messages. Prefer concise present-tense technical updates. Use British English for prose documentation unless the repository consistently uses another variant.
 
-## STATUS.md Mandatory Upkeep
+## 3: Standard work loop
 
-`STATUS.md` must be kept up to date at all times.
+1. Read this file and `STATUS.md` before editing.
+2. Inspect relevant files, docs, tests, packaging metadata, and CI workflows.
+3. Identify the smallest safe change.
+4. Search call sites before changing provider protocols, public exports, adapters, streaming semantics, configuration, packaging metadata, or release workflows.
+5. Make focused edits.
+6. Run relevant verification when possible.
+7. Update documentation when behaviour, setup, architecture, commands, public APIs, or release state change.
+8. Update `STATUS.md` if project state changed.
+9. Report changed files, verification, and remaining issues.
 
-After every non-trivial change (bug fix, feature, refactor, release update,
-test strategy change, or meaningful investigation result), update `STATUS.md`
-in the same work session.
+## 4: Project-specific map
 
-`STATUS.md` is required to be a complete project status report. At minimum it
-must include:
+### 4.1: Project shape
 
-- Current state and active focus
-- What changed recently
-- Validation performed (tests/checks run) and notable gaps
-- Known risks, limitations, or open issues
-- Next prioritized steps
+- Purpose: compact dependency-light Python library for provider-agnostic LLM access and local model helpers.
+- Main runtime surfaces: provider protocols, provider adapters, connectors, streaming helpers, embeddings, Ollama administration helpers, timeout utilities.
+- Primary language/framework: Python package with pytest, ruff, mypy, build, and twine validation.
+- Integration posture: hosted SDKs are optional; fallbacks should remain safe for tests/offline use.
 
-Timestamp requirement (mandatory):
+### 4.2: Important paths
 
-- Include a top-level timestamp line in this exact format:
-  `Last updated: YYYY-MM-DD HH:MM`
-- Use local wall-clock time.
-- Never leave the timestamp stale when the report contents are changed.
+- `README.md`: human-facing package overview.
+- `STATUS.md`: complete current project status report; mandatory upkeep.
+- `modelito/`: package source.
+- `modelito/provider.py`: provider protocols/interface contract.
+- `modelito/client.py`: primary client integration surface.
+- `modelito/provider_registry.py`: provider lookup and registration.
+- `modelito/openai.py`, `modelito/claude.py`, `modelito/gemini.py`, `modelito/ollama.py`: provider adapters.
+- `modelito/ollama_api.py`, `modelito/ollama_service.py`: local Ollama API/service helpers.
+- `modelito/messages.py`: shared message datamodels.
+- `modelito/streaming.py`: streaming normalisation helpers.
+- `modelito/timeout.py`, `modelito/timeout_calibrate.py`: timeout behaviour and calibration.
+- `docs/`: API, usage, install, calibration, and migration docs.
+- `tests/`: unit and integration-style coverage.
+- `pyproject.toml`: package metadata and build configuration.
+- `.github/workflows/`: CI and publishing workflows.
 
-Agents must not mark work complete until `STATUS.md` accurately reflects the
-current project status.
+### 4.3: Safety invariants
 
-## Validation
+- Keep provider abstractions small, stable, and duck-typing-friendly.
+- Hosted SDK dependencies must remain optional unless explicitly changed.
+- Offline/deterministic fallbacks must remain suitable for tests and examples.
+- Ollama install/download/update flows must remain explicit and gated in tests.
+- Secret handling should stay delegated to environment variables, OS keychains, orchestration secrets, or optional integrations, not mandatory core storage.
+- Do not publish, tag, or release unless explicitly requested.
 
-Run the narrowest checks that cover the change. For most Python changes:
+## 5: STATUS.md maintenance
+
+`STATUS.md` is mandatory project state, not optional documentation.
+
+Required timestamp line near the top:
+
+```text
+Last updated: YYYY-MM-DD HH:MM
+```
+
+Use 24-hour local time. If no other timezone is specified, use `America/Montevideo`. Duplicate the exact same line as the final line at the bottom of `STATUS.md`. Update both lines together.
+
+`STATUS.md` must be a complete current snapshot, not a changelog. Include relevant sections for purpose, current state, active focus, architecture, setup/run instructions, configuration, important files, recent changes, tests, risks, pending tasks, next steps, longer-term steps, and decisions.
+
+## 6: Diagrams in STATUS.md
+
+Include useful inline SVG architecture and flow diagrams when the structure is meaningful enough. Keep text inside boxes and canvas bounds. Keep arrows out of unrelated boxes and labels. Prefer generous spacing and simple SVG primitives.
+
+## 7: Validation
+
+Typical validation commands:
 
 ```bash
 pytest -q
-```
-
-For packaging or release-affecting changes, also run:
-
-```bash
+ruff check .
+mypy modelito --ignore-missing-imports
 python -m build
+python -m twine check dist/*
 ```
 
-Document what was run and what was not run in `STATUS.md`.
+Run the narrowest relevant checks first. Record tests not run when relevant. For Ollama integration tests, keep explicit environment gates such as `RUN_OLLAMA_INTEGRATION=1`, `ALLOW_OLLAMA_INSTALL=1`, `ALLOW_OLLAMA_DOWNLOAD=1`, and `ALLOW_OLLAMA_UPDATE=1`.
 
-## Documentation Expectations
+## 8: Final response requirements
 
-When behavior or public APIs change, update impacted docs in the same change:
-
-- `README.md`
-- `docs/API.md`
-- `docs/USAGE.md`
-- release notes/changelog files when release-relevant
-- `STATUS.md`
-
-## Git Hygiene
-
-- Check `git status --short` before and after edits.
-- Do not revert user-authored changes unless explicitly requested.
-- Stage only intended file paths when the worktree is mixed.
-- Commit/push only when explicitly requested by the user.
+When finishing a task, report concisely: what changed, files changed, verification commands and results, whether `STATUS.md` was updated, and remaining issues or follow-up work.
