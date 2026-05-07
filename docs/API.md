@@ -151,8 +151,9 @@ the Ollama CLI and HTTP API. The most commonly used helpers are:
 - `serve_model(model_name: Optional[str] = None, start_args: Optional[list] = None, timeout: float = 10.0) -> bool`
 - `ensure_model_available(model_name: str, allow_download: bool = False, timeout: float = 600.0) -> bool` — convenience helper to ensure a model is present locally, optionally downloading it.
 - `ensure_model_ready(model_name: str, host: str = "http://127.0.0.1", port: int = 11434, auto_start: bool = False, allow_download: bool = False, timeout: float = 120.0) -> bool` — ensure a specific model is downloaded, warmed, and responsive.
+- `ensure_model_ready_detailed(model_name: str, host: str = "http://127.0.0.1", port: int = 11434, auto_start: bool = False, allow_download: bool = False, timeout: float = 120.0) -> ReadinessResult` — like `ensure_model_ready()` but returns a structured `ReadinessResult` object with success status, lifecycle phase, message, source, elapsed_seconds, and error details for cleaner UI integration.
 - `get_model_lifecycle_state(model_name: str) -> Optional[ModelLifecycleState]`, `list_model_lifecycle_states() -> Dict[str, ModelLifecycleState]`, and `clear_model_lifecycle_state(model_name: str) -> bool` — inspect or reset the in-memory per-model lifecycle tracker.
-- Async wrappers: `async_preload_model`, `async_list_local_models`, `async_list_remote_models`, `async_download_model`, `async_delete_model`, `async_serve_model`, `async_ensure_model_available`, `async_ensure_model_ready` — simple asyncio-friendly wrappers that run the synchronous helpers in an executor.
+- Async wrappers: `async_preload_model`, `async_list_local_models`, `async_list_remote_models`, `async_download_model`, `async_delete_model`, `async_serve_model`, `async_ensure_model_available`, `async_ensure_model_ready`, `async_ensure_model_ready_detailed` — simple asyncio-friendly wrappers that run the synchronous helpers in an executor.
 - `change_ollama_config(config: dict, config_path: Optional[str] = None) -> bool`
 
 Additional helpers and CLI

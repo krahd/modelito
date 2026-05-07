@@ -127,6 +127,11 @@ environment concerns:
     ensure a specific model is installed, warmed, and responsive instead of
     only checking whether the Ollama server itself is reachable.
 
+- `ensure_model_ready_detailed(model_name, auto_start=False, allow_download=False)` —
+    like `ensure_model_ready()` but returns a structured `ReadinessResult` with
+    success, phase, message, source, elapsed_seconds, and error details for
+    richer diagnostics and UI integration.
+
 Examples
 --------
 
@@ -156,7 +161,18 @@ for state in download_model_progress("llama3.1:8b"):
 
 print(ensure_model_ready("llama3.1:8b", auto_start=True, allow_download=False))
 ```
+Check model readiness with detailed result and diagnostics:
 
+```py
+from modelito import ensure_model_ready_detailed
+
+result = ensure_model_ready_detailed(\"llama3.1:8b\", auto_start=True, allow_download=False)
+if result.success:
+    print(f\"Model ready in {result.elapsed_seconds:.2f}s (phase: {result.phase})\")
+else:
+    print(f\"Failed ({result.phase}): {result.error}\")
+    # UI can use result.phase to show: preparing, downloading, warming, error, etc.
+```
 ```sh
 # Estimate timeout
 python -m modelito.timeout_cli --model llama-2-13b --input-tokens 2048

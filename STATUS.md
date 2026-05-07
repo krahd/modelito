@@ -1,13 +1,13 @@
 # modelito status report
 
-Last updated: 2026-05-06 21:45
+Last updated: 2026-05-06 21:55
 
 ## Current state
 
 modelito remains a compact, provider-agnostic Python library with optional
 SDK integrations and strong local/offline fallback behavior.
 
-Current package metadata version is `1.4.0` (`pyproject.toml`) — under development.
+Current package metadata version is `1.4.0` (`pyproject.toml`).
 
 The package now includes a broader Ollama administration surface alongside the
 existing provider/runtime helpers.
@@ -43,9 +43,21 @@ Repository health after implementing all previously listed remediation steps:
 
 ## Current focus
 
-- Incorporate recent usability improvements (warmup timeout, readiness result,
-  installer policy docs).
-- Bump version to 1.4.0 and prepare release.
+- Release v1.4.0 with usability improvements to PyPI.
+
+## Release 1.4.0 — Ready for Publication
+
+All changes implemented, tested, and committed:
+
+✓ Configurable `start_service()` warmup timeout with CLI `--warmup-timeout` support
+✓ Structured `ensure_model_ready_detailed()` with `ReadinessResult` return type
+✓ Async wrapper `async_ensure_model_ready_detailed()` for async workflows
+✓ Platform-specific installer policy documentation in API reference
+✓ Refactored `ensure_model_ready()` to use detailed variant internally
+✓ All tests passing (109 passed, 3 skipped)
+✓ Package builds successfully
+✓ Exports properly included in `__init__.py`
+✓ CHANGELOG and documentation updated
 
 ## Visual overview
 
