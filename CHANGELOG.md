@@ -2,44 +2,71 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.4.0 - 2026-05-06
+
+- Add `ensure_model_ready_detailed()` function with structured `ReadinessResult`
+  return type for richer readiness diagnostics (success, phase, message, source,
+  elapsed_seconds, error). Async wrapper `async_ensure_model_ready_detailed()`
+  also available.
+- Make `start_service()` warmup timeout configurable via `warmup_timeout`
+  parameter (default: 30.0 seconds) and CLI `--warmup-timeout` argument.
+- Document platform-specific installer policies in API reference: macOS prefers
+  `brew`, Linux prefers `apt`, Windows prefers `choco`, with script-based fallbacks.
+- Refactor `ensure_model_ready()` to delegate to `ensure_model_ready_detailed()`
+  internally for code reuse and consistency.
+
+## 1.3.0 - 2026-05-06
+
+- Add first-class embedder runtime API with `Embedder` wrapper, embedder
+  registry lookups, and `available_embedders()` client method.
+- Add provider-agnostic transport/retry/error plumbing with normalized
+  response envelopes, network error handling, and exponential backoff.
+- Extend Ollama API surface with envelope-wrapped operation helpers for
+  health checks, readiness probes, model listing, and lifecycle operations.
+- Improve Ollama service diagnostics surface with progress-tracked model
+  downloads and structured model lifecycle state polling.
+- Normalize and validate all markdown and diagnostics for docs, README,
+  release notes, and API reference.
+- Update STATUS.md with visual architecture and flow diagrams.
+
 ## 1.2.2 - 2026-05-06
 
 - Add a broader Ollama administration surface for local model operations.
 - Add platform-aware install backend detection with `brew`, `apt`, and
-	`choco` support plus script fallback.
+  `choco` support plus script fallback.
 - Add structured remote catalog, download lifecycle tracking, and explicit
-	model readiness helpers for Ollama.
+  model readiness helpers for Ollama.
 - Export and document the new Ollama admin helpers across the package root,
-	API docs, install docs, and usage docs.
+  API docs, install docs, and usage docs.
 - Add focused unit coverage for the new Ollama administration helpers.
 - Set `asyncio_default_fixture_loop_scope = function` in `pytest.ini` to
-	remove the local `pytest-asyncio` deprecation warning.
+  remove the local `pytest-asyncio` deprecation warning.
 
 ## 1.2.1 - 2026-05-06
 
 - Fix package version fallback to avoid stale runtime version reporting when
-	metadata is unavailable.
+  metadata is unavailable.
 - Export `estimate_remote_timeout_details` in package exports and align API
-	documentation with implementation.
+  documentation with implementation.
 - Fix `OllamaConnector` usage examples in docs to reflect current constructor
-	signature.
+  signature.
 - Fix mypy typing issue in `modelito/normalization.py`.
 - Normalize changelog/release documentation and mark historical v1.0.3 release
-	docs as archived records.
+  docs as archived records.
 - Update project status reporting with comprehensive audit remediation results.
 
 ## 1.2.0 - 2026-05-06
 
 - Current package metadata version in `pyproject.toml`.
 - Runtime and docs consistency audit completed; release history normalization
-	initiated for maintainability.
+  initiated for maintainability.
 
 ## 1.0.6 - 2026-04-21
 
 - Fix: resolve stray git-merge conflict markers that caused import-time
-	`SyntaxError`s.
+  `SyntaxError`s.
 - Fix: restore `estimate_remote_timeout` behavior and include
-	`matched_model_override` in diagnostic details.
+  `matched_model_override` in diagnostic details.
 - Docs: document the `with_source` argument and diagnostic tuple behavior.
 
 ## 1.0.5 - 2026-04-21
@@ -80,7 +107,7 @@ All notable changes to this project will be documented in this file.
 
 - Initial extraction of core helpers: tokenizer, timeout, connector, config, ollama_service
 - Add tests, CI, and publish workflow
- 
+
 ## 0.1.1 - Release
 
 - Add packaging metadata and setuptools discovery in `pyproject.toml`
@@ -91,4 +118,4 @@ All notable changes to this project will be documented in this file.
 ## Notes
 
 - Historical entries between `1.0.6` and `1.2.0` are being backfilled from
-	release records as available.
+  release records as available.

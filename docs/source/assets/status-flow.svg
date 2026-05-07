@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="920" viewBox="0 0 1180 920" role="img" aria-labelledby="title desc">
+  <title id="title">modelito runtime and release flow</title>
+  <desc id="desc">Flow chart showing request flow through Client or Embedder, provider execution, optional Ollama lifecycle helpers, validation, and release publication path.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f8f5ef; }
+      .box { fill: #fffdf8; stroke: #2f2b26; stroke-width: 2; rx: 18; ry: 18; }
+      .accent1 { fill: #d9e8d5; }
+      .accent2 { fill: #d9e6f3; }
+      .accent3 { fill: #f7e2c8; }
+      .accent4 { fill: #efd8cf; }
+      .decision { fill: #fff7d6; stroke: #2f2b26; stroke-width: 2; }
+      .title { font: 700 30px Georgia, 'Times New Roman', serif; fill: #1f1c18; }
+      .subtitle { font: 500 16px Georgia, 'Times New Roman', serif; fill: #4b443d; }
+      .label { font: 700 18px Georgia, 'Times New Roman', serif; fill: #1f1c18; }
+      .small { font: 500 14px Georgia, 'Times New Roman', serif; fill: #3f3933; }
+      .arrow { stroke: #2f2b26; stroke-width: 2.5; fill: none; marker-end: url(#arrowhead); }
+      .note { font: 600 13px Georgia, 'Times New Roman', serif; fill: #5a4236; }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#2f2b26" />
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1180" height="920" />
+
+  <text class="title" x="60" y="62">modelito Flow Overview</text>
+  <text class="subtitle" x="60" y="90">Primary runtime path plus the release/publish branch that updates status, validates artifacts,</text>
+  <text class="subtitle" x="60" y="110">and publishes to PyPI</text>
+
+  <rect class="box accent1" x="430" y="130" width="320" height="86" />
+  <text class="label" x="590" y="162" text-anchor="middle">Caller chooses operation</text>
+  <text class="small" x="590" y="184" text-anchor="middle">
+    <tspan x="590" dy="0">Chat completion, streaming, embeddings,</tspan>
+    <tspan x="590" dy="16">or local Ollama administration</tspan>
+  </text>
+
+  <polygon class="decision" points="590,250 730,320 590,390 450,320" />
+  <text class="label" x="590" y="295" text-anchor="middle">Runtime path?</text>
+  <text class="small" x="590" y="318" text-anchor="middle">
+    <tspan x="590" dy="0">Request / Embeddings</tspan>
+    <tspan x="590" dy="16">Ollama admin / Release</tspan>
+  </text>
+
+  <rect class="box accent2" x="80" y="450" width="280" height="88" />
+  <text class="label" x="220" y="470" text-anchor="middle">Client request path</text>
+  <text class="small" x="220" y="494" text-anchor="middle">
+    <tspan x="220" dy="0">Build messages, apply settings,</tspan>
+    <tspan x="220" dy="16">optionally stream</tspan>
+  </text>
+
+  <rect class="box accent2" x="430" y="450" width="320" height="88" />
+  <text class="label" x="590" y="470" text-anchor="middle">Embedder path</text>
+  <text class="small" x="590" y="494" text-anchor="middle">
+    <tspan x="590" dy="0">Resolve embedder, call provider.embed(),</tspan>
+    <tspan x="590" dy="16">return vectors</tspan>
+  </text>
+
+  <rect class="box accent4" x="820" y="450" width="280" height="88" />
+  <text class="label" x="960" y="470" text-anchor="middle">Ollama admin path</text>
+  <text class="small" x="960" y="494" text-anchor="middle">
+    <tspan x="960" dy="0">Install, inspect, pull, warm, serve,</tspan>
+    <tspan x="960" dy="16">readiness tracking</tspan>
+  </text>
+
+  <rect class="box accent3" x="430" y="610" width="320" height="88" />
+  <text class="label" x="590" y="625" text-anchor="middle">Provider or helper executes</text>
+  <text class="small" x="590" y="649" text-anchor="middle">
+    <tspan x="590" dy="0">SDK-backed when available,</tspan>
+    <tspan x="590" dy="16">fallback behavior when not</tspan>
+  </text>
+
+  <polygon class="decision" points="590,735 730,805 590,875 450,805" />
+  <text class="label" x="590" y="775" text-anchor="middle">Validation and status</text>
+  <text class="small" x="590" y="798" text-anchor="middle">
+    <tspan x="590" dy="0">Tests, docs, metadata</tspan>
+    <tspan x="590" dy="16">lifecycle state + STATUS.md</tspan>
+  </text>
+
+  <rect class="box accent3" x="60" y="790" width="250" height="88" />
+  <text class="label" x="185" y="830" text-anchor="middle">Consumer result</text>
+  <text class="small" x="185" y="850" text-anchor="middle">
+    <tspan x="185" dy="0">Text, streamed chunks,</tspan>
+    <tspan x="185" dy="16">vectors, or admin outcome</tspan>
+  </text>
+
+  <rect class="box accent4" x="870" y="790" width="250" height="88" />
+  <text class="label" x="995" y="830" text-anchor="middle">Release branch</text>
+  <text class="small" x="995" y="854" text-anchor="middle">
+    <tspan x="995" dy="0">Build, twine check, tag push,</tspan>
+    <tspan x="995" dy="16">GitHub release, PyPI publish</tspan>
+  </text>
+
+  <path class="arrow" d="M590 216 L590 244" />
+  <path class="arrow" d="M500 358 L276 450" />
+  <path class="arrow" d="M590 390 L590 450" />
+  <path class="arrow" d="M680 358 L904 450" />
+  <path class="arrow" d="M220 538 L220 585 L520 585 L520 610" />
+  <path class="arrow" d="M590 538 L590 610" />
+  <path class="arrow" d="M960 538 L960 585 L660 585 L660 610" />
+  <path class="arrow" d="M590 698 L590 729" />
+  <path class="arrow" d="M450 805 L310 805" />
+  <path class="arrow" d="M730 805 L870 805" />
+
+  <text class="note" x="82" y="572">Text generation uses Client + provider protocols</text>
+  <text class="note" x="790" y="566">
+    <tspan x="790" dy="0">Local operations stay inside the</tspan>
+    <tspan x="790" dy="15">Ollama-specific boundary</tspan>
+  </text>
+  <text class="note" x="390" y="886">
+    <tspan x="390" dy="0">The release path now depends on the GitHub Actions `pypi` environment claim</tspan>
+    <tspan x="390" dy="15">for trusted publishing.</tspan>
+  </text>
+</svg>

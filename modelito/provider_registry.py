@@ -1,9 +1,6 @@
-"""
-Provider registry and factory for Modelito.
-Allows runtime selection and instantiation of providers by name.
-"""
-from typing import Any, Dict, Optional, Type
-from .provider import SyncProvider
+"""Provider and embedder registry helpers for Modelito."""
+from typing import Any, Dict, List, Optional, Type
+from .provider import EmbeddingProvider, SyncProvider
 from .openai import OpenAIProvider
 from .claude import ClaudeProvider
 from .gemini import GeminiProvider
@@ -22,6 +19,8 @@ PROVIDER_REGISTRY: Dict[str, Type] = {
     "mock": MockProvider,
 }
 
+EMBEDDER_REGISTRY: Dict[str, Type] = dict(PROVIDER_REGISTRY)
+
 def get_provider(name: str, **kwargs: Any) -> Optional[SyncProvider]:
     """
     Factory to instantiate a provider by name.
@@ -36,6 +35,20 @@ def get_provider(name: str, **kwargs: Any) -> Optional[SyncProvider]:
         return cls(**kwargs)
     return None
 
-def list_providers() -> list:
+
+def get_embedder(name: str, **kwargs: Any) -> Optional[EmbeddingProvider]:
+    """Factory to instantiate an embedder by name."""
+    cls = EMBEDDER_REGISTRY.get(name.lower())
+    if cls is not None:
+        return cls(**kwargs)
+    return None
+
+
+def list_providers() -> List[str]:
     """Return a list of available provider names."""
     return list(PROVIDER_REGISTRY.keys())
+
+
+def list_embedders() -> List[str]:
+    """Return a list of available embedder names."""
+    return list(EMBEDDER_REGISTRY.keys())

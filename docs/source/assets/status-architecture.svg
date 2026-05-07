@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="760" viewBox="0 0 1180 760" role="img" aria-labelledby="title desc">
+  <title id="title">modelito architecture overview</title>
+  <desc id="desc">High-level architecture showing applications, public API, provider protocols, built-in providers, utility modules, and Ollama administration helpers.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f7f4ed; }
+      .panel { fill: #fffdf8; stroke: #2d2a26; stroke-width: 2; rx: 18; ry: 18; }
+      .api { fill: #d8e8d4; }
+      .providers { fill: #d7e7f5; }
+      .utils { fill: #f7dfc6; }
+      .admin { fill: #f1d8d0; }
+      .title { font: 700 30px Georgia, 'Times New Roman', serif; fill: #1f1c18; }
+      .subtitle { font: 500 16px Georgia, 'Times New Roman', serif; fill: #4b443d; }
+      .heading { font: 700 22px Georgia, 'Times New Roman', serif; fill: #1f1c18; }
+      .label { font: 600 18px Georgia, 'Times New Roman', serif; fill: #1f1c18; }
+      .small { font: 500 14px Georgia, 'Times New Roman', serif; fill: #3f3933; }
+      .arrow { stroke: #2d2a26; stroke-width: 2.5; fill: none; marker-end: url(#arrowhead); }
+      .line { stroke: #2d2a26; stroke-width: 2; fill: none; }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#2d2a26" />
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1180" height="760" />
+
+  <text class="title" x="60" y="62">modelito Architecture</text>
+  <text class="subtitle" x="60" y="90">Compact provider-agnostic LLM surface with optional SDKs, local Ollama administration, and lightweight runtime utilities</text>
+
+  <rect class="panel" x="60" y="130" width="1060" height="90" />
+  <text class="heading" x="90" y="175">Consumers</text>
+  <text class="small" x="90" y="198">Applications, scripts, tests, CI jobs, and downstream libraries call one small</text>
+  <text class="small" x="90" y="216">public package surface.</text>
+
+  <rect class="panel api" x="190" y="270" width="800" height="120" />
+  <text class="heading" x="470" y="315" text-anchor="middle">Public API Layer</text>
+  <text class="label" x="285" y="350" text-anchor="middle">Client</text>
+  <text class="label" x="455" y="350" text-anchor="middle">Embedder</text>
+  <text class="label" x="650" y="350" text-anchor="middle">Provider Protocols</text>
+  <text class="label" x="855" y="350" text-anchor="middle">Messages / Response</text>
+  <text class="small" x="285" y="375" text-anchor="middle">Runtime selection</text>
+  <text class="small" x="455" y="375" text-anchor="middle">Embeddings-only surface</text>
+  <text class="small" x="650" y="375" text-anchor="middle">Sync, async, streaming, embeddings</text>
+  <text class="small" x="855" y="369" text-anchor="middle">
+    <tspan x="855" dy="0">Typed request/response</tspan>
+    <tspan x="855" dy="16">datamodels</tspan>
+  </text>
+
+  <rect class="panel providers" x="60" y="450" width="470" height="220" />
+  <text class="heading" x="95" y="490">Built-in Providers</text>
+  <text class="label" x="100" y="535">OpenAI</text>
+  <text class="label" x="240" y="535">Claude</text>
+  <text class="label" x="365" y="535">Gemini</text>
+  <text class="label" x="100" y="585">Grok</text>
+  <text class="label" x="240" y="585">Ollama</text>
+  <text class="label" x="365" y="585">Mock</text>
+  <text class="small" x="100" y="620">Each adapter can implement summarize, stream, metadata, and embed.</text>
+  <text class="small" x="100" y="644">SDK-backed when available; deterministic fallbacks for tests and offline use.</text>
+
+  <rect class="panel utils" x="560" y="450" width="260" height="220" />
+  <text class="heading" x="595" y="490">Core Utilities</text>
+  <text class="small" x="595" y="530">Tokenizer / token estimates</text>
+  <text class="small" x="595" y="560">Timeout estimator + catalog</text>
+  <text class="small" x="595" y="590">Normalization + model metadata</text>
+  <text class="small" x="595" y="620">Batching + cache helpers</text>
+  <text class="small" x="595" y="650">Connector / history management</text>
+
+  <rect class="panel admin" x="850" y="450" width="270" height="220" />
+  <text class="heading" x="885" y="490">Ollama Admin Surface</text>
+  <text class="small" x="885" y="528">
+    <tspan x="885" dy="0">Install detection:</tspan>
+    <tspan x="885" dy="16">brew / apt / choco / script</tspan>
+  </text>
+  <text class="small" x="885" y="564">
+    <tspan x="885" dy="0">Local and remote model</tspan>
+    <tspan x="885" dy="16">catalog helpers</tspan>
+  </text>
+  <text class="small" x="885" y="604">Download lifecycle tracking</text>
+  <text class="small" x="885" y="632">
+    <tspan x="885" dy="0">Readiness confirmation</tspan>
+    <tspan x="885" dy="16">and service control</tspan>
+  </text>
+  <text class="small" x="885" y="662">Local-only operational tooling</text>
+
+  <path class="arrow" d="M590 220 L590 260" />
+  <path class="arrow" d="M350 390 L350 438" />
+  <path class="arrow" d="M690 390 L690 438" />
+  <path class="arrow" d="M960 390 L960 438" />
+  <path class="line" d="M590 390 L590 420" />
+  <path class="line" d="M350 420 L960 420" />
+
+  <text class="small" x="70" y="714">Scope boundary: keep the core small, favor provider-agnostic contracts, and isolate</text>
+  <text class="small" x="70" y="732">local administration logic to the Ollama helper layer.</text>
+</svg>

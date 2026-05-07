@@ -25,6 +25,10 @@ import json
 import logging
 import argparse
 from dataclasses import dataclass, field
+from urllib.error import HTTPError, URLError
+
+from .errors import ProviderError
+from .plumbing import TransportPolicy, normalize_network_error, retry_with_backoff
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -66,6 +70,22 @@ class ModelLifecycleState:
     error: Optional[str] = None
     source: str = "cli"
     updated_at: float = field(default_factory=time.time)
+
+
+@dataclass(frozen=True)
+class ReadinessResult:
+    """Structured result from model readiness checks.
+
+    Combines success status, lifecycle phase, message, source, and elapsed time
+    into a single result object for cleaner UI integration and reduced polling.
+    """
+
+    success: bool
+    phase: str  # e.g., "ready", "preparing", "error"
+    message: str = ""
+    source: str = "http"  # e.g., "ollama", "http", "cli"
+    elapsed_seconds: float = 0.0
+    error: Optional[str] = None
 
 
 _MODEL_STATE_LOCK = threading.Lock()
@@ -894,34 +914,92 @@ def ensure_model_ready(
     downloading the selected model, issuing a warm-up request, and confirming a
     follow-up model-scoped generate call succeeds.
     """
-    deadline = time.time() + float(timeout)
+    result = ensure_model_ready_detailed(
+        model_name,
+        host=host,
+        port=port,
+        auto_start=auto_start,
+        allow_download=allow_download,
+        timeout=timeout,
+    )
+    return result.success
+
+
+def ensure_model_ready_detailed(
+    model_name: str,
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
+    auto_start: bool = False,
+    allow_download: bool = False,
+    timeout: float = 120.0,
+) -> ReadinessResult:
+    """Ensure a specific model is downloaded, warmed, and ready; return structured result.
+
+    Similar to `ensure_model_ready()` but returns a structured `ReadinessResult`
+    object with success, phase, message, source, elapsed time, and error details.
+    This is useful for UI integration and detailed diagnostics without polling.
+    """
+    start_time = time.time()
+    deadline = start_time + float(timeout)
     _record_model_state(model_name, "preparing", message=f"Preparing model {model_name}")
 
     ok, message = ensure_ollama_running_verbose(
         host=host, port=port, auto_start=auto_start, timeout=min(timeout, 30.0))
     if not ok:
         _record_model_state(model_name, "error", message=message, error=message)
-        return False
+        elapsed = time.time() - start_time
+        return ReadinessResult(
+            success=False,
+            phase="error",
+            message=message,
+            source="ollama",
+            elapsed_seconds=elapsed,
+            error=message,
+        )
 
     remaining = max(1.0, deadline - time.time())
     if not ensure_model_available(model_name, allow_download=allow_download, timeout=remaining):
         error = f"Model {model_name} is not available locally"
         _record_model_state(model_name, "error", message=error, error=error)
-        return False
+        elapsed = time.time() - start_time
+        return ReadinessResult(
+            success=False,
+            phase="error",
+            message=error,
+            source="cli",
+            elapsed_seconds=elapsed,
+            error=error,
+        )
 
     _record_model_state(model_name, "warming", message=f"Warming model {model_name}")
     try:
         preload_model(host, port, model_name, timeout=min(remaining, 60.0))
     except Exception as exc:
         _record_model_state(model_name, "error", message=str(exc), error=str(exc), source="http")
-        return False
+        elapsed = time.time() - start_time
+        return ReadinessResult(
+            success=False,
+            phase="error",
+            message=str(exc),
+            source="http",
+            elapsed_seconds=elapsed,
+            error=str(exc),
+        )
 
     host_env = f"{host.replace('http://', '').replace('https://', '')}:{port}"
     running = running_model_names(host_env)
     if model_name in running:
+        msg = f"Model {model_name} is warmed and running"
         _record_model_state(
-            model_name, "ready", message=f"Model {model_name} is warmed and running", progress=100.0, source="http")
-        return True
+            model_name, "ready", message=msg, progress=100.0, source="http")
+        elapsed = time.time() - start_time
+        return ReadinessResult(
+            success=True,
+            phase="ready",
+            message=msg,
+            source="http",
+            elapsed_seconds=elapsed,
+        )
 
     try:
         json_post(
@@ -931,11 +1009,50 @@ def ensure_model_ready(
         )
     except Exception as exc:
         _record_model_state(model_name, "error", message=str(exc), error=str(exc), source="http")
-        return False
+        elapsed = time.time() - start_time
+        return ReadinessResult(
+            success=False,
+            phase="error",
+            message=str(exc),
+            source="http",
+            elapsed_seconds=elapsed,
+            error=str(exc),
+        )
 
+    msg = f"Model {model_name} responded to readiness probe"
     _record_model_state(
-        model_name, "ready", message=f"Model {model_name} responded to readiness probe", progress=100.0, source="http")
-    return True
+        model_name, "ready", message=msg, progress=100.0, source="http")
+    elapsed = time.time() - start_time
+    return ReadinessResult(
+        success=True,
+        phase="ready",
+        message=msg,
+        source="http",
+        elapsed_seconds=elapsed,
+    )
+
+
+def ensure_model_loaded(
+    model_name: str,
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
+    auto_start: bool = False,
+    allow_download: bool = False,
+    timeout: float = 120.0,
+) -> bool:
+    """Ensure a model is available locally and loaded/warmed for inference.
+
+    This is an explicit alias for `ensure_model_ready()` to provide a clearer
+    lifecycle primitive for callers that reason in "loaded" terminology.
+    """
+    return ensure_model_ready(
+        model_name,
+        host=host,
+        port=port,
+        auto_start=auto_start,
+        allow_download=allow_download,
+        timeout=timeout,
+    )
 
 
 async def async_ensure_model_available(model_name: str, allow_download: bool = False, timeout: float = 600.0) -> bool:
@@ -953,6 +1070,18 @@ async def async_ensure_model_ready(
 ) -> bool:
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, ensure_model_ready, model_name, host, port, auto_start, allow_download, timeout)
+
+
+async def async_ensure_model_ready_detailed(
+    model_name: str,
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
+    auto_start: bool = False,
+    allow_download: bool = False,
+    timeout: float = 120.0,
+) -> ReadinessResult:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, ensure_model_ready_detailed, model_name, host, port, auto_start, allow_download, timeout)
 
 
 def change_ollama_config(config: Dict[str, Any], config_path: Optional[str] = None) -> bool:
@@ -1123,19 +1252,125 @@ def start_detached_ollama_serve(host: str, start_args: Optional[List[str]] = Non
         )
 
 
-def json_post(url: str, payload: Dict[str, Any], timeout: float = 60.0) -> Dict[str, Any]:
-    request = Request(url, data=json.dumps(payload).encode("utf-8"),
-                      headers={"Content-Type": "application/json"}, method="POST")
-    with urlopen(request, timeout=timeout) as response:
-        body = response.read().decode("utf-8")
-    return json.loads(body) if body else {}
+def _raise_normalized_network_error(exc: Exception, operation: str) -> None:
+    err = normalize_network_error(exc, provider="ollama", operation=operation)
+    raise ProviderError(err.message, provider="ollama", code=err.code, details=err.details) from exc
 
 
-def json_get(url: str, timeout: float = 5.0) -> Dict[str, Any]:
-    """Read JSON from an HTTP GET endpoint and decode it to a dict."""
-    with urlopen(url, timeout=timeout) as response:
-        body = response.read().decode("utf-8")
-    return json.loads(body) if body else {}
+def json_post(
+    url: str,
+    payload: Dict[str, Any],
+    timeout: float = 60.0,
+    policy: Optional[TransportPolicy] = None,
+) -> Dict[str, Any]:
+    """POST JSON payload with timeout + retry/backoff support."""
+
+    merged_policy = policy or TransportPolicy(timeout=timeout)
+
+    def _op() -> Dict[str, Any]:
+        request = Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urlopen(request, timeout=merged_policy.timeout) as response:
+            body = response.read().decode("utf-8")
+        return json.loads(body) if body else {}
+
+    try:
+        return retry_with_backoff(
+            _op,
+            policy=merged_policy,
+            is_retryable=lambda exc: normalize_network_error(exc).retryable,
+        )
+    except Exception as exc:
+        _raise_normalized_network_error(exc, "json_post")
+
+
+def json_get(
+    url: str,
+    timeout: float = 5.0,
+    policy: Optional[TransportPolicy] = None,
+) -> Dict[str, Any]:
+    """Read JSON from an HTTP GET endpoint with timeout + retry/backoff."""
+
+    merged_policy = policy or TransportPolicy(timeout=timeout)
+
+    def _op() -> Dict[str, Any]:
+        with urlopen(url, timeout=merged_policy.timeout) as response:
+            body = response.read().decode("utf-8")
+        return json.loads(body) if body else {}
+
+    try:
+        return retry_with_backoff(
+            _op,
+            policy=merged_policy,
+            is_retryable=lambda exc: normalize_network_error(exc).retryable,
+        )
+    except Exception as exc:
+        _raise_normalized_network_error(exc, "json_get")
+
+
+def ollama_health_check(
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
+    timeout: float = 2.0,
+    policy: Optional[TransportPolicy] = None,
+) -> Dict[str, Any]:
+    """Return a best-effort health snapshot for the local Ollama service."""
+    started = time.time()
+    host_env = f"{host.replace('http://', '').replace('https://', '')}:{port}"
+    reachable = server_is_up(host, port)
+    version = ""
+    http_ok = False
+    error: Optional[str] = None
+
+    if reachable:
+        try:
+            version_payload = json_get(
+                endpoint_url(host, port, "/api/version"),
+                timeout=timeout,
+                policy=policy,
+            )
+            http_ok = True
+            if isinstance(version_payload, dict):
+                version = str(version_payload.get("version")
+                              or version_payload.get("ollama_version") or "")
+        except Exception as exc:
+            error = str(exc)
+
+    try:
+        running = running_model_names(host_env)
+    except Exception:
+        running = []
+
+    return {
+        "host": host,
+        "port": port,
+        "reachable": bool(reachable),
+        "http_ok": bool(http_ok),
+        "version": version,
+        "running_models": running,
+        "ready": bool(reachable and (http_ok or len(running) > 0)),
+        "duration_ms": int((time.time() - started) * 1000),
+        "error": error,
+    }
+
+
+def ollama_readiness_probe(
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
+    timeout: float = 2.0,
+    policy: Optional[TransportPolicy] = None,
+) -> bool:
+    """Probe whether the local Ollama service is ready for request handling."""
+    merged_policy = policy or TransportPolicy(timeout=timeout)
+    try:
+        json_get(endpoint_url(host, port, "/api/tags"), timeout=timeout, policy=merged_policy)
+        return True
+    except Exception:
+        return False
 
 
 async def async_preload_model(url: str, port: int, model: str, timeout: float = 120.0) -> None:
@@ -1341,7 +1576,16 @@ def inspect_service_state(config_path: Optional[str] = None) -> Dict[str, Any]:
     }
 
 
-def start_service(config_path: Optional[str] = None) -> int:
+def start_service(config_path: Optional[str] = None, warmup_timeout: float = 30.0) -> int:
+    """Start Ollama service with optional model preload and configurable warmup timeout.
+
+    Args:
+        config_path: Optional path to LLM configuration file.
+        warmup_timeout: Timeout in seconds for server warmup. Default is 30.0.
+
+    Returns:
+        0 on success, non-zero on failure.
+    """
     llm = load_llm_config(config_path)
     model = preferred_start_model(llm)
     url = str(llm["url"])
@@ -1365,7 +1609,14 @@ def start_service(config_path: Optional[str] = None) -> int:
         print(f"Starting ollama serve at {host} ...")
         start_detached_ollama_serve(host)
         try:
-            wait_until_ready(url, port)
+            deadline = time.time() + float(warmup_timeout)
+            while time.time() < deadline:
+                if server_is_up(url, port):
+                    break
+                time.sleep(0.5)
+            if not server_is_up(url, port):
+                print(f"Timeout waiting for ollama serve at {host}", file=sys.stderr)
+                return 1
         except Exception as exc:
             print(f"Failed to start ollama serve: {exc}", file=sys.stderr)
             return 1
@@ -1472,6 +1723,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = subs.add_parser("start")
     sp.add_argument("--config", "-c", dest="config", default=None)
+    sp.add_argument("--warmup-timeout", type=float, default=30.0,
+                    help="Server warmup timeout in seconds (default: 30.0)")
     sp.add_argument("--wait", type=float, default=30.0)
 
     sp = subs.add_parser("stop")
@@ -1502,7 +1755,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if cmd == "start":
         cfg = getattr(args, "config", None)
-        return start_service(cfg)
+        warmup_timeout = getattr(args, "warmup_timeout", 30.0)
+        return start_service(cfg, warmup_timeout=warmup_timeout)
 
     if cmd == "stop":
         cfg = getattr(args, "config", None)

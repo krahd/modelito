@@ -9,6 +9,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: pypi
     concurrency:
       group: publish-${{ github.ref }}
       cancel-in-progress: true

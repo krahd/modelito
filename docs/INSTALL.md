@@ -1,4 +1,5 @@
-**Ollama Install Helpers**
+Ollama Install Helpers
+======================
 
 This document describes the platform install helper functions provided in `modelito.ollama_service`.
 
@@ -32,9 +33,11 @@ This document describes the platform install helper functions provided in `model
   - This is useful for diagnostic output in higher-level tooling.
 
 Testing
+
 - Unit tests for these helpers are provided in `tests/test_install_helpers.py`. The tests mock subprocess run calls and `get_ollama_binary` to avoid performing real installs.
 
 Safety
+
 - These helpers run external installer scripts; do not call them on shared CI runners without appropriate gating. Prefer mocking in automated tests.
 
 Examples

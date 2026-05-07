@@ -10,7 +10,7 @@ release and publishing instructions (maintainers only), see
 
 Latest release: see the PyPI project page:
 
-- https://pypi.org/project/modelito/
+- [modelito on PyPI](https://pypi.org/project/modelito/)
 
 Installing the latest released version:
 
