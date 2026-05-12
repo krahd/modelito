@@ -8,7 +8,7 @@ modelito is a compact, dependency-light Python library that provides provider-ag
 
 ## Current implementation state
 
-Current package metadata version is `1.4.1.dev0` in `pyproject.toml` (development version following release `v1.0.8`).
+Current package metadata version is `1.4.2` in `pyproject.toml`, matching the `v1.4.2` git tag.
 
 The package provides:
 
@@ -21,7 +21,7 @@ The package provides:
 - comprehensive docs under `docs/` including architecture, usage, API reference, install guide, and local server integration
 - pytest, ruff, mypy, build, twine, CI, and publishing workflows
 
-Release `v1.4.1` was published to PyPI with endpoint routing fix and audit remediation items completed.
+Release `v1.4.2` was tagged in git with local OpenAI-compatible server support added on top of `v1.4.1` (endpoint routing fix and audit remediation).
 
 ## Active focus
 

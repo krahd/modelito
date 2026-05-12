@@ -2,9 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.4.1.dev0 - Unreleased
+## 1.4.2 - 2026-05-12
+
+- Add `base_url` parameter to `OpenAIProvider` for local OpenAI-compatible server support (llama.cpp, vLLM, LM Studio, SGLang).
+- Add `docs/local-openai-compatible.md` with configuration examples for each supported local server.
+- Update README to clarify OpenAI provider supports local servers and link to new documentation.
+
+## 1.4.1 - 2026-05-12
 
 - Fix: correct Ollama endpoint routing for message-based requests. Route `/api/chat` for Message instances and `/api/generate` for prompt strings. Extract response fields correctly for each endpoint type.
+- Audit remediation: reconciled dev dependencies, added provider extras (gemini, grok), tidied root docs, backfilled CHANGELOG for v1.0.7/v1.0.8, cleaned `.venv-test` from history, included httpx in the `ollama` extra, added `ARCHITECTURE.md`, and clarified Provider/Connector usage in README and examples.
 
 ## 1.4.0 - 2026-05-06
 

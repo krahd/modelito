@@ -121,7 +121,11 @@ class OllamaProvider:
                 has_messages = isinstance(messages, (list, tuple)
                                           ) and messages and isinstance(messages[0], Message)
                 if has_messages:
-                    payload["messages"] = [{"role": m.role, "content": m.content} for m in messages]
+                    payload["messages"] = [
+                        {"role": m.role, "content": m.content}
+                        for m in messages
+                        if isinstance(m, Message)
+                    ]
                     endpoint = "/api/chat"
                 else:
                     payload["prompt"] = prompt
@@ -236,7 +240,11 @@ class OllamaProvider:
         has_messages = isinstance(messages, (list, tuple)
                                   ) and messages and isinstance(messages[0], Message)
         if has_messages:
-            payload["messages"] = [{"role": m.role, "content": m.content} for m in messages]
+            payload["messages"] = [
+                {"role": m.role, "content": m.content}
+                for m in messages
+                if isinstance(m, Message)
+            ]
             endpoint = "/api/chat"
         else:
             # flatten

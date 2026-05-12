@@ -19,13 +19,12 @@ import os
 import sys
 import shlex
 import threading
-from typing import Optional, List, Dict, Any, Iterable, cast, Callable
+from typing import Optional, List, Dict, Any, Iterable, cast, Callable, NoReturn
 from pathlib import Path
 import json
 import logging
 import argparse
 from dataclasses import dataclass, field
-from urllib.error import HTTPError, URLError
 
 from .errors import ProviderError
 from .plumbing import TransportPolicy, normalize_network_error, retry_with_backoff
@@ -1252,7 +1251,7 @@ def start_detached_ollama_serve(host: str, start_args: Optional[List[str]] = Non
         )
 
 
-def _raise_normalized_network_error(exc: Exception, operation: str) -> None:
+def _raise_normalized_network_error(exc: Exception, operation: str) -> NoReturn:
     err = normalize_network_error(exc, provider="ollama", operation=operation)
     raise ProviderError(err.message, provider="ollama", code=err.code, details=err.details) from exc
 
