@@ -3,10 +3,11 @@ modelito
 
 Modelito is a compact, dependency-light Python library that provides provider-
 agnostic abstractions and connectors for large language models (LLMs). It
-offers lightweight shims for OpenAI, Claude, Gemini and local Ollama
-deployments, plus utilities for token counting, timeout estimation, and small
-helpers to manage Ollama servers when needed. The library is designed for easy
-integration into applications and CI pipelines.
+offers lightweight shims for OpenAI, Claude, Gemini, local Ollama deployments,
+and local OpenAI-compatible servers (llama.cpp, vLLM, LM Studio), plus
+utilities for token counting, timeout estimation, and small helpers to manage
+Ollama servers when needed. The library is designed for easy integration into
+applications and CI pipelines.
 
 Quick start
 -----------
@@ -65,7 +66,11 @@ Install from the built wheel:
 pip install dist/*.whl
 ```
 
-See the `docs/` folder for more details on calibration and migration.
+See the `docs/` folder for more details:
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — Core design, Provider Protocol, and SDK hierarchy
+- [USAGE.md](docs/USAGE.md) — Usage guide and examples
+- [local-openai-compatible.md](docs/local-openai-compatible.md) — Using local OpenAI-compatible servers
+- [INSTALL.md](docs/INSTALL.md), [API.md](docs/API.md) — Installation and API reference
 
 Providers
 ---------
@@ -77,14 +82,16 @@ shims provide safe offline-friendly fallbacks suitable for testing.
 
 Provided shims and utilities:
 
+- `OpenAIProvider` — works with OpenAI's API and any OpenAI-compatible server
+  (llama.cpp, vLLM, LM Studio, SGLang) via configurable `base_url`.
+- `ClaudeProvider` — will use the official Anthropic SDK when installed,
+  falling back to deterministic behavior otherwise.
+- `GeminiProvider`, `GrokProvider` — lightweight shims.
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama
   HTTP API when available (requires `pip install modelito[ollama]` for the HTTP
   client library). If the HTTP API is unavailable the provider will attempt to
   use the local Ollama CLI as a best-effort fallback before returning a
   deterministic stub suitable for tests and examples.
-- `GeminiProvider`, `GrokProvider` — lightweight shims.
-- `OpenAIProvider`, `ClaudeProvider` — will use the official SDKs when
-  installed, falling back to deterministic behavior otherwise.
 
 The package also exposes a small Ollama administration layer for local model
 operations, including install backend detection, remote catalog metadata,

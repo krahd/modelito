@@ -64,11 +64,25 @@ class OpenAIProvider:
     - `list_models()` — best-effort model enumeration using `openai.Model.list()`.
     - `summarize(messages, settings)` — attempts a chat completion via the
       SDK and falls back to a deterministic join of message contents.
+
+    Args:
+        api_key: OpenAI API key (optional; can be omitted for local servers).
+        model: Model name to use (default: "gpt-3.5-turbo").
+        base_url: Custom API endpoint URL (e.g., for local OpenAI-compatible servers
+                  like llama.cpp/llama-server, vLLM, LM Studio, etc.).
+        client: Pre-constructed OpenAI client (optional; overrides SDK-based creation).
     """
 
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None, client: Any = None):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        base_url: Optional[str] = None,
+        client: Any = None
+    ):
         self.api_key = api_key
         self.model = model or "gpt-3.5-turbo"
+        self.base_url = base_url
         self._client = client
         self._openai: Optional[ModuleType] = None
         try:
@@ -81,8 +95,14 @@ class OpenAIProvider:
             try:
                 if hasattr(self._openai, "OpenAI"):
                     try:
+                        # Build kwargs for OpenAI client
+                        kwargs: Dict[str, Any] = {}
+                        if api_key:
+                            kwargs["api_key"] = api_key
+                        if base_url:
+                            kwargs["base_url"] = base_url
                         self._client = self._openai.OpenAI(
-                            api_key=api_key) if api_key else self._openai.OpenAI()
+                            **kwargs) if kwargs else self._openai.OpenAI()
                     except Exception:
                         self._client = None
             except Exception:

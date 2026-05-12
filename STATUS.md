@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-12 12:35
+Last updated: 2026-05-12 23:45
 
 ## Project purpose
 
@@ -8,24 +8,24 @@ modelito is a compact, dependency-light Python library that provides provider-ag
 
 ## Current implementation state
 
-Current package metadata version is `1.2.2` in `pyproject.toml`.
+Current package metadata version is `1.4.1.dev0` in `pyproject.toml` (development version following release `v1.0.8`).
 
 The package provides:
 
 - core provider protocols and dataclasses
-- adapters/shims for OpenAI, Anthropic/Claude, Gemini, Grok, and Ollama
+- adapters/shims for OpenAI (with local OpenAI-compatible server support), Anthropic/Claude, Gemini, Grok, and Ollama
 - synchronous, asynchronous, streaming, and embedding provider surfaces
 - `OllamaConnector` and provider registry helpers
 - Ollama install detection, local service helpers, remote catalog metadata, lifecycle/download tracking, and model readiness helpers
 - optional SDK-backed behaviour with deterministic fallback support for offline tests/examples
-- docs under `docs/`
+- comprehensive docs under `docs/` including architecture, usage, API reference, install guide, and local server integration
 - pytest, ruff, mypy, build, twine, CI, and publishing workflows
 
-Release `v1.2.2` has been completed and manually published to PyPI after automatic trusted publishing failed with `invalid-publisher`.
+Release `v1.4.1` was published to PyPI with endpoint routing fix and audit remediation items completed.
 
 ## Active focus
 
-Current focus is stabilising the post-`1.2.2` release pipeline, fixing PyPI trusted publishing, keeping release artefacts aligned, preserving a small portable provider surface as optional provider-specific helpers expand, and correcting endpoint routing in the Ollama provider to properly use `/api/chat` for message-based requests.
+Current focus is adding local OpenAI-compatible server support documentation and confirming OpenAIProvider works with custom base_url endpoints.
 
 ## Architecture overview
 
@@ -109,35 +109,28 @@ python -m twine check dist/*
 
 ## Recent changes
 
+- Added `base_url` parameter to `OpenAIProvider` for local OpenAI-compatible server support (llama.cpp, vLLM, LM Studio, SGLang).
+- Created `docs/local-openai-compatible.md` with configuration examples for each supported local server.
+- Updated README to clarify OpenAI provider supports local servers and link to new documentation.
+- Updated README introduction to mention local OpenAI-compatible servers.
+- All tests pass: 110 passed, 2 skipped.
+- Ruff linting: all checks passed.
+
+Prior to local server support work:
+
 - Fixed `OllamaProvider.summarize()` and `stream()` endpoint routing to use `/api/chat` for structured Message instances and `/api/generate` for prompt-based requests, correcting the contract violation where messages were being sent to the prompt-only `/api/generate` endpoint.
 - Updated response field extraction in both methods to properly handle `/api/chat` responses (`message.content`) and `/api/generate` responses (`response` field).
-- Package version `1.2.2` was released.
-- Ollama administration helpers were expanded to include install detection, richer remote catalog entries, lifecycle/download state tracking, and explicit model readiness confirmation.
-- Public exports and docs were updated for the new admin helpers.
-- Unit coverage was added for Ollama admin helpers.
-- Release-history and docs inconsistencies were cleaned up.
-- Automatic PyPI trusted publishing failed with `invalid-publisher`; manual `twine upload` succeeded.
-
-After Ollama endpoint routing fix:
-
-- focused Ollama provider tests: 4 passed
-- full `pytest -q`: 109 passed, 3 skipped
-- `ruff check .`: not run post-fix
-- `mypy modelito --ignore-missing-imports`: not run post-fix
-- `python -m build`: not run post-fix
-- `python -m twine check dist/*`: not run post-fix
-
-Previously recorded validation for the release/audit pass:
-
-- focused Ollama/admin helper tests: 17 passed
-- full `pytest -q`: 96 passed, 3 skipped
-- `ruff check .`: passed
-- `mypy modelito --ignore-missing-imports`: passed
-- `python -m build`: built sdist and wheel successfully
-- `python -m twine check dist/*`: passed
-- PyPI fresh install verification for `modelito==1.2.2`: succeeded
-
-No tests were run while creating this documentation-only status normalisation.
+- Package version `1.4.1` was released with the Ollama fix and all audit remediation items.
+- Comprehensive audit completed with 9 remediation items implemented:
+  1. Dev dependency reconciliation (dev-requirements.txt → pyproject.toml [dev])
+  2. Provider extras added (gemini, grok)
+  3. Version drift resolved (1.4.1.dev0)
+  4. Root directory tidied (audit/release docs moved to docs/)
+  5. CHANGELOG backfilled (v1.0.7, v1.0.8)
+  6. .venv-test cleanup (removed from history, in .gitignore)
+  7. Ollama extra includes httpx
+  8. ARCHITECTURE.md created (400+ lines)
+  9. Provider/Connector clarity in README and examples
 
 ## Known issues, risks, and limitations
 
@@ -172,4 +165,4 @@ No tests were run while creating this documentation-only status normalisation.
 
 ---
 
-Last updated: 2026-05-12 12:35
+Last updated: 2026-05-12 23:45
