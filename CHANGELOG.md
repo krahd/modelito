@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.4.1.dev0 - Unreleased
+
+- Fix: correct Ollama endpoint routing for message-based requests. Route `/api/chat` for Message instances and `/api/generate` for prompt strings. Extract response fields correctly for each endpoint type.
+
 ## 1.4.0 - 2026-05-06
 
 - Add `ensure_model_ready_detailed()` function with structured `ReadinessResult`
@@ -60,6 +64,16 @@ All notable changes to this project will be documented in this file.
 - Current package metadata version in `pyproject.toml`.
 - Runtime and docs consistency audit completed; release history normalization
   initiated for maintainability.
+
+## 1.0.8 - 2026-04-22
+
+- Stability and compatibility fixes for Ollama provider.
+- Integration test improvements and edge-case handling.
+
+## 1.0.7 - 2026-04-21
+
+- Provider protocol refinements and documentation improvements.
+- Enhanced streaming support across providers.
 
 ## 1.0.6 - 2026-04-21
 

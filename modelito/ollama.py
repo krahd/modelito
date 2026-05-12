@@ -118,7 +118,8 @@ class OllamaProvider:
                 if self.model:
                     payload["model"] = self.model
                 # Determine if we have structured messages or a prompt
-                has_messages = isinstance(messages, (list, tuple)) and messages and isinstance(messages[0], Message)
+                has_messages = isinstance(messages, (list, tuple)
+                                          ) and messages and isinstance(messages[0], Message)
                 if has_messages:
                     payload["messages"] = [{"role": m.role, "content": m.content} for m in messages]
                     endpoint = "/api/chat"
@@ -232,7 +233,8 @@ class OllamaProvider:
         if self.model:
             payload["model"] = self.model
 
-        has_messages = isinstance(messages, (list, tuple)) and messages and isinstance(messages[0], Message)
+        has_messages = isinstance(messages, (list, tuple)
+                                  ) and messages and isinstance(messages[0], Message)
         if has_messages:
             payload["messages"] = [{"role": m.role, "content": m.content} for m in messages]
             endpoint = "/api/chat"

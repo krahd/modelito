@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modelito"
-version = "1.4.1"
+version = "1.4.1.dev0"
 description = "Lightweight Python abstractions and connectors for LLM providers (OpenAI, Claude, Gemini, Ollama)."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -30,6 +30,8 @@ http = ["httpx"]
 tokenization = ["tiktoken"]
 openai = ["openai"]
 anthropic = ["anthropic"]
+gemini = ["google-generativeai"]
+grok = ["xai-sdk"]
 dev = ["pytest", "pytest-asyncio", "pytest-mock", "mypy", "ruff", "black"]
 
 [project.urls]

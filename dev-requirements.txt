@@ -1,5 +1,3 @@
-pytest>=8.3,<9
-psutil>=5.9.0
-httpx>=0.27,<1
-tiktoken
-mypy
+# This file is generated from pyproject.toml [dev] and runtime-optional extras.
+# For development, use: pip install -e .[dev,ollama,http,tokenization,openai,anthropic,gemini,grok]
+-e .[dev,ollama,http,tokenization,openai,anthropic,gemini,grok]
