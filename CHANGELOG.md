@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.4.3 - 2026-05-12
+
+- Release metadata bump from `1.4.2` to `1.4.3`.
+- Publish `v1.4.3` to PyPI.
+
 ## 1.4.2 - 2026-05-12
 
 - Add `base_url` parameter to `OpenAIProvider` for local OpenAI-compatible server support (llama.cpp, vLLM, LM Studio, SGLang).
