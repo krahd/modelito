@@ -117,20 +117,32 @@ class OllamaProvider:
                 payload: dict[str, Any] = {}
                 if self.model:
                     payload["model"] = self.model
-                # prefer sending structured messages when available
-                if isinstance(messages, (list, tuple)) and messages and isinstance(messages[0], Message):
+                # Determine if we have structured messages or a prompt
+                has_messages = isinstance(messages, (list, tuple)) and messages and isinstance(messages[0], Message)
+                if has_messages:
                     payload["messages"] = [{"role": m.role, "content": m.content} for m in messages]
+                    endpoint = "/api/chat"
                 else:
                     payload["prompt"] = prompt
+                    endpoint = "/api/generate"
 
                 try:
-                    url = endpoint_url(self.host, self.port, "/api/generate")
+                    url = endpoint_url(self.host, self.port, endpoint)
                     res = json_post(url, payload, timeout=30.0)
                 except Exception:
                     res = {}
 
-                # Try to coerce common response shapes into a string result.
+                # Extract response based on which endpoint was used
                 if isinstance(res, dict):
+                    # /api/chat returns message.content
+                    if has_messages and "message" in res and isinstance(res["message"], dict):
+                        content = res["message"].get("content")
+                        if content:
+                            return str(content)
+                    # /api/generate returns response field
+                    if "response" in res:
+                        return str(res.get("response") or "")
+                    # Fallback to common alternative field names
                     if "text" in res:
                         return str(res.get("text") or "")
                     if "output" in res:
@@ -198,9 +210,10 @@ class OllamaProvider:
     def stream(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
         """Streaming implementation for Ollama via the local HTTP API.
 
-        Attempts to call the Ollama `/api/generate` endpoint and yields
-        incremental text pieces as they arrive. Falls back to the
-        deterministic `summarize()` chunking when streaming isn't available.
+        Attempts to call the Ollama `/api/chat` endpoint for structured messages
+        or `/api/generate` endpoint for prompts, yielding incremental text pieces
+        as they arrive. Falls back to the deterministic `summarize()` chunking
+        when streaming isn't available.
         """
         try:
             import json
@@ -214,13 +227,15 @@ class OllamaProvider:
                 yield text[i: i + 64]
             return
 
-        # Build payload mirroring summarize() behavior
+        # Build payload and determine endpoint
         payload: dict[str, Any] = {}
         if self.model:
             payload["model"] = self.model
 
-        if isinstance(messages, (list, tuple)) and messages and isinstance(messages[0], Message):
+        has_messages = isinstance(messages, (list, tuple)) and messages and isinstance(messages[0], Message)
+        if has_messages:
             payload["messages"] = [{"role": m.role, "content": m.content} for m in messages]
+            endpoint = "/api/chat"
         else:
             # flatten
             try:
@@ -236,8 +251,9 @@ class OllamaProvider:
                 payload["prompt"] = "\n".join(p for p in parts if p)
             except Exception:
                 payload["prompt"] = str(messages or "")
+            endpoint = "/api/generate"
 
-        url = endpoint_url(self.host, self.port, "/api/generate")
+        url = endpoint_url(self.host, self.port, endpoint)
 
         req = Request(url, data=json.dumps(payload).encode("utf-8"),
                       headers={"Content-Type": "application/json"}, method="POST")
@@ -268,9 +284,15 @@ class OllamaProvider:
                     except Exception:
                         yield s2
                         continue
-                    # Extract plausible text fields
+                    # Extract plausible text fields based on endpoint
                     if isinstance(obj, dict):
-                        # common shapes
+                        # /api/chat returns message.content in streaming mode
+                        if has_messages and "message" in obj and isinstance(obj["message"], dict):
+                            content = obj["message"].get("content")
+                            if content:
+                                yield str(content)
+                                continue
+                        # common shapes for /api/generate and other endpoints
                         if "token" in obj and isinstance(obj.get("token"), str):
                             yield str(obj.get("token") or "")
                             continue

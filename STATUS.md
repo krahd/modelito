@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-07 00:15
+Last updated: 2026-05-12 12:35
 
 ## Project purpose
 
@@ -25,7 +25,7 @@ Release `v1.2.2` has been completed and manually published to PyPI after automat
 
 ## Active focus
 
-Current focus is stabilising the post-`1.2.2` release pipeline, fixing PyPI trusted publishing, keeping release artefacts aligned, and preserving a small portable provider surface as optional provider-specific helpers expand.
+Current focus is stabilising the post-`1.2.2` release pipeline, fixing PyPI trusted publishing, keeping release artefacts aligned, preserving a small portable provider surface as optional provider-specific helpers expand, and correcting endpoint routing in the Ollama provider to properly use `/api/chat` for message-based requests.
 
 ## Architecture overview
 
@@ -109,6 +109,8 @@ python -m twine check dist/*
 
 ## Recent changes
 
+- Fixed `OllamaProvider.summarize()` and `stream()` endpoint routing to use `/api/chat` for structured Message instances and `/api/generate` for prompt-based requests, correcting the contract violation where messages were being sent to the prompt-only `/api/generate` endpoint.
+- Updated response field extraction in both methods to properly handle `/api/chat` responses (`message.content`) and `/api/generate` responses (`response` field).
 - Package version `1.2.2` was released.
 - Ollama administration helpers were expanded to include install detection, richer remote catalog entries, lifecycle/download state tracking, and explicit model readiness confirmation.
 - Public exports and docs were updated for the new admin helpers.
@@ -116,7 +118,14 @@ python -m twine check dist/*
 - Release-history and docs inconsistencies were cleaned up.
 - Automatic PyPI trusted publishing failed with `invalid-publisher`; manual `twine upload` succeeded.
 
-## Tests and verification status
+After Ollama endpoint routing fix:
+
+- focused Ollama provider tests: 4 passed
+- full `pytest -q`: 109 passed, 3 skipped
+- `ruff check .`: not run post-fix
+- `mypy modelito --ignore-missing-imports`: not run post-fix
+- `python -m build`: not run post-fix
+- `python -m twine check dist/*`: not run post-fix
 
 Previously recorded validation for the release/audit pass:
 
@@ -163,4 +172,4 @@ No tests were run while creating this documentation-only status normalisation.
 
 ---
 
-Last updated: 2026-05-07 00:15
+Last updated: 2026-05-12 12:35
