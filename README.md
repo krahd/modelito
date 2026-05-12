@@ -24,10 +24,9 @@ For development / contributor setup (editable install and dev dependencies):
 
 ```sh
 pip install -e .[dev]
-pip install -r dev-requirements.txt
 
-# Optional extras
-pip install -e .[ollama,tokenization,openai,anthropic]
+# Optional: add runtime extras for full functionality
+pip install -e .[ollama,tokenization,openai,anthropic,gemini,grok]
 ```
 
 Run tests (for contributors):
@@ -79,9 +78,10 @@ shims provide safe offline-friendly fallbacks suitable for testing.
 Provided shims and utilities:
 
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama
-  HTTP API when available. If the HTTP API is unavailable the provider will
-  attempt to use the local Ollama CLI as a best-effort fallback before
-  returning a deterministic stub useful for tests and examples.
+  HTTP API when available (requires `pip install modelito[ollama]` for the HTTP
+  client library). If the HTTP API is unavailable the provider will attempt to
+  use the local Ollama CLI as a best-effort fallback before returning a
+  deterministic stub suitable for tests and examples.
 - `GeminiProvider`, `GrokProvider` — lightweight shims.
 - `OpenAIProvider`, `ClaudeProvider` — will use the official SDKs when
   installed, falling back to deterministic behavior otherwise.
@@ -177,21 +177,60 @@ print(len(vectors), len(vectors[0]))
 print(Embedder.available_embedders())
 ```
 
-`modelito` exposes `Message` and `Response` dataclasses; connectors and
-provider surfaces accept `Message` instances. Example usage with the current API:
+`modelito` exposes `Message` and `Response` dataclasses; providers accept `Message` instances.
+
+### Using bare Provider (recommended for most cases)
 
 ```py
-from modelito import Provider, Message, OllamaProvider, OllamaConnector
+from modelito import Provider, Message, OllamaProvider
 
-p: Provider = OllamaProvider()
-if isinstance(p, Provider):
-    resp_text = p.summarize([Message(role="user", content="hello")])
-    print(resp_text)
+# Create a provider
+provider: Provider = OllamaProvider()
 
-conn = OllamaConnector(provider=p)
-res = conn.complete(conv_id="example", new_messages=[Message(role="user", content="hello")])
+# Single request
+resp = provider.summarize([Message(role="user", content="hello")])
+print(resp)
+
+# Streaming
+for chunk in provider.stream([Message(role="user", content="tell me a story")]):
+    print(chunk, end="", flush=True)
+```
+
+Use a bare Provider when:
+- You manage conversation state yourself
+- You're doing single-shot or stateless inference
+- You need minimal abstraction
+- You're building a custom application architecture
+
+### Using OllamaConnector (for conversation management)
+
+```py
+from modelito import Message, OllamaConnector, OllamaProvider
+
+# Create a connector
+conn = OllamaConnector(provider=OllamaProvider())
+
+# Multi-turn conversation (state is tracked automatically)
+res = conn.complete(
+    conv_id="chat_session_1", 
+    new_messages=[Message(role="user", content="what's 2+2?")]
+)
+print(res.text)
+
+# Second turn (history is remembered)
+res = conn.complete(
+    conv_id="chat_session_1", 
+    new_messages=[Message(role="user", content="and 3+3?")]
+)
 print(res.text)
 ```
+
+Use OllamaConnector when:
+- You need automatic conversation history tracking
+- You're building a multi-turn chatbot
+- You want to manage per-conversation state without writing it yourself
+
+For more details, see [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 Streaming semantics
 -------------------
