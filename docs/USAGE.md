@@ -3,7 +3,7 @@ About
 
 Modelito is a lightweight Python library that provides provider abstractions,
 compatibility shims, and small utilities for interacting with both local and
-cloud LLM runtimes (Ollama, OpenAI, Anthropic/Claude, Gemini). The project
+cloud and local LLM runtimes (Ollama, OpenAI, Anthropic/Claude, Gemini, oMLX). The project
 is intentionally dependency-light: install optional extras when you need the
 real SDKs, otherwise the shims provide deterministic fallbacks suitable for
 testing and offline use.
@@ -66,6 +66,7 @@ Additional examples demonstrating specific provider shims are included:
 - [examples/openai_example.py](../examples/openai_example.py)
 - [examples/claude_example.py](../examples/claude_example.py)
 - [examples/gemini_example.py](../examples/gemini_example.py)
+- [examples/omlx_example.py](../examples/omlx_example.py)
 
 Run any example from the repository root, for example:
 

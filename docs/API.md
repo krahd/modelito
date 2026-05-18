@@ -21,7 +21,7 @@ import *`) are:
   API is not reachable it will attempt the Ollama CLI as a best-effort
   fallback (using `run_ollama_command`) before exposing a safe deterministic
   `summarize()` fallback useful for tests.
-- `GeminiProvider`, `GrokProvider`, `OpenAIProvider`, `ClaudeProvider` — minimal provider shims with the same `list_models()` / `summarize()` surface.
+- `GeminiProvider`, `GrokProvider`, `OpenAIProvider`, `ClaudeProvider`, `OMLXProvider` — minimal provider shims with the same `list_models()` / `summarize()` surface.
 - `EmbeddingProvider` — structural protocol for provider implementations that expose `embed(texts, **kwargs)`.
 - `embed_texts(texts, dim=8) -> List[List[float]]` and `StubEmbeddingProvider` — deterministic test-friendly embedding helpers.
 - `normalize_models(raw) -> List[Dict[str, Any]]` — normalize provider model listings into dictionaries with an `id` field.

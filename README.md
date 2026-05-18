@@ -3,7 +3,7 @@ modelito
 
 Modelito is a compact, dependency-light Python library that provides provider-
 agnostic abstractions and connectors for large language models (LLMs). It
-offers lightweight shims for OpenAI, Claude, Gemini, local Ollama deployments,
+offers lightweight shims for OpenAI, Claude, Gemini, oMLX, local Ollama deployments,
 and local OpenAI-compatible servers (llama.cpp, vLLM, LM Studio), plus
 utilities for token counting, timeout estimation, and small helpers to manage
 Ollama servers when needed. The library is designed for easy integration into
@@ -87,6 +87,8 @@ Provided shims and utilities:
 - `ClaudeProvider` — will use the official Anthropic SDK when installed,
   falling back to deterministic behavior otherwise.
 - `GeminiProvider`, `GrokProvider` — lightweight shims.
+- `OMLXProvider` — HTTP-first provider for local oMLX runtimes exposing an
+  OpenAI-compatible API surface.
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama
   HTTP API when available (requires `pip install modelito[ollama]` for the HTTP
   client library). If the HTTP API is unavailable the provider will attempt to
@@ -146,8 +148,8 @@ existing duck-typed providers — it requires only:
 - `summarize(messages, settings=None)` -> `str`
 
 All built-in providers shipped with the package (`OpenAIProvider`,
-`ClaudeProvider`, `GeminiProvider`, `OllamaProvider`, `GrokProvider`) now
-explicitly subclass `Provider`. The `Provider` Protocol is decorated with
+`ClaudeProvider`, `GeminiProvider`, `OMLXProvider`, `OllamaProvider`, `GrokProvider`) satisfy
+the `Provider` protocol structurally. The `Provider` Protocol is decorated with
 `@runtime_checkable`, so you can use `isinstance()` checks at runtime when
 you need to enforce the contract in application code.
 

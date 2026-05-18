@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modelito"
-version = "1.4.3"
-description = "Lightweight Python abstractions and connectors for LLM providers (OpenAI, Claude, Gemini, Ollama)."
+version = "1.4.4"
+description = "Lightweight Python abstractions and connectors for LLM providers (OpenAI, Claude, Gemini, oMLX, Ollama)."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [ { name = "krahd" } ]
 license = "MIT"
 license-files = ["LICENSE"]
-keywords = ["llm", "provider", "tokenizer", "ollama", "openai"]
+keywords = ["llm", "provider", "tokenizer", "ollama", "openai", "omlx"]
 classifiers = [
 	"Development Status :: 4 - Beta",
 	"Intended Audience :: Developers",
