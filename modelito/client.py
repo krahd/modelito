@@ -12,8 +12,8 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, Iterable, List, Optional, Type, Union, cast
 from .provider_registry import get_provider, list_embedders, list_providers
-from .provider import Provider
-from .messages import Message, Response
+from .provider import MessageInput, Provider
+from .messages import Response
 from .model_metadata import get_model_metadata
 from .normalization import normalize_metadata
 
@@ -35,10 +35,10 @@ class Client:
     def list_models(self) -> List[str]:
         return self.provider.list_models()
 
-    def summarize(self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None) -> str:
+    def summarize(self, messages: Iterable[MessageInput], settings: Optional[Dict[str, Any]] = None) -> str:
         return self.provider.summarize(messages, settings)
 
-    def stream(self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None) -> Iterable[str]:
+    def stream(self, messages: Iterable[MessageInput], settings: Optional[Dict[str, Any]] = None) -> Iterable[str]:
         if hasattr(self.provider, "stream"):
             yield from cast(Any, self.provider).stream(messages, settings)
             return
@@ -61,7 +61,7 @@ class Client:
 
     def chat(
         self,
-        messages: Iterable[Message],
+        messages: Iterable[MessageInput],
         settings: Optional[Dict[str, Any]] = None,
     ) -> Response:
         """Return a full :class:`~modelito.messages.Response` with metadata.
@@ -76,7 +76,7 @@ class Client:
 
     def chat_json(
         self,
-        messages: Iterable[Message],
+        messages: Iterable[MessageInput],
         schema: Optional[Type[Any]] = None,
         settings: Optional[Dict[str, Any]] = None,
     ) -> dict:

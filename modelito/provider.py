@@ -7,9 +7,13 @@ sync/legacy surface.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Protocol, Union, runtime_checkable
 
-from .messages import Message
+from .messages import Message, Response
+
+# Convenience type alias for message inputs accepted by OpenAI-compatible providers.
+# Callers may pass Message instances, plain strings, or OpenAI-style dicts.
+MessageInput = Union[Message, str, Mapping[str, Any]]
 
 
 @runtime_checkable
@@ -22,7 +26,7 @@ class SyncProvider(Protocol):
     def list_models(self) -> List[str]:
         ...
 
-    def summarize(self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None) -> str:
+    def summarize(self, messages: Iterable[Any], settings: Optional[Dict[str, Any]] = None) -> str:
         ...
 
 
@@ -34,7 +38,7 @@ class AsyncProvider(Protocol):
     mirrors `summarize()` but is awaitable.
     """
 
-    async def acomplete(self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None) -> str:
+    async def acomplete(self, messages: Iterable[Any], settings: Optional[Dict[str, Any]] = None) -> str:
         ...
 
 
@@ -53,6 +57,22 @@ class EmbeddingProvider(Protocol):
     """
 
     def embed(self, texts: Iterable[str], **kwargs: Any) -> List[List[float]]:
+        ...
+
+
+@runtime_checkable
+class ChatProvider(Protocol):
+    """Modern provider surface returning full ``Response`` metadata.
+
+    Prefer this protocol over :class:`SyncProvider` for new code.
+    ``Client.chat()`` delegates to this interface when available.
+    """
+
+    def chat(
+        self,
+        messages: Iterable[Any],
+        settings: Optional[Dict[str, Any]] = None,
+    ) -> Response:
         ...
 
 

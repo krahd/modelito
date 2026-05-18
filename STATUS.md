@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-18
+Last updated: 2026-05-19 09:30
 
 ## Project purpose
 
@@ -25,7 +25,15 @@ Release `v1.4.3` was tagged in git and published to PyPI after the local OpenAI-
 
 ## Active focus
 
-oMLX provider enhancements complete: strict mode, full Response metadata, dict messages, typed error classes, `OpenAICompatibleHTTPProvider` base class, and `Client.chat_json()` added.
+Phase 3 enhancements complete:
+
+1. `list_models()` raises `ModelitoBadResponseError` in strict mode when the server returns valid JSON but no usable model IDs; falls back to `[self.model]` in non-strict mode.
+2. `chat()` raises `ModelitoBadResponseError` in strict mode when the server returns a valid response with empty text content.
+3. `embed()` validates shape and count in strict mode: raises `ModelitoBadResponseError` when no usable embeddings are returned, or when the count does not match the input length.
+4. `ChatProvider` — new `@runtime_checkable` Protocol in `modelito/provider.py` formalising the `chat()` interface returning `Response`; exported from package root.
+5. `MessageInput` type alias (`Union[Message, str, Mapping[str, Any]]`) added to `provider.py` and exported; `Client` method signatures broadened from `Iterable[Message]` to `Iterable[MessageInput]`; `SyncProvider.summarize()` and `AsyncProvider.acomplete()` signatures similarly broadened.
+
+152 tests pass, 2 skipped. ruff and mypy clean.
 
 ## Architecture overview
 
@@ -198,4 +206,4 @@ Prior to local server support work:
 
 ---
 
-Last updated: 2026-05-18
+Last updated: 2026-05-19 09:30

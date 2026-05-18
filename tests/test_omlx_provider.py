@@ -9,6 +9,7 @@ from modelito.exceptions import (
     LLMProviderError,
     ModelitoConnectionError,
 )
+from modelito.exceptions import ModelitoBadResponseError
 from modelito.messages import Message, Response
 from modelito.openai_compat import OpenAICompatibleHTTPProvider
 from modelito.omlx import OMLXProvider
@@ -364,3 +365,196 @@ def test_client_chat_returns_response_object(monkeypatch):
     assert isinstance(r, Response)
     assert r.text == "response"
     assert r.model == "omlx-test"
+
+
+# ------------------------------------------------------------------
+# list_models() strict mode (item 1)
+# ------------------------------------------------------------------
+
+
+def test_list_models_strict_raises_on_connection_failure(monkeypatch):
+    import urllib.error
+
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: (_ for _ in ()).throw(
+            urllib.error.URLError("Connection refused")
+        ),
+    )
+    p = OMLXProvider(strict=True)
+    with pytest.raises(LLMProviderError):
+        p.list_models()
+
+
+def test_list_models_strict_raises_when_no_model_ids(monkeypatch):
+    payload = {"data": []}  # valid JSON, empty model list
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
+    )
+    p = OMLXProvider(strict=True)
+    with pytest.raises(ModelitoBadResponseError):
+        p.list_models()
+
+
+def test_list_models_non_strict_falls_back_when_no_model_ids(monkeypatch):
+    payload = {"data": []}
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
+    )
+    p = OMLXProvider(strict=False)
+    assert p.list_models() == ["omlx"]
+
+
+# ------------------------------------------------------------------
+# Empty/malformed chat response in strict mode (item 2)
+# ------------------------------------------------------------------
+
+
+def test_chat_strict_raises_on_empty_text(monkeypatch):
+    # Valid structure but no content in the message.
+    payload = {"choices": [{"message": {"content": ""}}]}
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
+    )
+    p = OMLXProvider(strict=True)
+    with pytest.raises(ModelitoBadResponseError):
+        p.chat([Message(role="user", content="ping")])
+
+
+def test_chat_strict_raises_on_malformed_json(monkeypatch):
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([b"not json"]),
+    )
+    p = OMLXProvider(strict=True)
+    with pytest.raises(LLMProviderError):
+        p.chat([Message(role="user", content="ping")])
+
+
+def test_chat_non_strict_returns_empty_response_on_empty_text(monkeypatch):
+    payload = {"choices": [{"message": {"content": ""}}]}
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
+    )
+    p = OMLXProvider(strict=False)
+    r = p.chat([Message(role="user", content="ping")])
+    assert isinstance(r, Response)
+    assert r.text == ""
+
+
+# ------------------------------------------------------------------
+# Embeddings shape/count validation in strict mode (item 3)
+# ------------------------------------------------------------------
+
+
+def test_embed_strict_raises_when_server_returns_no_embeddings(monkeypatch):
+    payload = {"data": []}  # valid JSON, no embeddings
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
+    )
+    p = OMLXProvider(strict=True)
+    with pytest.raises(ModelitoBadResponseError):
+        p.embed(["hello", "world"])
+
+
+def test_embed_strict_raises_on_count_mismatch(monkeypatch):
+    # Server returns only 1 embedding for 2 inputs.
+    payload = {"data": [{"embedding": [0.1, 0.2]}]}
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
+    )
+    p = OMLXProvider(strict=True)
+    with pytest.raises(ModelitoBadResponseError, match="expected 2"):
+        p.embed(["hello", "world"])
+
+
+def test_embed_non_strict_falls_back_when_no_embeddings(monkeypatch):
+    payload = {"data": []}
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
+    )
+    p = OMLXProvider(strict=False)
+    result = p.embed(["hello"])
+    assert isinstance(result, list)
+    assert len(result) == 1  # stub fallback
+
+
+# ------------------------------------------------------------------
+# ChatProvider protocol (item 4)
+# ------------------------------------------------------------------
+
+
+def test_chat_provider_protocol_exported():
+    from modelito import ChatProvider
+    from modelito.provider import ChatProvider as InternalChatProvider
+
+    assert ChatProvider is InternalChatProvider
+
+
+def test_omlx_satisfies_chat_provider_protocol():
+    from modelito.provider import ChatProvider
+
+    p = OMLXProvider()
+    assert isinstance(p, ChatProvider)
+
+
+def test_chat_provider_protocol_is_runtime_checkable():
+    from modelito.provider import ChatProvider
+
+    class FakeChat:
+        def chat(self, messages, settings=None):
+            return None  # type: ignore[return-value]
+
+    assert isinstance(FakeChat(), ChatProvider)
+
+
+# ------------------------------------------------------------------
+# MessageInput type alias + broadened Client hints (item 5)
+# ------------------------------------------------------------------
+
+
+def test_message_input_type_alias_exported():
+    from modelito import MessageInput
+    from modelito.provider import MessageInput as InternalMessageInput
+
+    assert MessageInput is InternalMessageInput
+
+
+def test_client_chat_accepts_dict_messages(monkeypatch):
+    payload = {"choices": [{"message": {"content": "dict ok"}}]}
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
+    )
+    client = Client(provider="omlx")
+    r = client.chat([{"role": "user", "content": "hello"}])
+    assert r.text == "dict ok"
+
+
+def test_client_chat_accepts_str_messages(monkeypatch):
+    payload = {"choices": [{"message": {"content": "str ok"}}]}
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
+    )
+    client = Client(provider="omlx")
+    r = client.chat(["hello"])
+    assert r.text == "str ok"
+
+
+def test_client_chat_json_accepts_dict_messages(monkeypatch):
+    payload = {"choices": [{"message": {"content": '{"key": "val"}'}}]}
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
+    )
+    client = Client(provider="omlx")
+    result = client.chat_json([{"role": "user", "content": "give json"}])
+    assert result == {"key": "val"}

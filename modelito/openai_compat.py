@@ -140,7 +140,13 @@ class OpenAICompatibleHTTPProvider:
     # ------------------------------------------------------------------
 
     def list_models(self) -> List[str]:
-        """Return available model IDs. Falls back to ``[self.model]`` on failure."""
+        """Return available model IDs.
+
+        In non-strict mode falls back to ``[self.model]`` on any failure.
+        In strict mode raises a typed Modelito error on connection or parse
+        failure, and raises ``ModelitoBadResponseError`` when the server
+        returns valid JSON but no usable model IDs.
+        """
         try:
             req = Request(
                 f"{self.base_url}/models",
@@ -159,8 +165,14 @@ class OpenAICompatibleHTTPProvider:
                 ]
                 if out:
                     return out
-        except Exception:
-            pass
+            if self.strict:
+                raise ModelitoBadResponseError(
+                    "list_models: server returned valid JSON but no usable model IDs"
+                )
+        except LLMProviderError:
+            raise
+        except Exception as exc:
+            self._strict_raise(exc)
         return [self.model]
 
     def chat(
@@ -223,6 +235,11 @@ class OpenAICompatibleHTTPProvider:
                     tokens_in = int(ti) if ti is not None else None
                     tokens_out = int(to_) if to_ is not None else None
 
+            if not text and self.strict:
+                raise ModelitoBadResponseError(
+                    "chat: server returned a valid response but no text content"
+                )
+
             return Response(
                 text=text,
                 raw=data,
@@ -231,6 +248,8 @@ class OpenAICompatibleHTTPProvider:
                 tokens_in=tokens_in,
                 tokens_out=tokens_out,
             )
+        except LLMProviderError:
+            raise
         except Exception as exc:
             self._strict_raise(exc)
 
@@ -306,6 +325,8 @@ class OpenAICompatibleHTTPProvider:
                                 if isinstance(text, str) and text:
                                     yield text
             return
+        except LLMProviderError:
+            raise
         except Exception as exc:
             if self.strict:
                 raise self._classify_error(exc) from exc
@@ -364,7 +385,18 @@ class OpenAICompatibleHTTPProvider:
                         if isinstance(emb, list):
                             out.append([float(v) for v in emb])
             if out:
+                if self.strict and len(out) != len(inputs):
+                    raise ModelitoBadResponseError(
+                        f"embed: expected {len(inputs)} embeddings, got {len(out)}"
+                    )
                 return out
+            # Server responded with valid JSON but no usable embeddings.
+            if self.strict:
+                raise ModelitoBadResponseError(
+                    "embed: server returned valid JSON but no usable embeddings"
+                )
+        except LLMProviderError:
+            raise
         except Exception as exc:
             self._strict_raise(exc)
 
