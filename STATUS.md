@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-19 09:30
+Last updated: 2026-05-18 00:48
 
 ## Project purpose
 
@@ -117,61 +117,11 @@ python -m twine check dist/*
 
 ## Recent changes
 
-- **feature/oMLX – phase 2** architecture and production-readiness improvements:
-  - Added `modelito/openai_compat.py` with `OpenAICompatibleHTTPProvider` base class; `OMLXProvider` is now a thin subclass setting only default `base_url` and `model`.
-  - Added `strict: bool = False` parameter to `OMLXProvider` (and base class): `strict=True` raises typed Modelito errors instead of falling back silently.
-  - Added typed error hierarchy in `modelito/exceptions.py`: `ModelitoConnectionError`, `ModelitoTimeoutError`, `ModelitoBadResponseError`, `ModelitoProviderError`, `ModelitoModelNotFoundError` (all subclass `LLMProviderError`).
-  - Expanded `Response` dataclass in `modelito/messages.py` to carry `model`, `finish_reason`, `tokens_in`, `tokens_out`.
-  - Added `OpenAICompatibleHTTPProvider.chat()` returning a full `Response` with all metadata.
-  - `OMLXProvider._flatten_messages()` now accepts `Message`, `str`, and `dict` with `role`/`content` keys.
-  - Added `Client.chat()` delegating to provider `chat()` with `Response` fallback.
-  - Added `Client.chat_json()` for structured JSON output with optional TypedDict/dataclass schema validation.
-  - Exported `OpenAICompatibleHTTPProvider` and all 5 new error classes at package root.
-  - Updated test monkeypatches to `modelito.openai_compat.urlopen`; added 16 new tests (26 total in `test_omlx_provider.py`).
-  - Validation: `pytest -q` → 135 passed, 3 skipped; `ruff check .` → clean; `mypy modelito --ignore-missing-imports` → clean.
-
-- **v1.4.4** bug fixes and test coverage:
-  - Fixed `OMLXProvider.stream()` fallback: was re-consuming the already-exhausted `messages` iterable after an HTTP failure; now uses the pre-flattened `flat` list directly, making one-shot iterators safe.
-  - Removed duplicate `RemoteModelCatalogEntry` and `ModelLifecycleState` entries from `__all__` in `modelito/__init__.py`.
-  - Corrected README wording: providers satisfy the `Provider` protocol structurally (they do not subclass it, as `Provider` is a Protocol).
-  - Added 5 new tests: `embed()` HTTP path, `embed()` offline fallback, `stream()` offline fallback, `stream()` `chunk_size` setting, `acomplete()`.
-
-- Added `OMLXProvider` in `modelito/omlx.py` with:
-  - HTTP-first OpenAI-compatible calls for `/v1/models`, `/v1/chat/completions`, and `/v1/embeddings`
-  - SSE-style streaming support via `stream()`
-  - async wrapper via `acomplete()`
-  - deterministic fallback behavior for offline/local tests
-- Registered oMLX provider aliases (`omlx`, `om`) in provider registry and exported `OMLXProvider` at package root.
-- Added targeted unit tests in `tests/test_omlx_provider.py`.
-- Added `examples/omlx_example.py` and updated README/API/ARCHITECTURE/USAGE docs to include oMLX.
-- Validation for this work:
-  - `pytest -q tests/test_omlx_provider.py tests/test_providers.py tests/test_client.py tests/test_embeddings.py` → 18 passed
-  - `pytest -q tests/test_omlx_provider.py` → 6 passed
-  - `ruff check modelito/omlx.py modelito/provider_registry.py modelito/__init__.py tests/test_omlx_provider.py` → passed
-  - `mypy modelito/omlx.py --ignore-missing-imports` → passed
-
-- Added `base_url` parameter to `OpenAIProvider` for local OpenAI-compatible server support (llama.cpp, vLLM, LM Studio, SGLang).
-- Created `docs/local-openai-compatible.md` with configuration examples for each supported local server.
-- Updated README to clarify OpenAI provider supports local servers and link to new documentation.
-- Updated README introduction to mention local OpenAI-compatible servers.
-- All tests pass: 110 passed, 2 skipped.
-- Ruff linting: all checks passed.
-
-Prior to local server support work:
-
-- Fixed `OllamaProvider.summarize()` and `stream()` endpoint routing to use `/api/chat` for structured Message instances and `/api/generate` for prompt-based requests, correcting the contract violation where messages were being sent to the prompt-only `/api/generate` endpoint.
-- Updated response field extraction in both methods to properly handle `/api/chat` responses (`message.content`) and `/api/generate` responses (`response` field).
-- Package version `1.4.1` was released with the Ollama fix and all audit remediation items.
-- Comprehensive audit completed with 9 remediation items implemented:
-  1. Dev dependency reconciliation (dev-requirements.txt → pyproject.toml [dev])
-  2. Provider extras added (gemini, grok)
-  3. Version drift resolved (1.4.1.dev0)
-  4. Root directory tidied (audit/release docs moved to docs/)
-  5. CHANGELOG backfilled (v1.0.7, v1.0.8)
-  6. .venv-test cleanup (removed from history, in .gitignore)
-  7. Ollama extra includes httpx
-  8. ARCHITECTURE.md created (400+ lines)
-  9. Provider/Connector clarity in README and examples
+- Current release line is `1.4.4`.
+- Current oMLX stack uses `OpenAICompatibleHTTPProvider` with strict-mode typed error handling.
+- Current provider typing includes `ChatProvider` and `MessageInput` exports, with `Client` chat-related methods accepting broadened message input types.
+- Current validation snapshot: `pytest -q` = 152 passed, 2 skipped; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean.
+- Historical release narratives are maintained in `CHANGELOG.md`; STATUS.md is kept as a current-state snapshot.
 
 ## Known issues, risks, and limitations
 
@@ -206,4 +156,4 @@ Prior to local server support work:
 
 ---
 
-Last updated: 2026-05-19 09:30
+Last updated: 2026-05-18 00:48
