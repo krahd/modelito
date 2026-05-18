@@ -75,6 +75,7 @@ from .gemini import GeminiProvider
 from .grok import GrokProvider
 from .openai import OpenAIProvider
 from .claude import ClaudeProvider
+from .omlx import OMLXProvider
 from .provider import Provider, EmbeddingProvider
 from .client import Client
 from .embeddings import Embedder, StubEmbeddingProvider, embed_texts
@@ -99,6 +100,7 @@ __all__ = [
     "GrokProvider",
     "OpenAIProvider",
     "ClaudeProvider",
+    "OMLXProvider",
     "Provider",
     "EmbeddingProvider",
     "RemoteModelCatalogEntry",
@@ -119,8 +121,6 @@ __all__ = [
     "server_is_up",
     "endpoint_url",
     "ensure_ollama_running",
-    "RemoteModelCatalogEntry",
-    "ModelLifecycleState",
     "detect_install_method",
     "get_ollama_binary",
     "install_ollama",

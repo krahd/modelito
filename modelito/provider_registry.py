@@ -5,6 +5,7 @@ from .openai import OpenAIProvider
 from .claude import ClaudeProvider
 from .gemini import GeminiProvider
 from .ollama import OllamaProvider
+from .omlx import OMLXProvider
 
 # Registry of provider classes
 from .mock_provider import MockProvider
@@ -16,6 +17,8 @@ PROVIDER_REGISTRY: Dict[str, Type] = {
     "google": GeminiProvider,
     "gemini": GeminiProvider,
     "ollama": OllamaProvider,
+    "omlx": OMLXProvider,
+    "om": OMLXProvider,
     "mock": MockProvider,
 }
 

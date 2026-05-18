@@ -83,6 +83,12 @@ Each provider follows a fallback chain:
 - CLI: None
 - Shim: Deterministic fallback
 
+**OMLXProvider (oMLX runtimes):**
+- SDK: None required
+- HTTP: Calls OpenAI-compatible `/v1/models`, `/v1/chat/completions`, and `/v1/embeddings`
+- CLI: None
+- Shim: Deterministic fallback for offline tests
+
 **OllamaProvider:**
 - SDK: None (Ollama isn't shipped as a Python SDK)
 - HTTP: Calls `/api/chat` for Message instances, `/api/generate` for prompt strings

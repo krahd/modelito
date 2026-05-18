@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-12 03:21
+Last updated: 2026-05-17
 
 ## Project purpose
 
@@ -8,12 +8,12 @@ modelito is a compact, dependency-light Python library that provides provider-ag
 
 ## Current implementation state
 
-Current package metadata version is `1.4.3` in `pyproject.toml`, matching the `v1.4.3` git tag.
+Current package metadata version is `1.4.4` in `pyproject.toml`.
 
 The package provides:
 
 - core provider protocols and dataclasses
-- adapters/shims for OpenAI (with local OpenAI-compatible server support), Anthropic/Claude, Gemini, Grok, and Ollama
+- adapters/shims for OpenAI (with local OpenAI-compatible server support), Anthropic/Claude, Gemini, Grok, oMLX, and Ollama
 - synchronous, asynchronous, streaming, and embedding provider surfaces
 - `OllamaConnector` and provider registry helpers
 - Ollama install detection, local service helpers, remote catalog metadata, lifecycle/download tracking, and model readiness helpers
@@ -25,7 +25,7 @@ Release `v1.4.3` was tagged in git and published to PyPI after the local OpenAI-
 
 ## Active focus
 
-Current focus is adding local OpenAI-compatible server support documentation and confirming OpenAIProvider works with custom base_url endpoints.
+oMLX provider is complete. Current focus is stabilisation: bug fixes and test coverage.
 
 ## Architecture overview
 
@@ -109,6 +109,26 @@ python -m twine check dist/*
 
 ## Recent changes
 
+- **v1.4.4** bug fixes and test coverage:
+  - Fixed `OMLXProvider.stream()` fallback: was re-consuming the already-exhausted `messages` iterable after an HTTP failure; now uses the pre-flattened `flat` list directly, making one-shot iterators safe.
+  - Removed duplicate `RemoteModelCatalogEntry` and `ModelLifecycleState` entries from `__all__` in `modelito/__init__.py`.
+  - Corrected README wording: providers satisfy the `Provider` protocol structurally (they do not subclass it, as `Provider` is a Protocol).
+  - Added 5 new tests: `embed()` HTTP path, `embed()` offline fallback, `stream()` offline fallback, `stream()` `chunk_size` setting, `acomplete()`.
+
+- Added `OMLXProvider` in `modelito/omlx.py` with:
+  - HTTP-first OpenAI-compatible calls for `/v1/models`, `/v1/chat/completions`, and `/v1/embeddings`
+  - SSE-style streaming support via `stream()`
+  - async wrapper via `acomplete()`
+  - deterministic fallback behavior for offline/local tests
+- Registered oMLX provider aliases (`omlx`, `om`) in provider registry and exported `OMLXProvider` at package root.
+- Added targeted unit tests in `tests/test_omlx_provider.py`.
+- Added `examples/omlx_example.py` and updated README/API/ARCHITECTURE/USAGE docs to include oMLX.
+- Validation for this work:
+  - `pytest -q tests/test_omlx_provider.py tests/test_providers.py tests/test_client.py tests/test_embeddings.py` → 18 passed
+  - `pytest -q tests/test_omlx_provider.py` → 6 passed
+  - `ruff check modelito/omlx.py modelito/provider_registry.py modelito/__init__.py tests/test_omlx_provider.py` → passed
+  - `mypy modelito/omlx.py --ignore-missing-imports` → passed
+
 - Added `base_url` parameter to `OpenAIProvider` for local OpenAI-compatible server support (llama.cpp, vLLM, LM Studio, SGLang).
 - Created `docs/local-openai-compatible.md` with configuration examples for each supported local server.
 - Updated README to clarify OpenAI provider supports local servers and link to new documentation.
@@ -165,4 +185,4 @@ Prior to local server support work:
 
 ---
 
-Last updated: 2026-05-12 03:21
+Last updated: 2026-05-17
