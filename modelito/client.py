@@ -11,7 +11,13 @@ Unified Client interface for all providers.
 from __future__ import annotations
 from dataclasses import is_dataclass
 import json
+import os
+import platform
 from typing import Any, Dict, Iterable, List, Optional, Type, Union, cast
+from .config import load_config
+from .ollama_service import server_is_up
+from .omlx import OMLXProvider
+from .ollama import OllamaProvider
 from .provider_registry import get_provider, list_embedders, list_providers
 from .provider import MessageInput, Provider
 from .messages import Response
@@ -24,14 +30,209 @@ class Client:
     Use Client(provider="openai", model="gpt-3.5-turbo") for runtime selection.
     """
     def __init__(self, provider: Union[str, Provider] = "openai", model: Optional[str] = None, **kwargs):
+        profile_path = kwargs.pop("profile_path", None)
+        provider_env_var = str(kwargs.pop("provider_env_var", "MODELITO_PROVIDER"))
+        remote_provider_env_var = str(
+            kwargs.pop("remote_provider_env_var", "MODELITO_REMOTE_PROVIDER")
+        )
+        default_provider = str(kwargs.pop("default_provider", "openai"))
+
         if isinstance(provider, str):
-            resolved_provider = get_provider(provider, model=model, **kwargs)
+            provider_name = self._resolve_provider_name(
+                provider=provider,
+                model=model,
+                profile_path=profile_path,
+                provider_env_var=provider_env_var,
+                remote_provider_env_var=remote_provider_env_var,
+                default_provider=default_provider,
+                provider_kwargs=kwargs,
+            )
+            resolved_provider = get_provider(provider_name, model=model, **kwargs)
             if resolved_provider is None:
-                raise ValueError(f"Unknown provider: {provider}")
+                raise ValueError(f"Unknown provider: {provider_name}")
             self.provider = resolved_provider
         else:
             self.provider = provider
         self.model = model or getattr(self.provider, "model", None)
+
+    @staticmethod
+    def _normalize_provider_name(name: str) -> str:
+        value = str(name or "").strip().lower()
+        if value == "om":
+            return "omlx"
+        return value
+
+    @classmethod
+    def _ensure_known_provider(cls, name: str, source: str) -> str:
+        normalized = cls._normalize_provider_name(name)
+        if normalized not in set(list_providers()) and normalized != "auto":
+            raise ValueError(f"Unknown provider in {source}: {name}")
+        return normalized
+
+    @staticmethod
+    def _extract_provider_from_profile(config: Dict[str, Any]) -> Optional[str]:
+        if not isinstance(config, dict):
+            return None
+        provider = config.get("provider")
+        if isinstance(provider, str) and provider.strip():
+            return provider.strip()
+        profile = config.get("profile")
+        if isinstance(profile, dict):
+            provider = profile.get("provider")
+            if isinstance(provider, str) and provider.strip():
+                return provider.strip()
+        modelito = config.get("modelito")
+        if isinstance(modelito, dict):
+            provider = modelito.get("provider")
+            if isinstance(provider, str) and provider.strip():
+                return provider.strip()
+        return None
+
+    @classmethod
+    def _provider_from_project_profile(cls, profile_path: Optional[str] = None) -> Optional[str]:
+        candidates: List[str] = []
+        if profile_path:
+            candidates.append(str(profile_path))
+        env_profile = os.getenv("MODELITO_PROFILE")
+        if env_profile:
+            candidates.append(env_profile)
+        candidates.extend([".modelito.json", ".modelito.yaml", ".modelito.yml"])
+
+        for path in candidates:
+            config = load_config(path)
+            if not config:
+                continue
+            found = cls._extract_provider_from_profile(config)
+            if isinstance(found, str) and found.strip():
+                return cls._ensure_known_provider(found, f"project profile {path}")
+        return None
+
+    @staticmethod
+    def _is_macos_apple_silicon() -> bool:
+        return platform.system() == "Darwin" and platform.machine().lower() in {
+            "arm64",
+            "aarch64",
+        }
+
+    @staticmethod
+    def _omlx_available_for_model(
+        model: Optional[str], provider_kwargs: Dict[str, Any]
+    ) -> bool:
+        kwargs: Dict[str, Any] = {"strict": True}
+        if model:
+            kwargs["model"] = model
+        if "base_url" in provider_kwargs:
+            kwargs["base_url"] = provider_kwargs["base_url"]
+        if "api_key" in provider_kwargs:
+            kwargs["api_key"] = provider_kwargs["api_key"]
+        if "timeout" in provider_kwargs:
+            kwargs["timeout"] = provider_kwargs["timeout"]
+        try:
+            provider = OMLXProvider(**kwargs)
+            models = provider.list_models()
+            if model:
+                return model in set(models)
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
+    def _ollama_available_for_model(
+        model: Optional[str], provider_kwargs: Dict[str, Any]
+    ) -> bool:
+        host = str(provider_kwargs.get("host") or "http://127.0.0.1")
+        port = int(provider_kwargs.get("port") or 11434)
+        try:
+            if not server_is_up(host, port):
+                return False
+        except Exception:
+            return False
+
+        kwargs: Dict[str, Any] = {"host": host, "port": port}
+        if model:
+            kwargs["model"] = model
+        try:
+            provider = OllamaProvider(**kwargs)
+            if model:
+                return model in set(provider.list_models())
+            return True
+        except Exception:
+            return False
+
+    @classmethod
+    def _auto_select_provider(
+        cls,
+        model: Optional[str],
+        provider_kwargs: Dict[str, Any],
+        remote_provider_env_var: str,
+    ) -> Optional[str]:
+        if cls._is_macos_apple_silicon():
+            if cls._omlx_available_for_model(model, provider_kwargs):
+                return "omlx"
+            if cls._ollama_available_for_model(model, provider_kwargs):
+                return "ollama"
+            raise ValueError(
+                "Auto provider could not find a usable local backend on macOS "
+                "Apple Silicon. Tried oMLX at http://localhost:8000/v1 and "
+                "Ollama at http://127.0.0.1:11434. Install/start one backend "
+                "and ensure the requested model is available (for Ollama: "
+                "`ollama pull <model>`)."
+            )
+
+        if cls._ollama_available_for_model(model, provider_kwargs):
+            return "ollama"
+
+        remote_provider = os.getenv(remote_provider_env_var)
+        if isinstance(remote_provider, str) and remote_provider.strip():
+            normalized = cls._ensure_known_provider(
+                remote_provider, remote_provider_env_var
+            )
+            if normalized != "auto":
+                return normalized
+
+        return None
+
+    @classmethod
+    def _resolve_provider_name(
+        cls,
+        provider: str,
+        model: Optional[str],
+        profile_path: Optional[str],
+        provider_env_var: str,
+        remote_provider_env_var: str,
+        default_provider: str,
+        provider_kwargs: Dict[str, Any],
+    ) -> str:
+        requested = cls._ensure_known_provider(provider, "provider argument")
+
+        # 1) Explicit provider argument wins unless it's explicit auto mode.
+        if requested != "auto":
+            return requested
+
+        # 2) Project profile provider.
+        profile_provider = cls._provider_from_project_profile(profile_path)
+        if profile_provider:
+            if profile_provider != "auto":
+                return profile_provider
+
+        # 3) Environment provider.
+        env_provider = os.getenv(provider_env_var)
+        if isinstance(env_provider, str) and env_provider.strip():
+            normalized_env = cls._ensure_known_provider(env_provider, provider_env_var)
+            if normalized_env != "auto":
+                return normalized_env
+
+        # 4) Auto detection.
+        auto_name = cls._auto_select_provider(
+            model=model,
+            provider_kwargs=provider_kwargs,
+            remote_provider_env_var=remote_provider_env_var,
+        )
+        if auto_name:
+            return auto_name
+
+        # 5) Old/default provider fallback.
+        return cls._ensure_known_provider(default_provider, "default provider")
 
     def list_models(self) -> List[str]:
         return self.provider.list_models()

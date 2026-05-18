@@ -17,7 +17,7 @@ class OMLXProvider(OpenAICompatibleHTTPProvider):
 
     Args:
         base_url: Base URL of an OpenAI-compatible oMLX endpoint.
-            Defaults to ``http://127.0.0.1:11435/v1``.
+            Defaults to ``http://localhost:8000/v1``.
         model: Default model name.  Defaults to ``"omlx"``.
         api_key: Optional bearer token for secured endpoints.
         timeout: HTTP timeout in seconds.
@@ -34,7 +34,7 @@ class OMLXProvider(OpenAICompatibleHTTPProvider):
         strict: bool = False,
     ) -> None:
         super().__init__(
-            base_url=base_url or "http://127.0.0.1:11435/v1",
+            base_url=base_url or "http://localhost:8000/v1",
             model=model or "omlx",
             api_key=api_key,
             timeout=timeout,

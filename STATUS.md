@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-18 00:53
+Last updated: 2026-05-18 01:00
 
 ## Project purpose
 
@@ -33,7 +33,7 @@ Phase 3 enhancements complete:
 4. `ChatProvider` — new `@runtime_checkable` Protocol in `modelito/provider.py` formalising the `chat()` interface returning `Response`; exported from package root.
 5. `MessageInput` type alias (`Union[Message, str, Mapping[str, Any]]`) added to `provider.py` and exported; `Client` method signatures broadened from `Iterable[Message]` to `Iterable[MessageInput]`; `SyncProvider.summarize()` and `AsyncProvider.acomplete()` signatures similarly broadened.
 
-152 tests pass, 2 skipped. ruff and mypy clean.
+164 tests pass, 2 skipped. ruff and mypy clean.
 
 ## Architecture overview
 
@@ -102,6 +102,9 @@ python -m twine check dist/*
 - `ALLOW_OLLAMA_INSTALL=1`: permits integration tests to attempt Ollama installation.
 - `ALLOW_OLLAMA_DOWNLOAD=1`: permits remote model downloads during integration tests.
 - `ALLOW_OLLAMA_UPDATE=1`: permits update flows during integration tests.
+- `MODELITO_PROVIDER`: optional explicit provider override used by `Client(provider="auto")` after project profile lookup.
+- `MODELITO_REMOTE_PROVIDER`: optional remote-provider fallback used by `Client(provider="auto")` on non-macOS when local Ollama is unavailable.
+- `MODELITO_PROFILE`: optional path to a project profile file (`.json`/`.yaml`) used for provider selection.
 - Provider SDK/API keys are optional and should be supplied through environment or external secret-management mechanisms.
 
 ## Important files and directories
@@ -121,7 +124,10 @@ python -m twine check dist/*
 - Current oMLX stack uses `OpenAICompatibleHTTPProvider` with strict-mode typed error handling.
 - Current provider typing includes `ChatProvider`, `MessageInput`, and `OpenAIMessageDict` exports, with `Client` chat-related methods accepting broadened message input types; provider protocols are aligned so `SyncProvider`, `AsyncProvider`, `StreamingProvider`, and `ChatProvider` all accept `Iterable[MessageInput]`.
 - `Client.chat_json()` now supports optional stronger schema validation via `strict_schema=True` using dataclass construction or Pydantic-style `model_validate`/`parse_obj` hooks, while preserving lightweight key-presence checks by default.
-- Current validation snapshot: `pytest -q` = 156 passed, 2 skipped; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean.
+- `Client(provider="auto")` now resolves providers in explicit order: explicit argument, project profile, environment variable, local auto-detection, then old/default provider fallback.
+- Auto detection now prefers oMLX then Ollama on macOS Apple Silicon, and prefers Ollama then configured remote provider on non-macOS.
+- `OMLXProvider` default endpoint is now `http://localhost:8000/v1` (configurable via `base_url`).
+- Current validation snapshot: `pytest -q` = 164 passed, 2 skipped; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean.
 - Historical release narratives are maintained in `CHANGELOG.md`; STATUS.md is kept as a current-state snapshot.
 
 ## Known issues, risks, and limitations
@@ -157,4 +163,4 @@ python -m twine check dist/*
 
 ---
 
-Last updated: 2026-05-18 00:53
+Last updated: 2026-05-18 01:00
