@@ -7,13 +7,21 @@ sync/legacy surface.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Protocol, Union, runtime_checkable
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Protocol, TypedDict, Union, runtime_checkable
 
 from .messages import Message, Response
 
+
+class OpenAIMessageDict(TypedDict):
+    """OpenAI-style chat message dict shape used by lightweight helpers."""
+
+    role: str
+    content: Any
+
+
 # Convenience type alias for message inputs accepted by OpenAI-compatible providers.
 # Callers may pass Message instances, plain strings, or OpenAI-style dicts.
-MessageInput = Union[Message, str, Mapping[str, Any]]
+MessageInput = Union[Message, str, OpenAIMessageDict, Mapping[str, Any]]
 
 
 @runtime_checkable
@@ -26,7 +34,7 @@ class SyncProvider(Protocol):
     def list_models(self) -> List[str]:
         ...
 
-    def summarize(self, messages: Iterable[Any], settings: Optional[Dict[str, Any]] = None) -> str:
+    def summarize(self, messages: Iterable[MessageInput], settings: Optional[Dict[str, Any]] = None) -> str:
         ...
 
 
@@ -38,7 +46,7 @@ class AsyncProvider(Protocol):
     mirrors `summarize()` but is awaitable.
     """
 
-    async def acomplete(self, messages: Iterable[Any], settings: Optional[Dict[str, Any]] = None) -> str:
+    async def acomplete(self, messages: Iterable[MessageInput], settings: Optional[Dict[str, Any]] = None) -> str:
         ...
 
 
@@ -47,7 +55,7 @@ class StreamingProvider(Protocol):
     """Streaming provider surface. Yields incremental text chunks.
     """
 
-    def stream(self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None) -> Iterable[str]:
+    def stream(self, messages: Iterable[MessageInput], settings: Optional[Dict[str, Any]] = None) -> Iterable[str]:
         ...
 
 
@@ -70,7 +78,7 @@ class ChatProvider(Protocol):
 
     def chat(
         self,
-        messages: Iterable[Any],
+        messages: Iterable[MessageInput],
         settings: Optional[Dict[str, Any]] = None,
     ) -> Response:
         ...

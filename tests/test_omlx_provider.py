@@ -349,6 +349,79 @@ def test_client_chat_json_validates_schema(monkeypatch):
         client.chat_json([Message(role="user", content="plan")], schema=MovePlan)
 
 
+def test_client_chat_json_strict_schema_validates_dataclass(monkeypatch):
+    from dataclasses import dataclass
+
+    @dataclass
+    class MovePlan:
+        action: str
+        source: str
+
+    # Extra key triggers dataclass constructor validation.
+    payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": '{"action": "move", "source": "a.pdf", "extra": 1}'
+                }
+            }
+        ]
+    }
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
+    )
+    client = Client(provider="omlx")
+    with pytest.raises(ValueError, match="dataclass validation"):
+        client.chat_json(
+            [Message(role="user", content="plan")],
+            schema=MovePlan,
+            strict_schema=True,
+        )
+
+
+def test_client_chat_json_strict_schema_runs_model_validate(monkeypatch):
+    class FakeModel:
+        @classmethod
+        def model_validate(cls, data):
+            if "action" not in data:
+                raise ValueError("action required")
+            return data
+
+    payload = {"choices": [{"message": {"content": '{"action": "move"}'}}]}
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
+    )
+    client = Client(provider="omlx")
+    result = client.chat_json(
+        [Message(role="user", content="plan")],
+        schema=FakeModel,
+        strict_schema=True,
+    )
+    assert result == {"action": "move"}
+
+
+def test_client_chat_json_strict_schema_bubbles_model_validate_error(monkeypatch):
+    class FakeModel:
+        @classmethod
+        def model_validate(cls, _data):
+            raise ValueError("bad payload")
+
+    payload = {"choices": [{"message": {"content": '{"action": "move"}'}}]}
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
+    )
+    client = Client(provider="omlx")
+    with pytest.raises(ValueError, match="model validation"):
+        client.chat_json(
+            [Message(role="user", content="plan")],
+            schema=FakeModel,
+            strict_schema=True,
+        )
+
+
 def test_client_chat_returns_response_object(monkeypatch):
     payload = {
         "model": "omlx-test",
@@ -525,6 +598,13 @@ def test_message_input_type_alias_exported():
     from modelito.provider import MessageInput as InternalMessageInput
 
     assert MessageInput is InternalMessageInput
+
+
+def test_openai_message_dict_exported():
+    from modelito import OpenAIMessageDict
+    from modelito.provider import OpenAIMessageDict as InternalOpenAIMessageDict
+
+    assert OpenAIMessageDict is InternalOpenAIMessageDict
 
 
 def test_client_chat_accepts_dict_messages(monkeypatch):

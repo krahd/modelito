@@ -84,7 +84,7 @@ from .grok import GrokProvider
 from .openai import OpenAIProvider
 from .claude import ClaudeProvider
 from .omlx import OMLXProvider
-from .provider import Provider, EmbeddingProvider, ChatProvider, MessageInput
+from .provider import Provider, EmbeddingProvider, ChatProvider, MessageInput, OpenAIMessageDict
 from .client import Client
 from .embeddings import Embedder, StubEmbeddingProvider, embed_texts
 from .messages import Message, Messages, Response
@@ -113,6 +113,7 @@ __all__ = [
     "EmbeddingProvider",
     "ChatProvider",
     "MessageInput",
+    "OpenAIMessageDict",
     "RemoteModelCatalogEntry",
     "ModelLifecycleState",
     "ReadinessResult",

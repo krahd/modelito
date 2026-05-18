@@ -9,6 +9,7 @@ Unified Client interface for all providers.
 - Provider-specific features accessible via .provider
 """
 from __future__ import annotations
+from dataclasses import is_dataclass
 import json
 from typing import Any, Dict, Iterable, List, Optional, Type, Union, cast
 from .provider_registry import get_provider, list_embedders, list_providers
@@ -79,6 +80,7 @@ class Client:
         messages: Iterable[MessageInput],
         schema: Optional[Type[Any]] = None,
         settings: Optional[Dict[str, Any]] = None,
+        strict_schema: bool = False,
     ) -> dict:
         """Request structured JSON output from the provider.
 
@@ -91,6 +93,9 @@ class Client:
                 are used to verify that all declared keys are present.
             settings: Extra provider settings merged with
                 ``response_format``.
+            strict_schema: When ``True``, performs stronger runtime validation
+                when possible: dataclass construction and Pydantic-style
+                ``model_validate``/``parse_obj`` hooks.
 
         Returns:
             Parsed JSON dict from the provider response.
@@ -123,6 +128,29 @@ class Client:
                     raise ValueError(
                         f"JSON response missing required keys: {missing}"
                     )
+
+        if strict_schema and schema is not None:
+            if is_dataclass(schema):
+                try:
+                    cast(Any, schema)(**result)
+                except Exception as exc:
+                    raise ValueError(
+                        f"JSON response failed dataclass validation: {exc}"
+                    ) from exc
+            elif callable(getattr(schema, "model_validate", None)):
+                try:
+                    cast(Any, schema).model_validate(result)
+                except Exception as exc:
+                    raise ValueError(
+                        f"JSON response failed model validation: {exc}"
+                    ) from exc
+            elif callable(getattr(schema, "parse_obj", None)):
+                try:
+                    cast(Any, schema).parse_obj(result)
+                except Exception as exc:
+                    raise ValueError(
+                        f"JSON response failed model validation: {exc}"
+                    ) from exc
 
         return result
 

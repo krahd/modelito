@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-18 00:48
+Last updated: 2026-05-18 00:53
 
 ## Project purpose
 
@@ -119,8 +119,9 @@ python -m twine check dist/*
 
 - Current release line is `1.4.4`.
 - Current oMLX stack uses `OpenAICompatibleHTTPProvider` with strict-mode typed error handling.
-- Current provider typing includes `ChatProvider` and `MessageInput` exports, with `Client` chat-related methods accepting broadened message input types.
-- Current validation snapshot: `pytest -q` = 152 passed, 2 skipped; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean.
+- Current provider typing includes `ChatProvider`, `MessageInput`, and `OpenAIMessageDict` exports, with `Client` chat-related methods accepting broadened message input types; provider protocols are aligned so `SyncProvider`, `AsyncProvider`, `StreamingProvider`, and `ChatProvider` all accept `Iterable[MessageInput]`.
+- `Client.chat_json()` now supports optional stronger schema validation via `strict_schema=True` using dataclass construction or Pydantic-style `model_validate`/`parse_obj` hooks, while preserving lightweight key-presence checks by default.
+- Current validation snapshot: `pytest -q` = 156 passed, 2 skipped; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean.
 - Historical release narratives are maintained in `CHANGELOG.md`; STATUS.md is kept as a current-state snapshot.
 
 ## Known issues, risks, and limitations
@@ -156,4 +157,4 @@ python -m twine check dist/*
 
 ---
 
-Last updated: 2026-05-18 00:48
+Last updated: 2026-05-18 00:53
