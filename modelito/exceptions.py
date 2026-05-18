@@ -14,3 +14,33 @@ class LLMProviderError(Exception):
     """
 
     pass
+
+
+class ModelitoConnectionError(LLMProviderError):
+    """Raised when the provider endpoint is unreachable."""
+
+    pass
+
+
+class ModelitoTimeoutError(LLMProviderError):
+    """Raised when a provider request times out."""
+
+    pass
+
+
+class ModelitoBadResponseError(LLMProviderError):
+    """Raised when the provider returns an unparseable or unexpected response."""
+
+    pass
+
+
+class ModelitoProviderError(LLMProviderError):
+    """Raised for provider-side errors (e.g. HTTP 5xx, internal failure)."""
+
+    pass
+
+
+class ModelitoModelNotFoundError(LLMProviderError):
+    """Raised when the requested model is not found on the provider."""
+
+    pass

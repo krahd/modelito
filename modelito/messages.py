@@ -24,6 +24,10 @@ class Message:
 class Response:
     text: str
     raw: Optional[Any] = None
+    model: Optional[str] = None
+    finish_reason: Optional[str] = None
+    tokens_in: Optional[int] = None
+    tokens_out: Optional[int] = None
 
 
 Messages = List[Message]

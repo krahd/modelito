@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-17
+Last updated: 2026-05-18
 
 ## Project purpose
 
@@ -25,7 +25,7 @@ Release `v1.4.3` was tagged in git and published to PyPI after the local OpenAI-
 
 ## Active focus
 
-oMLX provider is complete. Current focus is stabilisation: bug fixes and test coverage.
+oMLX provider enhancements complete: strict mode, full Response metadata, dict messages, typed error classes, `OpenAICompatibleHTTPProvider` base class, and `Client.chat_json()` added.
 
 ## Architecture overview
 
@@ -109,6 +109,19 @@ python -m twine check dist/*
 
 ## Recent changes
 
+- **feature/oMLX – phase 2** architecture and production-readiness improvements:
+  - Added `modelito/openai_compat.py` with `OpenAICompatibleHTTPProvider` base class; `OMLXProvider` is now a thin subclass setting only default `base_url` and `model`.
+  - Added `strict: bool = False` parameter to `OMLXProvider` (and base class): `strict=True` raises typed Modelito errors instead of falling back silently.
+  - Added typed error hierarchy in `modelito/exceptions.py`: `ModelitoConnectionError`, `ModelitoTimeoutError`, `ModelitoBadResponseError`, `ModelitoProviderError`, `ModelitoModelNotFoundError` (all subclass `LLMProviderError`).
+  - Expanded `Response` dataclass in `modelito/messages.py` to carry `model`, `finish_reason`, `tokens_in`, `tokens_out`.
+  - Added `OpenAICompatibleHTTPProvider.chat()` returning a full `Response` with all metadata.
+  - `OMLXProvider._flatten_messages()` now accepts `Message`, `str`, and `dict` with `role`/`content` keys.
+  - Added `Client.chat()` delegating to provider `chat()` with `Response` fallback.
+  - Added `Client.chat_json()` for structured JSON output with optional TypedDict/dataclass schema validation.
+  - Exported `OpenAICompatibleHTTPProvider` and all 5 new error classes at package root.
+  - Updated test monkeypatches to `modelito.openai_compat.urlopen`; added 16 new tests (26 total in `test_omlx_provider.py`).
+  - Validation: `pytest -q` → 135 passed, 3 skipped; `ruff check .` → clean; `mypy modelito --ignore-missing-imports` → clean.
+
 - **v1.4.4** bug fixes and test coverage:
   - Fixed `OMLXProvider.stream()` fallback: was re-consuming the already-exhausted `messages` iterable after an HTTP failure; now uses the pre-flattened `flat` list directly, making one-shot iterators safe.
   - Removed duplicate `RemoteModelCatalogEntry` and `ModelLifecycleState` entries from `__all__` in `modelito/__init__.py`.
@@ -185,4 +198,4 @@ Prior to local server support work:
 
 ---
 
-Last updated: 2026-05-17
+Last updated: 2026-05-18

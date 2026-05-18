@@ -26,7 +26,15 @@ from .plumbing import (
 )
 from .connector import OllamaConnector
 from .config import load_config, parse_host_port
-from .exceptions import LLMProviderError
+from .exceptions import (
+    LLMProviderError,
+    ModelitoConnectionError,
+    ModelitoTimeoutError,
+    ModelitoBadResponseError,
+    ModelitoProviderError,
+    ModelitoModelNotFoundError,
+)
+from .openai_compat import OpenAICompatibleHTTPProvider
 from .ollama_service import server_is_up, endpoint_url
 from .ollama_service import ensure_ollama_running
 from .ollama_service import (
@@ -118,6 +126,12 @@ __all__ = [
     "load_config",
     "parse_host_port",
     "LLMProviderError",
+    "ModelitoConnectionError",
+    "ModelitoTimeoutError",
+    "ModelitoBadResponseError",
+    "ModelitoProviderError",
+    "ModelitoModelNotFoundError",
+    "OpenAICompatibleHTTPProvider",
     "server_is_up",
     "endpoint_url",
     "ensure_ollama_running",

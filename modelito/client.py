@@ -9,10 +9,11 @@ Unified Client interface for all providers.
 - Provider-specific features accessible via .provider
 """
 from __future__ import annotations
-from typing import Any, Dict, Iterable, List, Optional, Union, cast
+import json
+from typing import Any, Dict, Iterable, List, Optional, Type, Union, cast
 from .provider_registry import get_provider, list_embedders, list_providers
 from .provider import Provider
-from .messages import Message
+from .messages import Message, Response
 from .model_metadata import get_model_metadata
 from .normalization import normalize_metadata
 
@@ -57,6 +58,73 @@ class Client:
         if hasattr(self.provider, "embed"):
             return cast(Any, self.provider).embed(texts, **kwargs)
         raise NotImplementedError("This provider does not support embeddings.")
+
+    def chat(
+        self,
+        messages: Iterable[Message],
+        settings: Optional[Dict[str, Any]] = None,
+    ) -> Response:
+        """Return a full :class:`~modelito.messages.Response` with metadata.
+
+        Delegates to ``provider.chat()`` when available; otherwise wraps
+        ``summarize()`` in a minimal ``Response``.
+        """
+        if hasattr(self.provider, "chat"):
+            return cast(Any, self.provider).chat(messages, settings)
+        text = self.summarize(messages, settings)
+        return Response(text=text)
+
+    def chat_json(
+        self,
+        messages: Iterable[Message],
+        schema: Optional[Type[Any]] = None,
+        settings: Optional[Dict[str, Any]] = None,
+    ) -> dict:
+        """Request structured JSON output from the provider.
+
+        Injects ``response_format={"type": "json_object"}`` into *settings*
+        and returns the parsed JSON dict.
+
+        Args:
+            messages: Conversation messages.
+            schema: Optional TypedDict or dataclass whose ``__annotations__``
+                are used to verify that all declared keys are present.
+            settings: Extra provider settings merged with
+                ``response_format``.
+
+        Returns:
+            Parsed JSON dict from the provider response.
+
+        Raises:
+            ValueError: If the provider response is not valid JSON, or if
+                *schema* is given and required keys are missing.
+        """
+        merged: Dict[str, Any] = dict(settings or {})
+        merged["response_format"] = {"type": "json_object"}
+
+        if hasattr(self.provider, "chat"):
+            response = cast(Any, self.provider).chat(messages, merged)
+            text = response.text
+        else:
+            text = self.summarize(messages, merged)
+
+        try:
+            result: dict = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"Provider did not return valid JSON: {text!r}"
+            ) from exc
+
+        if schema is not None:
+            annotations = getattr(schema, "__annotations__", None)
+            if annotations:
+                missing = [k for k in annotations if k not in result]
+                if missing:
+                    raise ValueError(
+                        f"JSON response missing required keys: {missing}"
+                    )
+
+        return result
 
     @property
     def provider_name(self) -> str:
