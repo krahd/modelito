@@ -1,6 +1,8 @@
 import json
+import pytest
 
 from modelito import OMLXProvider as ExportedOMLXProvider, RawChatProvider
+from modelito.exceptions import ModelitoProviderError
 from modelito.openai import OpenAIProvider
 from modelito.openai_compat import OpenAICompatibleHTTPProvider
 from modelito.omlx import OMLXProvider
@@ -175,3 +177,60 @@ def test_openai_provider_accepts_dict_messages_and_raw_tool_calls():
     )
 
     assert raw["choices"][0]["message"]["tool_calls"][0]["function"]["name"] == "lookup"
+
+
+def test_openai_provider_raw_stream_with_create_receives_stream_payload():
+    captured = {}
+
+    class FakeCompletions:
+        @staticmethod
+        def create(**kwargs):
+            captured["kwargs"] = dict(kwargs)
+            return iter(
+                [
+                    {
+                        "id": "chunk-1",
+                        "object": "chat.completion.chunk",
+                        "choices": [
+                            {
+                                "index": 0,
+                                "delta": {"content": "hello"},
+                                "finish_reason": None,
+                            }
+                        ],
+                    }
+                ]
+            )
+
+    class FakeClient:
+        class chat:
+            completions = FakeCompletions()
+
+    provider = OpenAIProvider(client=FakeClient(), model="gpt-test", strict=True)
+    chunks = list(
+        provider.raw_stream(
+            {
+                "messages": [{"role": "user", "content": "hello"}],
+                "temperature": 0.2,
+            }
+        )
+    )
+
+    assert captured["kwargs"]["stream"] is True
+    assert captured["kwargs"]["temperature"] == 0.2
+    assert chunks[0]["choices"][0]["delta"]["content"] == "hello"
+
+
+def test_openai_provider_raw_stream_strict_mode_wraps_errors():
+    class FakeCompletions:
+        @staticmethod
+        def create(**kwargs):
+            raise RuntimeError("boom")
+
+    class FakeClient:
+        class chat:
+            completions = FakeCompletions()
+
+    provider = OpenAIProvider(client=FakeClient(), model="gpt-test", strict=True)
+    with pytest.raises(ModelitoProviderError):
+        list(provider.raw_stream({"messages": [{"role": "user", "content": "hello"}]}))

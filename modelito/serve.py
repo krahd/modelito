@@ -163,9 +163,8 @@ def _chat_settings(payload: Dict[str, Any]) -> Dict[str, Any]:
     return {key: value for key, value in payload.items() if key not in excluded}
 
 
-def _has_tools(payload: Dict[str, Any]) -> bool:
-    tools = payload.get("tools")
-    return isinstance(tools, list) and bool(tools)
+def _requires_raw_tool_support(payload: Dict[str, Any]) -> bool:
+    return "tools" in payload or "tool_choice" in payload
 
 
 def _fallback_warning(reason: str) -> Dict[str, str]:
@@ -186,17 +185,45 @@ def _http_status_for_exception(exc: Exception) -> int:
     return 500
 
 
-def _as_http_exception(exc: Exception):
-    return _http_status_for_exception(exc), str(exc)
+def _error_kind_for_exception(exc: Exception) -> str:
+    if isinstance(exc, (ModelitoBadResponseError, ValueError, TypeError)):
+        return "modelito_bad_request"
+    if isinstance(exc, ModelitoModelNotFoundError):
+        return "modelito_model_not_found"
+    if isinstance(exc, (ModelitoTimeoutError, TimeoutError)):
+        return "modelito_timeout_error"
+    if isinstance(exc, ModelitoConnectionError):
+        return "modelito_connection_error"
+    if isinstance(exc, ModelitoProviderError):
+        return "modelito_provider_error"
+    return "modelito_internal_error"
+
+
+def _error_payload(exc: Exception) -> Dict[str, Any]:
+    message = str(exc) or "internal server error"
+    kind = _error_kind_for_exception(exc)
+    return {
+        "error": {
+            "message": message,
+            "type": kind,
+            "code": kind,
+        }
+    }
+
+
+def _json_error_response(exc: Exception, JSONResponse: Any) -> Any:
+    return JSONResponse(_error_payload(exc), status_code=_http_status_for_exception(exc))
 
 
 def _messages_from_payload(payload: Dict[str, Any]) -> List[Any]:
+    if "messages" not in payload:
+        raise ValueError("chat completions payload must include messages")
     messages = payload.get("messages")
     if isinstance(messages, list):
         return list(messages)
     if isinstance(messages, str):
         return [messages]
-    return []
+    raise ValueError("messages must be a list or string")
 
 
 def _chat_completion_response(runtime: ServeRuntime, payload: Dict[str, Any]) -> ChatCompletionResult:
@@ -210,7 +237,7 @@ def _chat_completion_response(runtime: ServeRuntime, payload: Dict[str, Any]) ->
             raise ValueError("raw_complete must return a JSON object")
         return ChatCompletionResult(payload=raw)
 
-    if _has_tools(request_payload) and runtime.config.strict:
+    if _requires_raw_tool_support(request_payload) and runtime.config.strict:
         raise ValueError(
             "tools require raw passthrough support; run with --no-strict to allow text-only fallback")
 
@@ -257,7 +284,7 @@ def _stream_completion_events(runtime: ServeRuntime, payload: Dict[str, Any]) ->
     if runtime.raw_provider is not None:
         return StreamResult(events=runtime.raw_provider.raw_stream(request_payload))
 
-    if _has_tools(request_payload) and runtime.config.strict:
+    if _requires_raw_tool_support(request_payload) and runtime.config.strict:
         raise ValueError(
             "tools require raw passthrough support; run with --no-strict to allow text-only fallback")
 
@@ -314,9 +341,25 @@ def _embedding_response(runtime: ServeRuntime, payload: Dict[str, Any]) -> Embed
         raise ValueError("embeddings input must be a string or list of strings")
 
     vectors = runtime.client.embed(inputs, model=model)
+    if not isinstance(vectors, list):
+        raise ModelitoBadResponseError("embeddings provider returned a non-list response")
+    if len(vectors) != len(inputs):
+        raise ModelitoBadResponseError("embeddings provider returned the wrong number of vectors")
+
+    normalized_vectors: List[List[float]] = []
+    for vector in vectors:
+        if not isinstance(vector, (list, tuple)) or isinstance(vector, (str, bytes)):
+            raise ModelitoBadResponseError("embedding vector must be a list or tuple of numbers")
+        normalized: List[float] = []
+        for value in vector:
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ModelitoBadResponseError("embedding vector contains a non-numeric value")
+            normalized.append(float(value))
+        normalized_vectors.append(normalized)
+
     data = [
         {"object": "embedding", "embedding": vector, "index": index}
-        for index, vector in enumerate(vectors)
+        for index, vector in enumerate(normalized_vectors)
     ]
     response = {
         "object": "list",
@@ -353,12 +396,15 @@ def _stream_response_body(events: Iterable[Dict[str, Any]]) -> Iterator[str]:
 
 
 def create_app(runtime: ServeRuntime):
-    FastAPI, HTTPException, _Request, JSONResponse, StreamingResponse, _uvicorn = _require_server_dependencies()
+    FastAPI, _HTTPException, _Request, JSONResponse, StreamingResponse, _uvicorn = _require_server_dependencies()
     app = FastAPI(title="Modelito", version="1.4.4")
 
     @app.get("/v1/models")
     async def list_models() -> Any:
-        return JSONResponse(_models_response(runtime))
+        try:
+            return JSONResponse(_models_response(runtime))
+        except Exception as exc:
+            return _json_error_response(exc, JSONResponse)
 
     @app.post("/v1/chat/completions")
     async def chat_completions(request: Any) -> Any:
@@ -367,8 +413,7 @@ def create_app(runtime: ServeRuntime):
             try:
                 stream_result = _stream_completion_events(runtime, payload)
             except Exception as exc:
-                status_code, detail = _as_http_exception(exc)
-                raise HTTPException(status_code=status_code, detail=detail) from exc
+                return _json_error_response(exc, JSONResponse)
             headers = dict(stream_result.headers)
             return StreamingResponse(
                 _stream_response_body(stream_result.events),
@@ -378,8 +423,7 @@ def create_app(runtime: ServeRuntime):
         try:
             result = _chat_completion_response(runtime, payload)
         except Exception as exc:
-            status_code, detail = _as_http_exception(exc)
-            raise HTTPException(status_code=status_code, detail=detail) from exc
+            return _json_error_response(exc, JSONResponse)
         return JSONResponse(result.payload, headers=result.headers)
 
     @app.post("/v1/embeddings")
@@ -388,8 +432,7 @@ def create_app(runtime: ServeRuntime):
         try:
             result = _embedding_response(runtime, payload)
         except Exception as exc:
-            status_code, detail = _as_http_exception(exc)
-            raise HTTPException(status_code=status_code, detail=detail) from exc
+            return _json_error_response(exc, JSONResponse)
         return JSONResponse(result.payload, headers=result.headers)
 
     return app
