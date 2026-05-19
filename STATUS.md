@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-19 00:16
+Last updated: 2026-05-19 00:20
 
 ## Project purpose
 
@@ -139,11 +139,12 @@ python -m twine check dist/*
 
 - Latest cleanup pass fixed fallback streaming laziness, provider warning header scope, shared probe reuse, and `flatten_message_inputs` / `modelito-doctor` export surface.
 - Added a concise release checklist document and linked it from the README docs index.
+- Install-helper Unix test now accepts apt-based Linux install commands as well as script install commands.
 - Current release line is `1.4.4`.
 - Current oMLX stack uses `OpenAICompatibleHTTPProvider` with strict-mode typed error handling.
 - Current provider typing includes `ChatProvider`, `MessageInput`, and `OpenAIMessageDict` exports, with `Client` chat-related methods accepting broadened message input types; provider protocols are aligned so `SyncProvider`, `AsyncProvider`, `StreamingProvider`, and `ChatProvider` all accept `Iterable[MessageInput]`.
 - `Client.chat_json()` now supports optional stronger schema validation via `strict_schema=True` using dataclass construction or Pydantic-style `model_validate`/`parse_obj` hooks, while preserving lightweight key-presence checks by default.
-- Validation should be confirmed by CI; local development most recently ran targeted `tests/test_serve.py` plus the full `pytest -q` suite, `ruff check .`, `mypy modelito --ignore-missing-imports`, and `python -c "import modelito; print(modelito.__version__)"`.
+- Validation completed locally in this session: `pytest tests/test_install_helpers.py -q` -> `5 passed`; `pytest -q` -> `236 passed, 2 skipped`; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean.
 - Trusted publishing note: the workflow is configured for PyPI trusted publishing, but PyPI project-side trusted publisher settings must be verified before release, and the release tag must match `pyproject.toml`.
 - Historical release narratives are maintained in `CHANGELOG.md`; STATUS.md is kept as a current-state snapshot.
 
@@ -177,4 +178,4 @@ python -m twine check dist/*
 
 ---
 
-Last updated: 2026-05-19 00:16
+Last updated: 2026-05-19 00:20

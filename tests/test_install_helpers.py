@@ -9,7 +9,12 @@ def test_install_command_for_current_platform_unix():
     cmd, display = ms.install_command_for_current_platform(platform_name="linux")
     assert isinstance(cmd, list)
     assert "/bin/sh" in cmd or cmd[0].endswith("sh")
-    assert "curl" in display or "install.sh" in display
+    assert (
+        "curl" in display
+        or "install.sh" in display
+        or "apt-get install" in display
+    )
+    assert "ollama" in display
 
 
 def test_install_command_for_current_platform_windows():
