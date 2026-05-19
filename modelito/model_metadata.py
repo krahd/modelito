@@ -75,7 +75,7 @@ def infer_model_metadata(model_name: str) -> ModelMetadata:
     normalized = str(model_name or "").strip().lower()
     metadata = ModelMetadata(id=str(model_name or "").strip() or "unknown")
 
-    if normalized.startswith("gpt-") or normalized.startswith("o"):
+    if normalized.startswith("gpt-") or _looks_like_openai_reasoning_model(normalized):
         metadata = _replace(metadata, provider="openai", supports_streaming=True)
     elif normalized.startswith("claude-"):
         metadata = _replace(metadata, provider="anthropic", supports_streaming=True)
@@ -128,3 +128,9 @@ def _replace(metadata: ModelMetadata, **updates: Any) -> ModelMetadata:
     values = asdict(metadata)
     values.update(updates)
     return ModelMetadata(**values)
+
+
+def _looks_like_openai_reasoning_model(normalized: str) -> bool:
+    return normalized in {"o1", "o3", "o4"} or normalized.startswith(
+        ("o1-", "o3-", "o4-")
+    )

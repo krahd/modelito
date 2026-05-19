@@ -89,6 +89,12 @@ from .client import Client
 from .doctor import ProviderStatus, check_provider_ready, format_provider_status
 from .embeddings import Embedder, StubEmbeddingProvider, embed_texts
 from .messages import Message, Messages, Response, flatten_message_inputs
+from .model_metadata import (
+    ModelMetadata,
+    get_model_info,
+    get_model_metadata,
+    infer_model_metadata,
+)
 from .normalization import normalize_models, normalize_metadata
 
 __all__ = [
@@ -130,6 +136,10 @@ __all__ = [
     "Messages",
     "Response",
     "flatten_message_inputs",
+    "ModelMetadata",
+    "get_model_info",
+    "get_model_metadata",
+    "infer_model_metadata",
     "normalize_models",
     "normalize_metadata",
     "load_config",
