@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.4.5 - 2026-05-19
+
+- Python 3.10 test compatibility fixed by using `tomli` as fallback for `tomllib` (available from Python 3.11+).
+- Model metadata registry made conservative and typed using frozen dataclass; stale entries removed/downgraded, modern model-family inference added.
+- Model metadata helpers now exported from package root: `ModelMetadata`, `get_model_info`, `get_model_metadata`, `infer_model_metadata`.
+- Model metadata inference no longer treats every `o...` model name as OpenAI; only `gpt-*` and known reasoning prefixes (`o1*`, `o3*`, `o4*`) infer OpenAI.
+- README diagrams refactored to use standalone SVG assets in `docs/assets/` instead of raw inline SVG for improved GitHub rendering.
+- Release workflow validated for trusted publishing; tag/version validation moved after Python setup.
+- Validation completed: Python 3.10+ compatibility, linting, type checking, and test suite all pass.
+
 ## 1.4.3 - 2026-05-12
 
 - Release metadata bump from `1.4.2` to `1.4.3`.

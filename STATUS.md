@@ -8,7 +8,7 @@ modelito is a compact, dependency-light Python library that provides provider-ag
 
 ## Current implementation state
 
-Current package metadata version is `1.4.4` in `pyproject.toml`.
+Current package metadata version is `1.4.5` in `pyproject.toml`.
 
 The package provides:
 
