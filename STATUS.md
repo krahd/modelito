@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-19 01:04
+Last updated: 2026-05-19 01:13
 
 ## Project purpose
 
@@ -143,11 +143,14 @@ python -m twine check dist/*
 - Python 3.10 test compatibility fixed by using `tomli` as fallback for `tomllib` (available from Python 3.11+).
 - Model metadata registry was made conservative and typed using a frozen dataclass, stale hardcoded entries were removed/downgraded, and modern model-family inference was added.
 - Provider APIs remain the source of truth for model capabilities; static metadata is now explicitly treated as best-effort fallback only.
+- Model metadata inference no longer treats every `o...` model name as OpenAI; only `gpt-*` and known OpenAI reasoning prefixes (`o1*`, `o3*`, `o4*`) infer OpenAI.
+- Model metadata helpers are now exported from the package root (`ModelMetadata`, `get_model_info`, `get_model_metadata`, `infer_model_metadata`).
+- Release checklist now includes explicit trusted publishing requirements, tag/publish commands, and clean-environment install checks.
 - Current release line is `1.4.4`.
 - Current oMLX stack uses `OpenAICompatibleHTTPProvider` with strict-mode typed error handling.
 - Current provider typing includes `ChatProvider`, `MessageInput`, and `OpenAIMessageDict` exports, with `Client` chat-related methods accepting broadened message input types; provider protocols are aligned so `SyncProvider`, `AsyncProvider`, `StreamingProvider`, and `ChatProvider` all accept `Iterable[MessageInput]`.
 - `Client.chat_json()` now supports optional stronger schema validation via `strict_schema=True` using dataclass construction or Pydantic-style `model_validate`/`parse_obj` hooks, while preserving lightweight key-presence checks by default.
-- Validation completed locally in this session: `python scripts/check_no_legacy_dicts.py` -> no literal dict-shaped message examples found in docs/examples; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean; `pytest -q` -> `249 passed, 2 skipped`.
+- Validation completed locally in this session: `python scripts/check_no_legacy_dicts.py` -> no literal dict-shaped message examples found in docs/examples; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean; `pytest -q --ignore=tests/integration tests` -> `250 passed, 1 skipped`; `python -c "from modelito import get_model_metadata; print(get_model_metadata('gpt-4o-mini')['provider'])"` -> `openai`; optional checks: `python -m build` succeeded and `python -m twine check dist/*` passed.
 - Trusted publishing note: the workflow is configured for PyPI trusted publishing, but PyPI project-side trusted publisher settings must be verified before release, and the release tag must match `pyproject.toml`.
 - Historical release narratives are maintained in `CHANGELOG.md`; STATUS.md is kept as a current-state snapshot.
 
@@ -184,4 +187,4 @@ python -m twine check dist/*
 
 ---
 
-Last updated: 2026-05-19 01:04
+Last updated: 2026-05-19 01:13
