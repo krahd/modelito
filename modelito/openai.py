@@ -9,7 +9,7 @@ from __future__ import annotations
 import importlib
 
 from typing import Any, Dict, Iterable, List, Optional
-from .messages import Message, flatten_message_inputs
+from .messages import flatten_message_inputs
 from types import ModuleType
 
 
@@ -61,6 +61,35 @@ def _extract_text_from_response(res: Any) -> str:
     return ""
 
 
+def _to_plain_data(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): _to_plain_data(inner) for key, inner in value.items()}
+    if isinstance(value, list):
+        return [_to_plain_data(item) for item in value]
+    if hasattr(value, "model_dump"):
+        try:
+            return _to_plain_data(value.model_dump())
+        except Exception:
+            pass
+    if hasattr(value, "dict"):
+        try:
+            return _to_plain_data(value.dict())
+        except Exception:
+            pass
+    if hasattr(value, "__dict__"):
+        try:
+            data = {
+                key: inner
+                for key, inner in vars(value).items()
+                if not key.startswith("_")
+            }
+            if data:
+                return _to_plain_data(data)
+        except Exception:
+            pass
+    return value
+
+
 class OpenAIProvider:
     """OpenAI provider using the official SDK when available.
 
@@ -82,12 +111,17 @@ class OpenAIProvider:
         api_key: Optional[str] = None,
         model: Optional[str] = None,
         base_url: Optional[str] = None,
-        client: Any = None
+        client: Any = None,
+        timeout: float = 20.0,
+        strict: bool = False,
+        **_: Any,
     ):
         self.api_key = api_key
         self.model = model or "gpt-3.5-turbo"
         self.base_url = base_url
         self._client = client
+        self.timeout = float(timeout)
+        self.strict = bool(strict)
         self._openai: Optional[ModuleType] = None
         try:
             self._openai = importlib.import_module("openai")
@@ -168,6 +202,115 @@ class OpenAIProvider:
             return "\n".join(p for p in parts if p)
         except Exception:
             return ""
+
+    def raw_complete(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        request_payload = dict(payload or {})
+        request_payload.setdefault("model", self.model)
+
+        client = self._client or self._openai
+        if client is not None:
+            try:
+                chat = getattr(client, "chat", None)
+                if chat is not None:
+                    completions = getattr(chat, "completions", None)
+                    if completions is not None and hasattr(completions, "create"):
+                        res = completions.create(**request_payload)
+                        plain = _to_plain_data(res)
+                        if isinstance(plain, dict):
+                            return plain
+                        return {"raw": plain}
+
+                oi = self._openai
+                if oi is not None and hasattr(oi, "ChatCompletion") and hasattr(oi.ChatCompletion, "create"):
+                    res = oi.ChatCompletion.create(**request_payload)
+                    plain = _to_plain_data(res)
+                    if isinstance(plain, dict):
+                        return plain
+                    return {"raw": plain}
+            except Exception:
+                pass
+
+        text = self.summarize(request_payload.get("messages", []), settings=request_payload)
+        return {
+            "id": "chatcmpl-modelito-fallback",
+            "object": "chat.completion",
+            "created": 0,
+            "model": request_payload.get("model", self.model),
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": text},
+                    "finish_reason": "stop",
+                }
+            ],
+            "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+        }
+
+    def raw_stream(self, payload: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
+        request_payload = dict(payload or {})
+        request_payload.setdefault("model", self.model)
+        request_payload["stream"] = True
+
+        client = self._client or self._openai
+        if client is not None:
+            try:
+                chat = getattr(client, "chat", None)
+                if chat is not None:
+                    completions = getattr(chat, "completions", None)
+                    if completions is not None:
+                        if hasattr(completions, "stream"):
+                            for event in completions.stream(**request_payload):
+                                plain = _to_plain_data(event)
+                                if isinstance(plain, dict):
+                                    yield plain
+                            return
+                        if hasattr(completions, "create"):
+                            for event in completions.create(**request_payload):
+                                plain = _to_plain_data(event)
+                                if isinstance(plain, dict):
+                                    yield plain
+                            return
+
+                oi = self._openai
+                if oi is not None and hasattr(oi, "ChatCompletion") and hasattr(oi.ChatCompletion, "create"):
+                    for event in oi.ChatCompletion.create(**request_payload):
+                        plain = _to_plain_data(event)
+                        if isinstance(plain, dict):
+                            yield plain
+                    return
+            except Exception:
+                pass
+
+        text = _extract_text_from_response(self.raw_complete(request_payload))
+        if not text:
+            return
+        yield {
+            "id": "chatcmpl-modelito-fallback",
+            "object": "chat.completion.chunk",
+            "created": 0,
+            "model": request_payload.get("model", self.model),
+            "choices": [
+                {"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}
+            ],
+        }
+        yield {
+            "id": "chatcmpl-modelito-fallback",
+            "object": "chat.completion.chunk",
+            "created": 0,
+            "model": request_payload.get("model", self.model),
+            "choices": [
+                {"index": 0, "delta": {"content": text}, "finish_reason": None}
+            ],
+        }
+        yield {
+            "id": "chatcmpl-modelito-fallback",
+            "object": "chat.completion.chunk",
+            "created": 0,
+            "model": request_payload.get("model", self.model),
+            "choices": [
+                {"index": 0, "delta": {}, "finish_reason": "stop"}
+            ],
+        }
 
     def stream(self, messages: Iterable[Any], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
         """Streaming provider surface attempting SDK streaming first.
@@ -301,7 +444,7 @@ class OpenAIProvider:
         for i in range(0, len(text), chunk_size):
             yield text[i: i + chunk_size]
 
-    async def acomplete(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> str:
+    async def acomplete(self, messages: Iterable[Any], settings: Optional[dict[str, Any]] = None) -> str:
         """Async wrapper for `summarize()` using a threadpool executor."""
         try:
             import asyncio

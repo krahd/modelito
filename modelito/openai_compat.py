@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
+import uuid
 from typing import Any, Dict, Iterable, List, Optional
 from urllib.request import Request, urlopen
 
@@ -43,6 +45,65 @@ def _extract_chat_text(payload: Any) -> str:
             if isinstance(text, str):
                 return text
     return ""
+
+
+def _extract_stream_text(event: Any) -> str:
+    if not isinstance(event, dict):
+        return ""
+    choices = event.get("choices")
+    if isinstance(choices, list) and choices:
+        first = choices[0]
+        if isinstance(first, dict):
+            delta = first.get("delta")
+            if isinstance(delta, dict):
+                content = delta.get("content")
+                if isinstance(content, str):
+                    return content
+            message = first.get("message")
+            if isinstance(message, dict):
+                content = message.get("content")
+                if isinstance(content, str):
+                    return content
+            text = first.get("text")
+            if isinstance(text, str):
+                return text
+    return ""
+
+
+def _fallback_chat_response(payload: Dict[str, Any]) -> Dict[str, Any]:
+    messages = payload.get("messages")
+    parts: List[str] = []
+    if isinstance(messages, list):
+        for item in messages:
+            if isinstance(item, dict):
+                content = item.get("content")
+                if isinstance(content, str) and content:
+                    parts.append(content)
+            elif isinstance(item, str):
+                parts.append(item)
+    prompt = payload.get("prompt")
+    if isinstance(prompt, str) and prompt:
+        parts.append(prompt)
+    text = "\n".join(parts)
+    created = int(time.time())
+    return {
+        "id": f"chatcmpl-modelito-{uuid.uuid4().hex}",
+        "object": "chat.completion",
+        "created": created,
+        "model": None,
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": text},
+                "finish_reason": None,
+            }
+        ],
+        "usage": {
+            "prompt_tokens": payload.get("prompt_tokens", 0) or 0,
+            "completion_tokens": payload.get("completion_tokens", 0) or 0,
+            "total_tokens": (payload.get("prompt_tokens", 0) or 0) + (payload.get("completion_tokens", 0) or 0),
+        },
+    }
 
 
 class OpenAICompatibleHTTPProvider:
@@ -130,6 +191,72 @@ class OpenAICompatibleHTTPProvider:
             return ModelitoBadResponseError(str(exc))
         return ModelitoProviderError(str(exc))
 
+    def _post_json(self, path: str, payload: Dict[str, Any]) -> Any:
+        req = Request(
+            f"{self.base_url}{path}",
+            data=json.dumps(payload).encode("utf-8"),
+            headers=self._headers(),
+            method="POST",
+        )
+        with urlopen(req, timeout=self.timeout) as resp:
+            body = resp.read().decode("utf-8")
+        return json.loads(body)
+
+    def _fallback_stream_events(self, payload: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
+        response = _fallback_chat_response(payload)
+        created = response.get("created") or int(time.time())
+        model = response.get("model") or self.model
+        chunk_size = 64
+        if isinstance(payload, dict) and "chunk_size" in payload:
+            try:
+                chunk_size = max(1, int(payload.get("chunk_size") or chunk_size))
+            except Exception:
+                chunk_size = 64
+        yield {
+            "id": response["id"],
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model,
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {"role": "assistant"},
+                    "finish_reason": None,
+                }
+            ],
+        }
+        text = _extract_chat_text(response)
+        for start in range(0, len(text), chunk_size):
+            chunk = text[start: start + chunk_size]
+            if not chunk:
+                continue
+            yield {
+                "id": response["id"],
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"content": chunk},
+                        "finish_reason": None,
+                    }
+                ],
+            }
+        yield {
+            "id": response["id"],
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model,
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {},
+                    "finish_reason": "stop",
+                }
+            ],
+        }
+
     def _strict_raise(self, exc: Exception) -> None:
         """Raise a typed Modelito error if ``strict=True``; otherwise no-op."""
         if self.strict:
@@ -175,6 +302,69 @@ class OpenAICompatibleHTTPProvider:
             self._strict_raise(exc)
         return [self.model]
 
+    def raw_complete(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        request_payload = dict(payload or {})
+        request_payload.setdefault("model", self.model)
+        try:
+            data = self._post_json("/chat/completions", request_payload)
+            if isinstance(data, dict):
+                if self.strict and "choices" not in data:
+                    raise ModelitoBadResponseError(
+                        "raw_complete: server returned valid JSON but no choices"
+                    )
+                return data
+            if self.strict:
+                raise ModelitoBadResponseError(
+                    "raw_complete: server returned a non-dict JSON response"
+                )
+        except LLMProviderError:
+            raise
+        except Exception as exc:
+            if self.strict:
+                raise self._classify_error(exc) from exc
+        return _fallback_chat_response(request_payload)
+
+    def raw_stream(self, payload: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
+        request_payload = dict(payload or {})
+        request_payload.setdefault("model", self.model)
+        request_payload["stream"] = True
+        try:
+            req = Request(
+                f"{self.base_url}/chat/completions",
+                data=json.dumps(request_payload).encode("utf-8"),
+                headers=self._headers(),
+                method="POST",
+            )
+            with urlopen(req, timeout=self.timeout) as resp:
+                while True:
+                    raw_line = resp.readline()
+                    if not raw_line:
+                        break
+                    line = raw_line.decode("utf-8", errors="ignore").strip()
+                    if not line:
+                        continue
+                    if line.startswith("data:"):
+                        line = line[5:].lstrip()
+                    if line == "[DONE]":
+                        break
+                    try:
+                        event = json.loads(line)
+                    except Exception:
+                        if self.strict:
+                            raise ModelitoBadResponseError(
+                                f"raw_stream: unable to parse stream event: {line!r}"
+                            )
+                        continue
+                    if isinstance(event, dict):
+                        yield event
+                return
+        except LLMProviderError:
+            raise
+        except Exception as exc:
+            if self.strict:
+                raise self._classify_error(exc) from exc
+        yield from self._fallback_stream_events(request_payload)
+
     def chat(
         self,
         messages: Iterable[Any],
@@ -192,24 +382,12 @@ class OpenAICompatibleHTTPProvider:
         In ``strict=True`` mode, raises a typed Modelito exception on failure.
         """
         flat = self._flatten_messages(messages)
-        payload: Dict[str, Any] = {
-            "model": self.model,
-            "messages": flat,
-            "stream": False,
-        }
+        payload: Dict[str, Any] = {"model": self.model, "messages": flat, "stream": False}
         if isinstance(settings, dict):
             payload.update(settings)
 
         try:
-            req = Request(
-                f"{self.base_url}/chat/completions",
-                data=json.dumps(payload).encode("utf-8"),
-                headers=self._headers(),
-                method="POST",
-            )
-            with urlopen(req, timeout=self.timeout) as resp:
-                body = resp.read().decode("utf-8")
-            data = json.loads(body)
+            data = self.raw_complete(payload)
             text = _extract_chat_text(data)
 
             model_name: Optional[str] = None
@@ -279,51 +457,15 @@ class OpenAICompatibleHTTPProvider:
         exception on connection or protocol failure.
         """
         flat = self._flatten_messages(messages)
-        payload: Dict[str, Any] = {
-            "model": self.model,
-            "messages": flat,
-            "stream": True,
-        }
+        payload: Dict[str, Any] = {"model": self.model, "messages": flat, "stream": True}
         if isinstance(settings, dict):
             payload.update(settings)
 
         try:
-            req = Request(
-                f"{self.base_url}/chat/completions",
-                data=json.dumps(payload).encode("utf-8"),
-                headers=self._headers(),
-                method="POST",
-            )
-            with urlopen(req, timeout=self.timeout) as resp:
-                while True:
-                    line = resp.readline()
-                    if not line:
-                        break
-                    raw = line.decode("utf-8", errors="ignore").strip()
-                    if not raw:
-                        continue
-                    if raw.startswith("data: "):
-                        raw = raw[6:]
-                    if raw == "[DONE]":
-                        break
-                    try:
-                        evt = json.loads(raw)
-                    except Exception:
-                        continue
-                    if isinstance(evt, dict):
-                        choices = evt.get("choices")
-                        if isinstance(choices, list) and choices:
-                            first = choices[0]
-                            if isinstance(first, dict):
-                                delta = first.get("delta")
-                                if isinstance(delta, dict):
-                                    content = delta.get("content")
-                                    if isinstance(content, str) and content:
-                                        yield content
-                                        continue
-                                text = first.get("text")
-                                if isinstance(text, str) and text:
-                                    yield text
+            for event in self.raw_stream(payload):
+                text = _extract_stream_text(event)
+                if text:
+                    yield text
             return
         except LLMProviderError:
             raise

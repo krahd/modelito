@@ -96,6 +96,8 @@ Provided shims and utilities:
   OpenAI-compatible APIs via `base_url`.
 - `OpenAICompatibleHTTPProvider` — shared HTTP base class for local or
   OpenAI-compatible runtimes.
+- `RawChatProvider` — protocol for preserving raw OpenAI chat completion
+  payloads without collapsing them into text.
 - `ClaudeProvider` — will use the official Anthropic SDK when installed,
   falling back to deterministic behavior otherwise.
 - `GeminiProvider`, `GrokProvider` — lightweight shims.
@@ -110,6 +112,11 @@ The client layer recognises the same provider stack through `ChatProvider`,
 `MessageInput`, and structured response helpers such as `Client.chat()` and
 `Client.chat_json()`.
 
+`OpenAICompatibleHTTPProvider`, `OMLXProvider`, and `OpenAIProvider` also
+expose `raw_complete()` and `raw_stream()` for OpenAI-compatible passthrough.
+`Client.chat_parsed()` remains the structured JSON convenience path for Python
+applications.
+
 For quick diagnostics, use the provider readiness API or CLI:
 
 ```py
@@ -122,6 +129,60 @@ print(status.ready, status.reason)
 ```sh
 python -m modelito doctor --provider omlx --model omlx
 ```
+
+Server mode for non-Python clients:
+
+```sh
+pip install "modelito[serve]"
+modelito-serve --provider omlx --port 11436 --host 127.0.0.1 --strict
+```
+
+`modelito-serve` exposes OpenAI-compatible `/v1/models`,
+`/v1/chat/completions`, and `/v1/embeddings` endpoints.
+
+Pi integration uses HTTP only. Pi is a TypeScript/Node harness and does not
+import Modelito directly; point Pi at the `modelito-serve` base URL via its
+OpenAI-compatible custom provider configuration.
+
+Example `~/.pi/agent/models.json` provider entry:
+
+```json
+{
+  "providers": {
+    "modelito": {
+      "baseUrl": "http://localhost:11436/v1",
+      "api": "openai-completions",
+      "apiKey": "modelito",
+      "authHeader": false,
+      "compat": {
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false
+      },
+      "models": [
+        {
+          "id": "omlx",
+          "name": "oMLX via Modelito",
+          "reasoning": false,
+          "input": ["text"],
+          "contextWindow": 8192,
+          "maxTokens": 4096,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+Tool-calling workflows require raw passthrough support. Modelito currently
+implements that on `OpenAICompatibleHTTPProvider` and the hosted
+`OpenAIProvider`; `OMLXProvider` inherits it automatically. `OllamaProvider`
+raw passthrough is deferred.
 
 The package also exposes a small Ollama administration layer for local model
 operations, including install backend detection, remote catalog metadata,

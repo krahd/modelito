@@ -84,5 +84,21 @@ class ChatProvider(Protocol):
         ...
 
 
+@runtime_checkable
+class RawChatProvider(Protocol):
+    """Raw OpenAI-chat-completions surface.
+
+    This protocol preserves the provider's native completion payloads so HTTP
+    servers and agent harnesses can forward tool calls and other metadata
+    without collapsing them into plain text.
+    """
+
+    def raw_complete(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        ...
+
+    def raw_stream(self, payload: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
+        ...
+
+
 # Keep a small alias for older code that imported `Provider`.
 Provider = SyncProvider

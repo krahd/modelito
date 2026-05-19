@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-18 22:16
+Last updated: 2026-05-18 22:40
 
 ## Project purpose
 
@@ -19,6 +19,8 @@ The package provides:
 - Ollama install detection, local service helpers, remote catalog metadata, lifecycle/download tracking, and model readiness helpers
 - optional SDK-backed behaviour with deterministic fallback support for offline tests/examples
 - provider readiness diagnostics via `check_provider_ready()` and `python -m modelito doctor`
+- optional OpenAI-compatible server mode via `modelito-serve` for non-Python clients such as Pi
+- raw OpenAI chat-completions passthrough via `RawChatProvider`, `OpenAICompatibleHTTPProvider`, `OMLXProvider`, and `OpenAIProvider`
 - comprehensive docs under `docs/` including architecture, usage, API reference, install guide, and local server integration
 - pytest, ruff, mypy, build, twine, CI, and publishing workflows
 
@@ -34,8 +36,10 @@ Phase 3 enhancements complete:
 4. `ChatProvider` — new `@runtime_checkable` Protocol in `modelito/provider.py` formalising the `chat()` interface returning `Response`; exported from package root.
 5. `MessageInput` type alias (`Union[Message, str, Mapping[str, Any]]`) added to `provider.py` and exported; `Client` method signatures broadened from `Iterable[Message]` to `Iterable[MessageInput]`; `SyncProvider.summarize()` and `AsyncProvider.acomplete()` signatures similarly broadened.
 6. Provider readiness diagnostics added through `check_provider_ready()` / `ProviderStatus` and the `python -m modelito doctor` CLI.
+7. OpenAI-compatible server support added through `modelito.serve`, `modelito-serve`, `RawChatProvider`, raw passthrough on the OpenAI-compatible HTTP base, and the hosted OpenAI provider.
 
-Validation should be confirmed by CI; local development most recently ran targeted tests for the diagnostics work plus the full `pytest -q` suite, `ruff check .`, and `mypy modelito --ignore-missing-imports`.
+- `modelito-serve` exposes `/v1/models`, `/v1/chat/completions`, and `/v1/embeddings` for Pi and other OpenAI-compatible consumers.
+- Validation completed locally: `185 passed, 2 skipped`; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean; `python -m build` and `python -m twine check dist/*` passed.
 
 ## Architecture overview
 
@@ -128,11 +132,12 @@ python -m twine check dist/*
 
 ## Pending tasks
 
-<add pending tasks here>
+- Confirm whether Ollama raw passthrough is worth adding in a later milestone.
+- Revisit trusted publishing configuration before the next release.
 
 ## Next steps
 
-1. Fix PyPI trusted publishing is misconfigured for `.github/workflows/publish.yml` and currently requires manual fallback.
+1. Fix PyPI trusted publishing configuration for `.github/workflows/publish.yml` before the next release.
 2. Keep reviewing provider additions against the portable-common-surface rule.
 
 ## Longer-term steps
@@ -155,4 +160,4 @@ python -m twine check dist/*
 
 ---
 
-Last updated: 2026-05-18 22:16
+Last updated: 2026-05-18 22:40

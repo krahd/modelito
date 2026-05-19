@@ -21,7 +21,15 @@ class OllamaProvider:
     testing and compatibility with older imports.
     """
 
-    def __init__(self, host: Optional[str] = None, port: int = 11434, model: Optional[str] = None):
+    def __init__(
+        self,
+        host: Optional[str] = None,
+        port: int = 11434,
+        model: Optional[str] = None,
+        timeout: float = 20.0,
+        strict: bool = False,
+        **_: Any,
+    ):
         """Initialize the provider.
 
         When an Ollama HTTP API is reachable at ``host:port`` the provider
@@ -32,6 +40,8 @@ class OllamaProvider:
         self.host = host or "http://127.0.0.1"
         self.port = int(port or 11434)
         self.model = model
+        self.timeout = float(timeout)
+        self.strict = bool(strict)
 
     def list_models(self) -> List[str]:
         """Return a best-effort list of locally available Ollama models.

@@ -32,7 +32,11 @@ openai = ["openai"]
 anthropic = ["anthropic"]
 gemini = ["google-generativeai"]
 grok = ["xai-sdk"]
+serve = ["fastapi", "uvicorn"]
 dev = ["pytest", "pytest-asyncio", "pytest-mock", "mypy", "ruff", "black"]
+
+[project.scripts]
+modelito-serve = "modelito.serve:main"
 
 [project.urls]
 Homepage = "https://github.com/krahd/modelito"
