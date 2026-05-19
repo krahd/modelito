@@ -244,6 +244,10 @@ Notes
   intended for tests and simple local workflows.
 - For production usage you should replace provider shims with real SDK-backed
   implementations that implement the same `list_models()` / `summarize()` surface.
+- Static model metadata in `modelito.model_metadata` is best-effort fallback
+  data. Prefer provider-reported model information when available.
+- Unknown metadata fields are intentionally represented as `None`, and static
+  metadata should not be treated as authoritative for safety-critical routing.
 
 Advanced API Features
 --------------------

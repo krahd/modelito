@@ -6,7 +6,7 @@ import pytest
 
 
 class StreamingProvider:
-    model = "gpt-3.5-turbo"
+    model = "gpt-4o-mini"
 
     def list_models(self):
         return [self.model]
@@ -53,7 +53,8 @@ def test_client_model_metadata_falls_back_to_registry():
 
     metadata = client.model_metadata()
 
-    assert metadata["context_window"] == 4096
+    assert metadata["provider"] == "openai"
+    assert metadata["supports_streaming"] is True
     assert metadata["functions"] is True
     assert metadata["tools"] is True
 
