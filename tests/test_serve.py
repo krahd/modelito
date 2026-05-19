@@ -179,7 +179,8 @@ def test_models_route_success(monkeypatch):
 
 def test_models_route_provider_failure_returns_openai_error(monkeypatch):
     runtime = _build_runtime()
-    runtime.client.list_models = lambda: (_ for _ in ()).throw(ModelitoProviderError("upstream failure"))
+    runtime.client.list_models = lambda: (_ for _ in ()).throw(
+        ModelitoProviderError("upstream failure"))
     _patch_server_deps(monkeypatch)
     app = create_app(runtime)
 
@@ -360,7 +361,8 @@ def test_chat_invalid_messages_type_returns_openai_error(monkeypatch):
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest({"model": "omlx", "messages": {"role": "user", "content": "hello"}})))
+    response = asyncio.run(handler(_FakeRequest(
+        {"model": "omlx", "messages": {"role": "user", "content": "hello"}})))
     _assert_openai_error(response, 400)
 
 
@@ -370,7 +372,8 @@ def test_chat_messages_list_works(monkeypatch):
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest({"model": "omlx", "messages": [{"role": "user", "content": "hello"}]})))
+    response = asyncio.run(handler(_FakeRequest(
+        {"model": "omlx", "messages": [{"role": "user", "content": "hello"}]})))
     assert response.status_code == 200
     assert response.payload["choices"][0]["message"]["content"] == "fallback text"
 
@@ -388,34 +391,40 @@ def test_chat_messages_string_works_for_backwards_compatibility(monkeypatch):
 
 def test_chat_timeout_returns_openai_style_504(monkeypatch):
     runtime = _build_runtime()
-    runtime.client.chat = lambda *_args, **_kwargs: (_ for _ in ()).throw(ModelitoTimeoutError("timed out"))
+    runtime.client.chat = lambda *_args, **_kwargs: (_ for _ in ()
+                                                     ).throw(ModelitoTimeoutError("timed out"))
     _patch_server_deps(monkeypatch)
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest({"model": "omlx", "messages": [{"role": "user", "content": "hello"}]})))
+    response = asyncio.run(handler(_FakeRequest(
+        {"model": "omlx", "messages": [{"role": "user", "content": "hello"}]})))
     _assert_openai_error(response, 504)
 
 
 def test_chat_connection_returns_openai_style_503(monkeypatch):
     runtime = _build_runtime()
-    runtime.client.chat = lambda *_args, **_kwargs: (_ for _ in ()).throw(ModelitoConnectionError("offline"))
+    runtime.client.chat = lambda *_args, **_kwargs: (_ for _ in ()
+                                                     ).throw(ModelitoConnectionError("offline"))
     _patch_server_deps(monkeypatch)
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest({"model": "omlx", "messages": [{"role": "user", "content": "hello"}]})))
+    response = asyncio.run(handler(_FakeRequest(
+        {"model": "omlx", "messages": [{"role": "user", "content": "hello"}]})))
     _assert_openai_error(response, 503)
 
 
 def test_chat_model_not_found_returns_openai_style_404(monkeypatch):
     runtime = _build_runtime()
-    runtime.client.chat = lambda *_args, **_kwargs: (_ for _ in ()).throw(ModelitoModelNotFoundError("missing model"))
+    runtime.client.chat = lambda *_args, **_kwargs: (_ for _ in ()
+                                                     ).throw(ModelitoModelNotFoundError("missing model"))
     _patch_server_deps(monkeypatch)
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest({"model": "omlx", "messages": [{"role": "user", "content": "hello"}]})))
+    response = asyncio.run(handler(_FakeRequest(
+        {"model": "omlx", "messages": [{"role": "user", "content": "hello"}]})))
     _assert_openai_error(response, 404)
 
 
@@ -514,7 +523,8 @@ def test_stream_completion_events_raw_provider_is_lazy():
             }
 
     runtime = _build_runtime(raw_provider=LazyRawProvider())
-    stream_result = _stream_completion_events(runtime, {"messages": [{"role": "user", "content": "hello"}], "stream": True})
+    stream_result = _stream_completion_events(
+        runtime, {"messages": [{"role": "user", "content": "hello"}], "stream": True})
 
     assert side_effects == []
     iterator = iter(stream_result.events)
