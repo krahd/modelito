@@ -21,6 +21,9 @@ To install the latest released version from PyPI:
 pip install modelito
 ```
 
+`pip install modelito` does not install FastAPI/Uvicorn. Those are optional
+and only needed for `modelito-serve`.
+
 For development / contributor setup (editable install and dev dependencies):
 
 ```sh
@@ -358,47 +361,13 @@ Behavioral notes:
   those token deltas as text fragments.
 - Offline/deterministic fallbacks yield the full text in a single chunk.
 
-Advanced Features
-----------------
+Notes on additional modules
+---------------------------
 
-Unified Provider Abstraction:
+Modelito includes internal/helper modules such as local model management,
+API key helpers, mock providers, cache helpers, and batching utilities.
+These modules are not currently presented as stable top-level package exports
+in this README. Prefer the documented `Client`, provider adapters, connector,
+and server entrypoints for application integrations.
 
-- All providers (OpenAI, Anthropic, Google, Ollama, etc.) are accessed through a consistent interface.
-- Runtime provider/model switching is supported via `modelito.provider_registry.get_provider()`.
-
-Local Model Management:
-
-- Auto-discovers local models (Ollama, etc.) and performs health checks.
-- Dynamic model selection without restarting clients via `LocalModelManager`.
-
-API Key Management:
-
-- Secure, user-friendly API key management with environment variable and config file support.
-- Validation utilities and error reporting via `APIKeyManager`.
-
-Streaming & Partial Results:
-
-- All streaming-capable providers expose a `stream()` method for incremental results.
-- See `StreamingProvider` protocol and examples above.
-
-Error Handling & Diagnostics:
-
-- Standardized error messages and diagnostics for easier troubleshooting.
-- Structured error objects (see `modelito.errors`).
-
-Model Capabilities Discovery:
-
-- Expose model metadata (context window, function/tool support, etc.) via `get_model_metadata()`.
-- Normalize provider model lists and metadata for application APIs via `normalize_models()` and `normalize_metadata()`.
-
-Testing & Mocking:
-
-- Built-in mock mode for testing clients without real API calls (`MockProvider`).
-- Useful for CI and offline development.
-
-Performance & Caching:
-
-- Optional in-memory response caching for repeated prompts (`ResponseCache`).
-- Batching utilities for embeddings and other batchable operations.
-
-See the `tests/` directory for comprehensive test coverage and usage examples for all features.
+See the `tests/` directory for comprehensive coverage and usage examples.
