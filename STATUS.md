@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-19 01:32
+Last updated: 2026-05-19 01:35
 
 ## Project purpose
 
@@ -155,6 +155,7 @@ python -m twine check dist/*
 - Model metadata inference no longer treats every `o...` model name as OpenAI; only `gpt-*` and known OpenAI reasoning prefixes (`o1*`, `o3*`, `o4*`) infer OpenAI.
 - Model metadata helpers are now exported from the package root (`ModelMetadata`, `get_model_info`, `get_model_metadata`, `infer_model_metadata`).
 - Release checklist now includes explicit trusted publishing requirements, tag/publish commands, and clean-environment install checks.
+- README now reuses the compact current-state SVGs from STATUS, and the architecture/usage docs call out `modelito-serve`, shared probes, raw-capable providers, and deferred Ollama raw passthrough.
 - Current release line is `1.4.4`.
 - Current oMLX stack uses `OpenAICompatibleHTTPProvider` with strict-mode typed error handling.
 - Current provider typing includes `ChatProvider`, `MessageInput`, and `OpenAIMessageDict` exports, with `Client` chat-related methods accepting broadened message input types; provider protocols are aligned so `SyncProvider`, `AsyncProvider`, `StreamingProvider`, and `ChatProvider` all accept `Iterable[MessageInput]`.
@@ -203,4 +204,4 @@ python -m twine check dist/*
 
 ---
 
-Last updated: 2026-05-19 01:32
+Last updated: 2026-05-19 01:35

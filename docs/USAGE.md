@@ -8,6 +8,10 @@ is intentionally dependency-light: install optional extras when you need the
 real SDKs, otherwise the shims provide deterministic fallbacks suitable for
 testing and offline use.
 
+Current state: `modelito-serve` exposes `/v1/models`, `/v1/chat/completions`,
+and `/v1/embeddings`; raw-capable OpenAI-compatible providers are `OpenAICompatibleHTTPProvider`,
+`OMLXProvider`, and hosted `OpenAIProvider`; `OllamaProvider` raw passthrough remains deferred.
+
 Usage
 -----
 

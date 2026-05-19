@@ -1,5 +1,7 @@
 # modelito architecture
 
+Detailed architecture policy lives here. The compact SVGs in [STATUS.md](../STATUS.md) are intentionally current-state snapshots and are reused in the README for repo documentation.
+
 ## Design principles
 
 modelito aims to provide a lightweight, deterministic abstraction layer for LLM providers. Key principles:
@@ -52,6 +54,16 @@ class Response:
     raw: Optional[Dict] = None  # Original SDK response if available
 ```
 
+### Current runtime surfaces
+
+- `modelito-serve` exposes `/v1/models`, `/v1/chat/completions`, and `/v1/embeddings` for OpenAI-compatible consumers such as Pi.
+- `RawChatProvider`, `OpenAICompatibleHTTPProvider`, `OMLXProvider`, and hosted `OpenAIProvider` preserve raw OpenAI-compatible passthrough where tool calls and structured payloads need fidelity.
+- `Client.chat()` returns `Response`, while `Client.chat_json()` and `Client.chat_parsed()` provide structured output helpers for parsed dicts and dataclass / Pydantic-style objects.
+- `flatten_message_inputs` is exported from the package root for callers that need OpenAI-style dict conversion.
+- `ModelMetadata`, `get_model_info()`, `get_model_metadata()`, and `infer_model_metadata()` are exported for best-effort, conservative metadata lookups.
+- Shared provider readiness probes live in `modelito/probes.py` and are surfaced via `check_provider_ready()` and `python -m modelito doctor`.
+- `OllamaProvider` raw passthrough remains deferred; use raw-capable OpenAI-compatible providers for Pi or tool-calling workflows.
+
 ## Provider implementations
 
 ### SDK-vs-HTTP-vs-Shim hierarchy
@@ -63,12 +75,15 @@ Each provider follows a fallback chain:
 3. **CLI tier (Ollama only):** If the Ollama CLI is installed, try calling `ollama run` or `ollama generate`.
 4. **Deterministic shim:** Return a stub response suitable for testing (concatenate message contents, or return a mock response).
 
+Tool-calling integrations should prefer the raw-capable path only when full request/response fidelity is available. The fallback path remains the correct choice for offline tests and non-raw providers.
+
 ### Per-provider behavior
 
 **OpenAIProvider:**
 - SDK: Uses `openai` package (OpenAI or Azure endpoint)
 - HTTP: None (would require manually hitting api.openai.com)
 - CLI: None
+- Raw: Preserves OpenAI-compatible request/response payloads for raw passthrough and server use
 - Shim: Concatenates messages and returns as plain text
 
 **ClaudeProvider (Anthropic):**
@@ -87,6 +102,7 @@ Each provider follows a fallback chain:
 - SDK: None required
 - HTTP: Calls OpenAI-compatible `/v1/models`, `/v1/chat/completions`, and `/v1/embeddings`
 - CLI: None
+- Raw: Preserves OpenAI-compatible passthrough for Pi / OpenAI-compatible clients
 - Shim: Deterministic fallback for offline tests
 
 **OllamaProvider:**
@@ -106,6 +122,7 @@ Each provider follows a fallback chain:
 - **Testing:** Tests run without network or binaries by hitting the shim tier.
 - **Resilience:** If an API is down or a CLI isn't installed, the fallback keeps things working (degraded).
 - **Flexibility:** Users can choose: bring your own SDK, use a local Ollama, or test offline.
+- **Pi / tool-calling:** use raw-capable OpenAI-compatible providers such as `OMLXProvider` or hosted `OpenAIProvider`; do not rely on Ollama raw passthrough yet.
 
 ## Connectors and higher-level API
 
@@ -146,6 +163,8 @@ print(res.text)
 3. Check if the model is already loaded (`running_model_names()`)
 4. If not loaded, download and load it (`download_model_progress()`)
 5. Poll readiness via `/api/generate` or CLI
+
+Current diagnostics are shared between the client and `modelito-doctor`, so readiness behaviour stays consistent across the CLI and library APIs.
 
 ### Detailed readiness
 
@@ -188,8 +207,13 @@ Application
     v
 Provider interface (list_models, summarize, stream)
     |
+    +-- Client.chat()/chat_json()/chat_parsed()
+    |
     +-- SDK tier (if optional extra installed)
     |   -> Uses openai, anthropic, google-generativeai, etc.
+    |
+    +-- Raw-capable OpenAI-compatible tier
+    |   -> modelito-serve, OpenAICompatibleHTTPProvider, OMLXProvider, OpenAIProvider
     |
     +-- HTTP tier (Ollama only)
     |   -> Calls /api/chat or /api/generate
@@ -221,6 +245,8 @@ This gates side-effectful operations so default CI remains fast and safe.
 - Provider-specific helpers should not be added to the core protocol unless they generalise cleanly.
 - OpenAI-compatible local runtimes should prefer thin presets over `OpenAICompatibleHTTPProvider`.
 - Raw tool-call passthrough should use `RawChatProvider` only when full request/response fidelity can be preserved.
+- The hosted OpenAI provider and oMLX runtime are the preferred raw-capable paths for Pi / OpenAI-compatible clients.
+- `modelito-serve` should continue to expose only the documented OpenAI-compatible endpoints.
 - Modelito should not absorb agent-harness responsibilities.
 
 To add a new provider:
