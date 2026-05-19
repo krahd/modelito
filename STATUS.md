@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-18 22:40
+Last updated: 2026-05-18 22:51
 
 ## Project purpose
 
@@ -19,7 +19,7 @@ The package provides:
 - Ollama install detection, local service helpers, remote catalog metadata, lifecycle/download tracking, and model readiness helpers
 - optional SDK-backed behaviour with deterministic fallback support for offline tests/examples
 - provider readiness diagnostics via `check_provider_ready()` and `python -m modelito doctor`
-- optional OpenAI-compatible server mode via `modelito-serve` for non-Python clients such as Pi
+- optional OpenAI-compatible server mode via `modelito-serve` for non-Python clients such as Pi, with bind settings kept separate from provider backend configuration
 - raw OpenAI chat-completions passthrough via `RawChatProvider`, `OpenAICompatibleHTTPProvider`, `OMLXProvider`, and `OpenAIProvider`
 - comprehensive docs under `docs/` including architecture, usage, API reference, install guide, and local server integration
 - pytest, ruff, mypy, build, twine, CI, and publishing workflows
@@ -28,18 +28,20 @@ Release `v1.4.3` was tagged in git and published to PyPI after the local OpenAI-
 
 ## Active focus
 
-Phase 3 enhancements complete:
+Phase 4 hardening complete:
 
-1. `list_models()` raises `ModelitoBadResponseError` in strict mode when the server returns valid JSON but no usable model IDs; falls back to `[self.model]` in non-strict mode.
-2. `chat()` raises `ModelitoBadResponseError` in strict mode when the server returns a valid response with empty text content.
-3. `embed()` validates shape and count in strict mode: raises `ModelitoBadResponseError` when no usable embeddings are returned, or when the count does not match the input length.
-4. `ChatProvider` — new `@runtime_checkable` Protocol in `modelito/provider.py` formalising the `chat()` interface returning `Response`; exported from package root.
-5. `MessageInput` type alias (`Union[Message, str, Mapping[str, Any]]`) added to `provider.py` and exported; `Client` method signatures broadened from `Iterable[Message]` to `Iterable[MessageInput]`; `SyncProvider.summarize()` and `AsyncProvider.acomplete()` signatures similarly broadened.
-6. Provider readiness diagnostics added through `check_provider_ready()` / `ProviderStatus` and the `python -m modelito doctor` CLI.
-7. OpenAI-compatible server support added through `modelito.serve`, `modelito-serve`, `RawChatProvider`, raw passthrough on the OpenAI-compatible HTTP base, and the hosted OpenAI provider.
+1. `modelito-serve` now keeps bind `host`/`port` separate from provider backend configuration, and its raw streaming path forwards provider generators lazily instead of buffering them.
+2. `OpenAIProvider.raw_complete()` and `raw_stream()` are strict in strict mode, and `OpenAIProvider.chat()` now returns `Response` metadata for server use.
+3. `OllamaProvider` accepts dict-style `MessageInput` values consistently through the shared flattening helper.
+4. Server error mapping now distinguishes provider, timeout, connection, not-found, and bad-response failures.
+5. Embeddings input validation now rejects unsupported shapes instead of silently treating them as empty input.
+6. `ChatProvider` — new `@runtime_checkable` Protocol in `modelito/provider.py` formalising the `chat()` interface returning `Response`; exported from package root.
+7. `MessageInput` type alias (`Union[Message, str, Mapping[str, Any]]`) added to `provider.py` and exported; `Client` method signatures broadened from `Iterable[Message]` to `Iterable[MessageInput]`; `SyncProvider.summarize()` and `AsyncProvider.acomplete()` signatures similarly broadened.
+8. Provider readiness diagnostics added through `check_provider_ready()` / `ProviderStatus` and the `python -m modelito doctor` CLI.
+9. OpenAI-compatible server support added through `modelito.serve`, `modelito-serve`, `RawChatProvider`, raw passthrough on the OpenAI-compatible HTTP base, and the hosted OpenAI provider.
 
 - `modelito-serve` exposes `/v1/models`, `/v1/chat/completions`, and `/v1/embeddings` for Pi and other OpenAI-compatible consumers.
-- Validation completed locally: `185 passed, 2 skipped`; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean; `python -m build` and `python -m twine check dist/*` passed.
+- Validation completed locally: `185 passed, 2 skipped`; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean.
 
 ## Architecture overview
 
@@ -127,18 +129,18 @@ python -m twine check dist/*
 - Current oMLX stack uses `OpenAICompatibleHTTPProvider` with strict-mode typed error handling.
 - Current provider typing includes `ChatProvider`, `MessageInput`, and `OpenAIMessageDict` exports, with `Client` chat-related methods accepting broadened message input types; provider protocols are aligned so `SyncProvider`, `AsyncProvider`, `StreamingProvider`, and `ChatProvider` all accept `Iterable[MessageInput]`.
 - `Client.chat_json()` now supports optional stronger schema validation via `strict_schema=True` using dataclass construction or Pydantic-style `model_validate`/`parse_obj` hooks, while preserving lightweight key-presence checks by default.
-- Validation should be confirmed by CI; local development most recently ran targeted tests for the new diagnostics plus the full `pytest -q` suite, `ruff check .`, and `mypy modelito --ignore-missing-imports`.
+- Validation should be confirmed by CI; local development most recently ran targeted tests for the server/provider hardening changes plus the full `pytest -q` suite, `ruff check .`, and `mypy modelito --ignore-missing-imports`.
 - Historical release narratives are maintained in `CHANGELOG.md`; STATUS.md is kept as a current-state snapshot.
 
 ## Pending tasks
 
-- Confirm whether Ollama raw passthrough is worth adding in a later milestone.
 - Revisit trusted publishing configuration before the next release.
 
 ## Next steps
 
 1. Fix PyPI trusted publishing configuration for `.github/workflows/publish.yml` before the next release.
 2. Keep reviewing provider additions against the portable-common-surface rule.
+3. Decide whether to add optional Ollama raw passthrough in a later milestone.
 
 ## Longer-term steps
 
@@ -160,4 +162,4 @@ python -m twine check dist/*
 
 ---
 
-Last updated: 2026-05-18 22:40
+Last updated: 2026-05-18 22:51

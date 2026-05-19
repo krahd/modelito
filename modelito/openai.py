@@ -1,4 +1,4 @@
-"""Compatibility shim for the hosted OpenAI provider.
+"""OpenAI provider that prefers the official SDK when available.
 
 `OpenAIProvider` is the hosted/OpenAI-SDK-backed provider. It can also target
 OpenAI-compatible APIs via ``base_url`` when callers explicitly want that
@@ -9,19 +9,10 @@ from __future__ import annotations
 import importlib
 
 from typing import Any, Dict, Iterable, List, Optional
-from .messages import flatten_message_inputs
 from types import ModuleType
 
-
-"""OpenAI provider that prefers the official SDK when available.
-
-This implementation will attempt to use the installed `openai` package
-(modern and legacy client surfaces are both supported via runtime
-introspection). It accepts the broader ``MessageInput`` direction used by
-the rest of modelito. When the SDK is unavailable or a call fails, the
-provider falls back to a deterministic, offline-friendly summarizer used by
-tests.
-"""
+from .exceptions import ModelitoProviderError
+from .messages import Response, flatten_message_inputs
 
 
 
@@ -227,8 +218,12 @@ class OpenAIProvider:
                     if isinstance(plain, dict):
                         return plain
                     return {"raw": plain}
-            except Exception:
-                pass
+            except Exception as exc:
+                if self.strict:
+                    raise ModelitoProviderError(str(exc)) from exc
+
+        if self.strict:
+            raise ModelitoProviderError("OpenAI provider unavailable")
 
         text = self.summarize(request_payload.get("messages", []), settings=request_payload)
         return {
@@ -278,8 +273,12 @@ class OpenAIProvider:
                         if isinstance(plain, dict):
                             yield plain
                     return
-            except Exception:
-                pass
+            except Exception as exc:
+                if self.strict:
+                    raise ModelitoProviderError(str(exc)) from exc
+
+        if self.strict:
+            raise ModelitoProviderError("OpenAI provider unavailable")
 
         text = _extract_text_from_response(self.raw_complete(request_payload))
         if not text:
@@ -311,6 +310,49 @@ class OpenAIProvider:
                 {"index": 0, "delta": {}, "finish_reason": "stop"}
             ],
         }
+
+    def chat(self, messages: Iterable[Any], settings: Optional[dict[str, Any]] = None) -> Response:
+        payload: Dict[str, Any] = {"model": self.model,
+                                   "messages": flatten_message_inputs(messages), "stream": False}
+        if isinstance(settings, dict):
+            payload.update(settings)
+
+        data = self.raw_complete(payload)
+        text = _extract_text_from_response(data)
+
+        model_name: Optional[str] = None
+        finish_reason: Optional[str] = None
+        tokens_in: Optional[int] = None
+        tokens_out: Optional[int] = None
+
+        if isinstance(data, dict):
+            model_value = data.get("model")
+            if isinstance(model_value, str):
+                model_name = model_value
+            choices = data.get("choices")
+            if isinstance(choices, list) and choices:
+                first = choices[0]
+                if isinstance(first, dict):
+                    reason = first.get("finish_reason")
+                    if isinstance(reason, str):
+                        finish_reason = reason
+            usage = data.get("usage")
+            if isinstance(usage, dict):
+                prompt_tokens = usage.get("prompt_tokens")
+                completion_tokens = usage.get("completion_tokens")
+                if isinstance(prompt_tokens, int):
+                    tokens_in = prompt_tokens
+                if isinstance(completion_tokens, int):
+                    tokens_out = completion_tokens
+
+        return Response(
+            text=text,
+            raw=data,
+            model=model_name,
+            finish_reason=finish_reason,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+        )
 
     def stream(self, messages: Iterable[Any], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
         """Streaming provider surface attempting SDK streaming first.

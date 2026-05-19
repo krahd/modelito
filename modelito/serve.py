@@ -15,6 +15,13 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, Iterator, List, Optional
 
 from .client import Client
+from .exceptions import (
+    ModelitoBadResponseError,
+    ModelitoConnectionError,
+    ModelitoModelNotFoundError,
+    ModelitoProviderError,
+    ModelitoTimeoutError,
+)
 from .messages import Response
 from .provider import RawChatProvider
 
@@ -60,7 +67,7 @@ class EmbeddingResult:
 
 @dataclass(frozen=True)
 class StreamResult:
-    events: List[Dict[str, Any]]
+    events: Iterable[Dict[str, Any]]
     headers: Dict[str, str] = field(default_factory=dict)
 
 
@@ -127,8 +134,6 @@ def build_runtime(config: ServeConfig) -> ServeRuntime:
     client_kwargs: Dict[str, Any] = {
         "base_url": config.base_url,
         "api_key": config.api_key,
-        "host": config.host,
-        "port": config.port,
         "timeout": config.timeout,
         "strict": config.strict,
         "profile_path": config.profile_path or config.profile,
@@ -165,6 +170,24 @@ def _has_tools(payload: Dict[str, Any]) -> bool:
 
 def _fallback_warning(reason: str) -> Dict[str, str]:
     return {"X-Modelito-Warning": reason}
+
+
+def _http_status_for_exception(exc: Exception) -> int:
+    if isinstance(exc, (ModelitoBadResponseError, ValueError, TypeError)):
+        return 400
+    if isinstance(exc, ModelitoModelNotFoundError):
+        return 404
+    if isinstance(exc, (ModelitoTimeoutError, TimeoutError)):
+        return 504
+    if isinstance(exc, ModelitoConnectionError):
+        return 503
+    if isinstance(exc, ModelitoProviderError):
+        return 502
+    return 500
+
+
+def _as_http_exception(exc: Exception):
+    return _http_status_for_exception(exc), str(exc)
 
 
 def _messages_from_payload(payload: Dict[str, Any]) -> List[Any]:
@@ -232,7 +255,7 @@ def _stream_completion_events(runtime: ServeRuntime, payload: Dict[str, Any]) ->
     request_payload["stream"] = True
 
     if runtime.raw_provider is not None:
-        return StreamResult(events=list(runtime.raw_provider.raw_stream(request_payload)))
+        return StreamResult(events=runtime.raw_provider.raw_stream(request_payload))
 
     if _has_tools(request_payload) and runtime.config.strict:
         raise ValueError(
@@ -285,10 +308,10 @@ def _embedding_response(runtime: ServeRuntime, payload: Dict[str, Any]) -> Embed
     raw_input = request_payload.get("input")
     if isinstance(raw_input, str):
         inputs = [raw_input]
-    elif isinstance(raw_input, list):
-        inputs = [str(item) for item in raw_input]
+    elif isinstance(raw_input, list) and all(isinstance(item, str) for item in raw_input):
+        inputs = list(raw_input)
     else:
-        inputs = []
+        raise ValueError("embeddings input must be a string or list of strings")
 
     vectors = runtime.client.embed(inputs, model=model)
     data = [
@@ -330,7 +353,7 @@ def _stream_response_body(events: Iterable[Dict[str, Any]]) -> Iterator[str]:
 
 
 def create_app(runtime: ServeRuntime):
-    FastAPI, HTTPException, Request, JSONResponse, StreamingResponse, _uvicorn = _require_server_dependencies()
+    FastAPI, HTTPException, _Request, JSONResponse, StreamingResponse, _uvicorn = _require_server_dependencies()
     app = FastAPI(title="Modelito", version="1.4.4")
 
     @app.get("/v1/models")
@@ -343,8 +366,9 @@ def create_app(runtime: ServeRuntime):
         if payload.get("stream"):
             try:
                 stream_result = _stream_completion_events(runtime, payload)
-            except ValueError as exc:
-                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            except Exception as exc:
+                status_code, detail = _as_http_exception(exc)
+                raise HTTPException(status_code=status_code, detail=detail) from exc
             headers = dict(stream_result.headers)
             return StreamingResponse(
                 _stream_response_body(stream_result.events),
@@ -353,8 +377,9 @@ def create_app(runtime: ServeRuntime):
             )
         try:
             result = _chat_completion_response(runtime, payload)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except Exception as exc:
+            status_code, detail = _as_http_exception(exc)
+            raise HTTPException(status_code=status_code, detail=detail) from exc
         return JSONResponse(result.payload, headers=result.headers)
 
     @app.post("/v1/embeddings")
@@ -363,7 +388,8 @@ def create_app(runtime: ServeRuntime):
         try:
             result = _embedding_response(runtime, payload)
         except Exception as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            status_code, detail = _as_http_exception(exc)
+            raise HTTPException(status_code=status_code, detail=detail) from exc
         return JSONResponse(result.payload, headers=result.headers)
 
     return app
@@ -377,7 +403,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     runtime = build_runtime(config)
 
     try:
-        FastAPI, HTTPException, Request, JSONResponse, StreamingResponse, uvicorn = _require_server_dependencies()
+        _FastAPI, _HTTPException, _Request, _JSONResponse, _StreamingResponse, uvicorn = _require_server_dependencies()
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
         return 1

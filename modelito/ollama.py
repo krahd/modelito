@@ -10,7 +10,8 @@ the provider API during tests or local runs continue to work.
 from __future__ import annotations
 
 from typing import Any, Iterable, List, Optional
-from .messages import Message
+from .messages import flatten_message_inputs
+from .provider import MessageInput
 from .ollama_service import endpoint_url, server_is_up, json_post, list_local_models, list_remote_models, ollama_installed, run_ollama_command, running_model_names
 
 
@@ -85,7 +86,7 @@ class OllamaProvider:
 
         return []
 
-    def summarize(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> str:
+    def summarize(self, messages: Iterable[MessageInput], settings: Optional[dict[str, Any]] = None) -> str:
         """Produce a deterministic summary by concatenating message contents.
 
         This minimal implementation is intended for local testing and
@@ -99,23 +100,13 @@ class OllamaProvider:
         Returns:
             A string containing the joined message contents.
         """
-        # Helper to flatten messages into a single prompt string.
-        def _flatten(msgs: Any) -> str:
-            try:
-                parts = []
-                for m in (msgs or []):
-                    if isinstance(m, Message):
-                        parts.append(m.content)
-                    elif isinstance(m, str):
-                        parts.append(m)
-                    else:
-                        raise TypeError(
-                            "OllamaProvider.summarize requires modelito.messages.Message instances; dicts are not supported")
-                return "\n".join(p for p in parts if p)
-            except Exception:
-                return ""
+        if settings is not None:
+            pass
 
-        prompt = _flatten(messages)
+        flattened = flatten_message_inputs(messages)
+        prompt = "\n".join(
+            str(item.get("content") or "") for item in flattened if isinstance(item, dict)
+        )
 
         # If an Ollama HTTP API is available try to call it and return the
         # service output. Use the bundled `json_post` helper to avoid adding
@@ -128,14 +119,9 @@ class OllamaProvider:
                 if self.model:
                     payload["model"] = self.model
                 # Determine if we have structured messages or a prompt
-                has_messages = isinstance(messages, (list, tuple)
-                                          ) and messages and isinstance(messages[0], Message)
+                has_messages = bool(flattened)
                 if has_messages:
-                    payload["messages"] = [
-                        {"role": m.role, "content": m.content}
-                        for m in messages
-                        if isinstance(m, Message)
-                    ]
+                    payload["messages"] = flattened
                     endpoint = "/api/chat"
                 else:
                     payload["prompt"] = prompt
@@ -222,7 +208,7 @@ class OllamaProvider:
         # deterministic fallback
         return prompt
 
-    def stream(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
+    def stream(self, messages: Iterable[MessageInput], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
         """Streaming implementation for Ollama via the local HTTP API.
 
         Attempts to call the Ollama `/api/chat` endpoint for structured messages
@@ -247,30 +233,16 @@ class OllamaProvider:
         if self.model:
             payload["model"] = self.model
 
-        has_messages = isinstance(messages, (list, tuple)
-                                  ) and messages and isinstance(messages[0], Message)
+        flattened = flatten_message_inputs(messages)
+        has_messages = bool(flattened)
         if has_messages:
-            payload["messages"] = [
-                {"role": m.role, "content": m.content}
-                for m in messages
-                if isinstance(m, Message)
-            ]
+            payload["messages"] = flattened
             endpoint = "/api/chat"
         else:
             # flatten
-            try:
-                parts = []
-                for m in (messages or []):
-                    if isinstance(m, Message):
-                        parts.append(m.content)
-                    elif isinstance(m, str):
-                        parts.append(m)
-                    else:
-                        raise TypeError(
-                            "OllamaProvider.stream requires modelito.messages.Message instances; dicts are not supported")
-                payload["prompt"] = "\n".join(p for p in parts if p)
-            except Exception:
-                payload["prompt"] = str(messages or "")
+            payload["prompt"] = "\n".join(
+                str(item.get("content") or "") for item in flattened if isinstance(item, dict)
+            )
             endpoint = "/api/generate"
 
         url = endpoint_url(self.host, self.port, endpoint)

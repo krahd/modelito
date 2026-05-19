@@ -1,4 +1,5 @@
 """Provider and embedder registry helpers for Modelito."""
+from inspect import signature, Parameter
 from typing import Any, Dict, List, Optional, Type
 from .provider import EmbeddingProvider, SyncProvider
 from .openai import OpenAIProvider
@@ -35,7 +36,20 @@ def get_provider(name: str, **kwargs: Any) -> Optional[SyncProvider]:
     """
     cls = PROVIDER_REGISTRY.get(name.lower())
     if cls is not None:
-        return cls(**kwargs)
+        try:
+            params = signature(cls.__init__).parameters
+            accepts_var_kwargs = any(
+                param.kind == Parameter.VAR_KEYWORD for param in params.values())
+            if accepts_var_kwargs:
+                return cls(**kwargs)
+            filtered = {
+                key: value
+                for key, value in kwargs.items()
+                if key in params and key != "self"
+            }
+            return cls(**filtered)
+        except Exception:
+            return cls(**kwargs)
     return None
 
 
