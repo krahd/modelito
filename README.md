@@ -7,7 +7,7 @@ offers lightweight shims for OpenAI, Claude, Gemini, oMLX, local Ollama deployme
 and local OpenAI-compatible servers (llama.cpp, vLLM, LM Studio), plus
 utilities for token counting, timeout estimation, and small helpers to manage
 Ollama servers when needed. The library is designed for easy integration into
-applications and CI pipelines.
+applications and CI pipelines. 
 
 Quick start
 -----------
