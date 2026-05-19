@@ -172,8 +172,10 @@ def _fallback_warning(reason: str) -> Dict[str, str]:
 
 
 def _http_status_for_exception(exc: Exception) -> int:
-    if isinstance(exc, (ModelitoBadResponseError, ValueError, TypeError)):
+    if isinstance(exc, (ValueError, TypeError)):
         return 400
+    if isinstance(exc, ModelitoBadResponseError):
+        return 502
     if isinstance(exc, ModelitoModelNotFoundError):
         return 404
     if isinstance(exc, (ModelitoTimeoutError, TimeoutError)):
@@ -186,8 +188,10 @@ def _http_status_for_exception(exc: Exception) -> int:
 
 
 def _error_kind_for_exception(exc: Exception) -> str:
-    if isinstance(exc, (ModelitoBadResponseError, ValueError, TypeError)):
+    if isinstance(exc, (ValueError, TypeError)):
         return "modelito_bad_request"
+    if isinstance(exc, ModelitoBadResponseError):
+        return "modelito_bad_response_error"
     if isinstance(exc, ModelitoModelNotFoundError):
         return "modelito_model_not_found"
     if isinstance(exc, (ModelitoTimeoutError, TimeoutError)):
@@ -213,6 +217,16 @@ def _error_payload(exc: Exception) -> Dict[str, Any]:
 
 def _json_error_response(exc: Exception, JSONResponse: Any) -> Any:
     return JSONResponse(_error_payload(exc), status_code=_http_status_for_exception(exc))
+
+
+async def _read_json_payload(request: Any) -> Dict[str, Any]:
+    try:
+        payload = await request.json()
+    except Exception as exc:
+        raise ValueError("request body must be valid JSON") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("request body must be a JSON object")
+    return payload
 
 
 def _messages_from_payload(payload: Dict[str, Any]) -> List[Any]:
@@ -408,7 +422,10 @@ def create_app(runtime: ServeRuntime):
 
     @app.post("/v1/chat/completions")
     async def chat_completions(request: Any) -> Any:
-        payload = await request.json()
+        try:
+            payload = await _read_json_payload(request)
+        except Exception as exc:
+            return _json_error_response(exc, JSONResponse)
         if payload.get("stream"):
             try:
                 stream_result = _stream_completion_events(runtime, payload)
@@ -428,7 +445,10 @@ def create_app(runtime: ServeRuntime):
 
     @app.post("/v1/embeddings")
     async def embeddings(request: Any) -> Any:
-        payload = await request.json()
+        try:
+            payload = await _read_json_payload(request)
+        except Exception as exc:
+            return _json_error_response(exc, JSONResponse)
         try:
             result = _embedding_response(runtime, payload)
         except Exception as exc:

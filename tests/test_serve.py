@@ -2,6 +2,7 @@ import asyncio
 from types import SimpleNamespace
 
 from modelito.exceptions import (
+    ModelitoBadResponseError,
     ModelitoConnectionError,
     ModelitoModelNotFoundError,
     ModelitoProviderError,
@@ -14,7 +15,10 @@ from modelito.serve import (
     _chat_completion_response,
     _embedding_response,
     _error_payload,
+    _http_status_for_exception,
+    _messages_from_payload,
     _models_response,
+    _requires_raw_tool_support,
     _stream_completion_events,
     _stream_response_body,
     build_runtime,
@@ -30,6 +34,11 @@ class _FakeRequest:
 
     async def json(self):
         return self._payload
+
+
+class _InvalidJSONRequest:
+    async def json(self):
+        raise ValueError("invalid json")
 
 
 class _FakeJSONResponse:
@@ -155,6 +164,46 @@ def test_serve_parser_and_config_parsing():
     assert config.profile_path == "override.json"
     assert config.timeout == 3.5
     assert config.log_level == "debug"
+
+
+def test_messages_from_payload_validation():
+    try:
+        _messages_from_payload({})
+    except ValueError as exc:
+        assert "must include messages" in str(exc)
+    else:
+        raise AssertionError("missing messages should fail")
+
+    try:
+        _messages_from_payload({"messages": {"role": "user", "content": "hello"}})
+    except ValueError as exc:
+        assert "must be a list or string" in str(exc)
+    else:
+        raise AssertionError("dict messages should fail")
+
+    assert _messages_from_payload({"messages": [{"role": "user", "content": "hello"}]}) == [
+        {"role": "user", "content": "hello"}
+    ]
+    assert _messages_from_payload({"messages": "hello"}) == ["hello"]
+
+
+def test_requires_raw_tool_support_detection():
+    assert _requires_raw_tool_support({}) is False
+    assert _requires_raw_tool_support({"tools": []}) is True
+    assert _requires_raw_tool_support({"tools": [{"type": "function"}]}) is True
+    assert _requires_raw_tool_support({"tool_choice": "auto"}) is True
+
+
+def test_http_status_mapping_for_exceptions():
+    assert _http_status_for_exception(ValueError("bad")) == 400
+    assert _http_status_for_exception(TypeError("bad")) == 400
+    assert _http_status_for_exception(ModelitoBadResponseError("bad upstream")) == 502
+    assert _http_status_for_exception(ModelitoModelNotFoundError("missing")) == 404
+    assert _http_status_for_exception(ModelitoTimeoutError("timeout")) == 504
+    assert _http_status_for_exception(TimeoutError("timeout")) == 504
+    assert _http_status_for_exception(ModelitoConnectionError("offline")) == 503
+    assert _http_status_for_exception(ModelitoProviderError("provider")) == 502
+    assert _http_status_for_exception(RuntimeError("boom")) == 500
 
 
 def test_models_response_returns_openai_shape():
@@ -366,6 +415,26 @@ def test_chat_invalid_messages_type_returns_openai_error(monkeypatch):
     _assert_openai_error(response, 400)
 
 
+def test_chat_invalid_json_body_returns_openai_error(monkeypatch):
+    runtime = _build_runtime()
+    _patch_server_deps(monkeypatch)
+    app = create_app(runtime)
+    handler = app.routes[("POST", "/v1/chat/completions")]
+
+    response = asyncio.run(handler(_InvalidJSONRequest()))
+    _assert_openai_error(response, 400)
+
+
+def test_chat_array_body_returns_openai_error(monkeypatch):
+    runtime = _build_runtime()
+    _patch_server_deps(monkeypatch)
+    app = create_app(runtime)
+    handler = app.routes[("POST", "/v1/chat/completions")]
+
+    response = asyncio.run(handler(_FakeRequest([{"messages": []}])))
+    _assert_openai_error(response, 400)
+
+
 def test_chat_messages_list_works(monkeypatch):
     runtime = _build_runtime()
     _patch_server_deps(monkeypatch)
@@ -459,6 +528,36 @@ def test_embeddings_input_and_output_validation():
     # list input works
     many = _embedding_response(runtime, {"model": "omlx", "input": ["alpha", "beta"]})
     assert len(many.payload["data"]) == 2
+
+
+def test_embeddings_bad_request_returns_openai_error(monkeypatch):
+    runtime = _build_runtime()
+    _patch_server_deps(monkeypatch)
+    app = create_app(runtime)
+    handler = app.routes[("POST", "/v1/embeddings")]
+
+    response = asyncio.run(handler(_FakeRequest({"model": "omlx", "input": {"bad": "shape"}})))
+    _assert_openai_error(response, 400)
+
+
+def test_embeddings_invalid_json_returns_openai_error(monkeypatch):
+    runtime = _build_runtime()
+    _patch_server_deps(monkeypatch)
+    app = create_app(runtime)
+    handler = app.routes[("POST", "/v1/embeddings")]
+
+    response = asyncio.run(handler(_InvalidJSONRequest()))
+    _assert_openai_error(response, 400)
+
+
+def test_embeddings_array_body_returns_openai_error(monkeypatch):
+    runtime = _build_runtime()
+    _patch_server_deps(monkeypatch)
+    app = create_app(runtime)
+    handler = app.routes[("POST", "/v1/embeddings")]
+
+    response = asyncio.run(handler(_FakeRequest(["alpha"])))
+    _assert_openai_error(response, 400)
 
 
 def test_embeddings_provider_output_non_list_fails():
@@ -576,5 +675,16 @@ def test_error_payload_shape_is_openai_style():
             "message": "provider failed",
             "type": "modelito_provider_error",
             "code": "modelito_provider_error",
+        }
+    }
+
+
+def test_error_payload_for_bad_response_uses_dedicated_code():
+    payload = _error_payload(ModelitoBadResponseError("bad upstream"))
+    assert payload == {
+        "error": {
+            "message": "bad upstream",
+            "type": "modelito_bad_response_error",
+            "code": "modelito_bad_response_error",
         }
     }
