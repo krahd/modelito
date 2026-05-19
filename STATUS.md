@@ -10,7 +10,7 @@ modelito is a compact, dependency-light Python library that provides provider-ag
 
 Current package metadata version is `1.4.5` in `pyproject.toml`.
 
-Release `v1.4.5` was tagged and published to GitHub on 2026-05-19. PyPI publish is pending PyPI trusted publisher configuration.
+Release `v1.4.5` was tagged and published to GitHub on 2026-05-19, and successfully published to PyPI after configuring the trusted publisher.
 
 The package provides:
 
@@ -171,21 +171,19 @@ python -m twine check dist/*
   - `python -c "import modelito; print(modelito.__version__)"` -> `1.4.5`
   - `python -m build` -> succeeded; `1.4.5` wheel and sdist validated
   - `python -m twine check dist/*` -> all packages passed (1.4.3, 1.4.4, 1.4.5)
-- Trusted publishing note: GitHub Actions workflow is configured correctly (`pyproject.toml` version matches tag `v1.4.5`), but PyPI project must register a trusted publisher for repository `krahd/modelito` with environment `pypi`; without this configuration, the automatic publish workflow will fail with "invalid-publisher" error.
+- Trusted publishing note: GitHub Actions workflow is configured correctly (`pyproject.toml` version matches tag `v1.4.5`). PyPI trusted publisher has been configured for repository `krahd/modelito` with environment `pypi`; re-run of the failed workflow succeeded, and v1.4.5 is now live on PyPI.
 - Historical release narratives are maintained in `CHANGELOG.md`; STATUS.md is kept as a current-state snapshot.
 
 ## Pending tasks
 
-- Configure PyPI trusted publisher for repository `krahd/modelito` with environment `pypi` (or use manual `twine upload dist/modelito-1.4.5.*` to push to PyPI).
 - ClaudeProvider still has no raw_complete()/raw_stream() — it can't serve as a pi tool-calling backend through the modelito HTTP server. Implementing these requires the Anthropic SDK's tool-call response format, which is non-trivial and would need a dedicated follow-up.
 - GeminiProvider and GrokProvider have no chat() — same pattern as Claude, lower priority since they're compatibility shims.
 
 
 ## Next steps
 
-1. Configure PyPI trusted publisher or manually upload v1.4.5 to PyPI.
-2. Keep reviewing provider additions against the portable-common-surface rule.
-3. Decide whether to add optional Ollama raw passthrough in a later milestone.
+1. Keep reviewing provider additions against the portable-common-surface rule.
+2. Decide whether to add optional Ollama raw passthrough in a later milestone.
 
 ## Longer-term steps
 
