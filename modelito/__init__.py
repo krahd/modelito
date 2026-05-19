@@ -86,6 +86,7 @@ from .claude import ClaudeProvider
 from .omlx import OMLXProvider
 from .provider import Provider, EmbeddingProvider, ChatProvider, MessageInput, OpenAIMessageDict
 from .client import Client
+from .doctor import ProviderStatus, check_provider_ready, format_provider_status
 from .embeddings import Embedder, StubEmbeddingProvider, embed_texts
 from .messages import Message, Messages, Response
 from .normalization import normalize_models, normalize_metadata
@@ -118,6 +119,9 @@ __all__ = [
     "ModelLifecycleState",
     "ReadinessResult",
     "Client",
+    "ProviderStatus",
+    "check_provider_ready",
+    "format_provider_status",
     "Embedder",
     "StubEmbeddingProvider",
     "embed_texts",

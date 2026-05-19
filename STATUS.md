@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-18 01:00
+Last updated: 2026-05-18 22:16
 
 ## Project purpose
 
@@ -18,6 +18,7 @@ The package provides:
 - `OllamaConnector` and provider registry helpers
 - Ollama install detection, local service helpers, remote catalog metadata, lifecycle/download tracking, and model readiness helpers
 - optional SDK-backed behaviour with deterministic fallback support for offline tests/examples
+- provider readiness diagnostics via `check_provider_ready()` and `python -m modelito doctor`
 - comprehensive docs under `docs/` including architecture, usage, API reference, install guide, and local server integration
 - pytest, ruff, mypy, build, twine, CI, and publishing workflows
 
@@ -32,8 +33,9 @@ Phase 3 enhancements complete:
 3. `embed()` validates shape and count in strict mode: raises `ModelitoBadResponseError` when no usable embeddings are returned, or when the count does not match the input length.
 4. `ChatProvider` — new `@runtime_checkable` Protocol in `modelito/provider.py` formalising the `chat()` interface returning `Response`; exported from package root.
 5. `MessageInput` type alias (`Union[Message, str, Mapping[str, Any]]`) added to `provider.py` and exported; `Client` method signatures broadened from `Iterable[Message]` to `Iterable[MessageInput]`; `SyncProvider.summarize()` and `AsyncProvider.acomplete()` signatures similarly broadened.
+6. Provider readiness diagnostics added through `check_provider_ready()` / `ProviderStatus` and the `python -m modelito doctor` CLI.
 
-164 tests pass, 2 skipped. ruff and mypy clean.
+Validation should be confirmed by CI; local development most recently ran targeted tests for the diagnostics work plus the full `pytest -q` suite, `ruff check .`, and `mypy modelito --ignore-missing-imports`.
 
 ## Architecture overview
 
@@ -102,9 +104,6 @@ python -m twine check dist/*
 - `ALLOW_OLLAMA_INSTALL=1`: permits integration tests to attempt Ollama installation.
 - `ALLOW_OLLAMA_DOWNLOAD=1`: permits remote model downloads during integration tests.
 - `ALLOW_OLLAMA_UPDATE=1`: permits update flows during integration tests.
-- `MODELITO_PROVIDER`: optional explicit provider override used by `Client(provider="auto")` after project profile lookup.
-- `MODELITO_REMOTE_PROVIDER`: optional remote-provider fallback used by `Client(provider="auto")` on non-macOS when local Ollama is unavailable.
-- `MODELITO_PROFILE`: optional path to a project profile file (`.json`/`.yaml`) used for provider selection.
 - Provider SDK/API keys are optional and should be supplied through environment or external secret-management mechanisms.
 
 ## Important files and directories
@@ -124,30 +123,17 @@ python -m twine check dist/*
 - Current oMLX stack uses `OpenAICompatibleHTTPProvider` with strict-mode typed error handling.
 - Current provider typing includes `ChatProvider`, `MessageInput`, and `OpenAIMessageDict` exports, with `Client` chat-related methods accepting broadened message input types; provider protocols are aligned so `SyncProvider`, `AsyncProvider`, `StreamingProvider`, and `ChatProvider` all accept `Iterable[MessageInput]`.
 - `Client.chat_json()` now supports optional stronger schema validation via `strict_schema=True` using dataclass construction or Pydantic-style `model_validate`/`parse_obj` hooks, while preserving lightweight key-presence checks by default.
-- `Client(provider="auto")` now resolves providers in explicit order: explicit argument, project profile, environment variable, local auto-detection, then old/default provider fallback.
-- Auto detection now prefers oMLX then Ollama on macOS Apple Silicon, and prefers Ollama then configured remote provider on non-macOS.
-- `OMLXProvider` default endpoint is now `http://localhost:8000/v1` (configurable via `base_url`).
-- Current validation snapshot: `pytest -q` = 164 passed, 2 skipped; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean.
+- Validation should be confirmed by CI; local development most recently ran targeted tests for the new diagnostics plus the full `pytest -q` suite, `ruff check .`, and `mypy modelito --ignore-missing-imports`.
 - Historical release narratives are maintained in `CHANGELOG.md`; STATUS.md is kept as a current-state snapshot.
-
-## Known issues, risks, and limitations
-
-- PyPI trusted publishing is misconfigured for `.github/workflows/publish.yml` and currently requires manual fallback.
-- Lifecycle tracking is in-memory only and not suitable for cross-process persistent operation tracking.
-- CI intentionally excludes integration tests by path/flags to keep default hosted CI fast and safe.
-- Deeper cloud-provider features should remain optional unless they map cleanly across providers.
 
 ## Pending tasks
 
-- Fix PyPI trusted publishing for future tag-based releases.
-- Consider persistent lifecycle-storage support if downstream tooling needs cross-process tracking.
-- Consider optional pluggable key-provider interfaces only if secret-storage demand grows.
+<add pending tasks here>
 
 ## Next steps
 
-1. Fix PyPI trusted publisher configuration for `.github/workflows/publish.yml`.
+1. Fix PyPI trusted publishing is misconfigured for `.github/workflows/publish.yml` and currently requires manual fallback.
 2. Keep reviewing provider additions against the portable-common-surface rule.
-3. Design persistent lifecycle storage only if a concrete downstream need appears.
 
 ## Longer-term steps
 
@@ -155,12 +141,18 @@ python -m twine check dist/*
 2. Keep hosted SDK dependencies optional.
 3. Expand provider-specific helpers only when they are clearly useful and well-contained.
 
+
 ## Decisions and rationale
 
 - API key storage should not move into a built-in encrypted database in the core package.
 - Cloud-provider integrations should remain lightweight shims by default.
 - The core value of the package is provider-agnostic normalisation, optional local tooling, and dependency-light embeddability.
+- Consider persistent lifecycle-storage support if downstream tooling needs cross-process tracking.
+- Consider optional pluggable key-provider interfaces only if secret-storage demand grows.
+- Deeper cloud-provider features should remain optional unless they map cleanly across providers.
+- CI intentionally excludes integration tests by path/flags to keep default hosted CI fast and safe.
+
 
 ---
 
-Last updated: 2026-05-18 01:00
+Last updated: 2026-05-18 22:16

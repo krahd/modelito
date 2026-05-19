@@ -1,13 +1,15 @@
-"""Compatibility shim for OpenAI provider.
+"""Compatibility shim for the hosted OpenAI provider.
 
-Minimal `OpenAIProvider` implementation that provides safe, offline-friendly
-defaults for tests and local usage without requiring network access.
+`OpenAIProvider` is the hosted/OpenAI-SDK-backed provider. It can also target
+OpenAI-compatible APIs via ``base_url`` when callers explicitly want that
+behavior, but local HTTP runtimes should generally use
+``OpenAICompatibleHTTPProvider`` and its thin presets such as ``OMLXProvider``.
 """
 from __future__ import annotations
 import importlib
 
 from typing import Any, Dict, Iterable, List, Optional
-from .messages import Message
+from .messages import Message, flatten_message_inputs
 from types import ModuleType
 
 
@@ -15,8 +17,10 @@ from types import ModuleType
 
 This implementation will attempt to use the installed `openai` package
 (modern and legacy client surfaces are both supported via runtime
-introspection). When the SDK is unavailable or a call fails, the provider
-falls back to a deterministic, offline-friendly summarizer used by tests.
+introspection). It accepts the broader ``MessageInput`` direction used by
+the rest of modelito. When the SDK is unavailable or a call fails, the
+provider falls back to a deterministic, offline-friendly summarizer used by
+tests.
 """
 
 
@@ -129,29 +133,8 @@ class OpenAIProvider:
             pass
         return []
 
-    def summarize(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> str:
-        def _flatten(msgs: Any) -> List[Dict[str, Any]]:
-            if not msgs:
-                return []
-            if isinstance(msgs, (list, tuple)):
-                out = []
-                for m in msgs:
-                    if isinstance(m, Message):
-                        out.append({"role": m.role, "content": m.content})
-                    elif isinstance(m, str):
-                        out.append({"role": "user", "content": m})
-                    else:
-                        raise TypeError(
-                            "OpenAIProvider.summarize requires modelito.messages.Message instances; dicts are not supported")
-                return out
-            if isinstance(msgs, Message):
-                return [{"role": msgs.role, "content": msgs.content}]
-            if isinstance(msgs, str):
-                return [{"role": "user", "content": msgs}]
-            raise TypeError(
-                "OpenAIProvider.summarize requires modelito.messages.Message instances; dicts are not supported")
-
-        msgs = _flatten(messages)
+    def summarize(self, messages: Iterable[Any], settings: Optional[dict[str, Any]] = None) -> str:
+        msgs = flatten_message_inputs(messages)
 
         # Try SDK-backed chat completion (modern and legacy APIs).
         if self._openai is not None:
@@ -186,35 +169,14 @@ class OpenAIProvider:
         except Exception:
             return ""
 
-    def stream(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
+    def stream(self, messages: Iterable[Any], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
         """Streaming provider surface attempting SDK streaming first.
 
         Tries several common client shapes (modern and legacy). Falls back
         to chunked deterministic output when streaming is unavailable.
         """
 
-        def _flatten_msgs(msgs: Any) -> List[Dict[str, Any]]:
-            if not msgs:
-                return []
-            if isinstance(msgs, (list, tuple)):
-                out: List[Dict[str, Any]] = []
-                for m in msgs:
-                    if isinstance(m, Message):
-                        out.append({"role": m.role, "content": m.content})
-                    elif isinstance(m, str):
-                        out.append({"role": "user", "content": m})
-                    else:
-                        raise TypeError(
-                            "OpenAIProvider.stream requires modelito.messages.Message instances; dicts are not supported")
-                return out
-            if isinstance(msgs, Message):
-                return [{"role": msgs.role, "content": msgs.content}]
-            if isinstance(msgs, str):
-                return [{"role": "user", "content": msgs}]
-            raise TypeError(
-                "OpenAIProvider.stream requires modelito.messages.Message instances; dicts are not supported")
-
-        msgs = _flatten_msgs(messages)
+        msgs = flatten_message_inputs(messages)
 
         import json
 

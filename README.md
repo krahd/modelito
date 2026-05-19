@@ -80,20 +80,48 @@ implementations for common provider interfaces. When optional extras are
 installed the package will attempt to use real SDK clients; otherwise the
 shims provide safe offline-friendly fallbacks suitable for testing.
 
+Recommended entry point:
+
+```py
+from modelito import Client
+
+client = Client(provider="auto", prefer=["omlx", "ollama"], model="omlx")
+response = client.chat([{"role": "user", "content": "Hello"}])
+print(response.text)
+```
+
 Provided shims and utilities:
 
-- `OpenAIProvider` — works with OpenAI's API and any OpenAI-compatible server
-  (llama.cpp, vLLM, LM Studio, SGLang) via configurable `base_url`.
+- `OpenAIProvider` — hosted OpenAI / SDK-backed provider that can also target
+  OpenAI-compatible APIs via `base_url`.
+- `OpenAICompatibleHTTPProvider` — shared HTTP base class for local or
+  OpenAI-compatible runtimes.
 - `ClaudeProvider` — will use the official Anthropic SDK when installed,
   falling back to deterministic behavior otherwise.
 - `GeminiProvider`, `GrokProvider` — lightweight shims.
-- `OMLXProvider` — HTTP-first provider for local oMLX runtimes exposing an
-  OpenAI-compatible API surface.
+- `OMLXProvider` — thin oMLX preset built on `OpenAICompatibleHTTPProvider`.
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama
   HTTP API when available (requires `pip install modelito[ollama]` for the HTTP
   client library). If the HTTP API is unavailable the provider will attempt to
   use the local Ollama CLI as a best-effort fallback before returning a
   deterministic stub suitable for tests and examples.
+
+The client layer recognises the same provider stack through `ChatProvider`,
+`MessageInput`, and structured response helpers such as `Client.chat()` and
+`Client.chat_json()`.
+
+For quick diagnostics, use the provider readiness API or CLI:
+
+```py
+from modelito import check_provider_ready
+
+status = check_provider_ready("omlx", model="omlx")
+print(status.ready, status.reason)
+```
+
+```sh
+python -m modelito doctor --provider omlx --model omlx
+```
 
 The package also exposes a small Ollama administration layer for local model
 operations, including install backend detection, remote catalog metadata,
@@ -139,10 +167,10 @@ integration checks on controlled infrastructure.
 Provider interface
 ------------------
 
-`modelito` exposes a minimal structural `Provider` Protocol that codifies the
-small runtime surface expected from provider implementations and third-party
-adapters. The Protocol is intentionally small to remain compatible with
-existing duck-typed providers — it requires only:
+`modelito` exposes a minimal structural `Provider` Protocol for the legacy
+synchronous surface, but the recommended application entry point is `Client`
+and its richer chat API. The Protocol is intentionally small to remain
+compatible with existing duck-typed providers — it requires only:
 
 - `list_models()` -> `list[str]`
 - `summarize(messages, settings=None)` -> `str`
@@ -186,7 +214,8 @@ print(len(vectors), len(vectors[0]))
 print(Embedder.available_embedders())
 ```
 
-`modelito` exposes `Message` and `Response` dataclasses; providers accept `Message` instances.
+`modelito` exposes `Message` and `Response` dataclasses; client and provider
+helpers accept `Message`, plain strings, and OpenAI-style dict inputs.
 
 ### Using bare Provider (recommended for most cases)
 

@@ -88,7 +88,9 @@ def test_client_auto_prefers_project_profile_provider(monkeypatch, tmp_path):
     monkeypatch.setenv("MODELITO_PROVIDER", "ollama")
     monkeypatch.setattr(
         "modelito.client.Client._auto_select_provider",
-        classmethod(lambda cls, model, provider_kwargs, remote_provider_env_var: "openai"),
+        classmethod(
+            lambda cls, model, provider_kwargs, remote_provider_env_var, prefer, auto_probe_timeout: "openai"
+        ),
     )
 
     Client(provider="auto", profile_path=str(profile))
@@ -110,7 +112,9 @@ def test_client_auto_prefers_env_provider_when_no_profile(monkeypatch):
     )
     monkeypatch.setattr(
         "modelito.client.Client._auto_select_provider",
-        classmethod(lambda cls, model, provider_kwargs, remote_provider_env_var: "openai"),
+        classmethod(
+            lambda cls, model, provider_kwargs, remote_provider_env_var, prefer, auto_probe_timeout: "openai"
+        ),
     )
 
     Client(provider="auto")
@@ -135,12 +139,28 @@ def test_client_auto_uses_omlx_on_macos_apple_silicon(monkeypatch):
         staticmethod(lambda: True),
     )
     monkeypatch.setattr(
-        "modelito.client.Client._omlx_available_for_model",
-        staticmethod(lambda model, provider_kwargs: True),
+        "modelito.client.Client._omlx_probe",
+        staticmethod(
+            lambda model, provider_kwargs, timeout: {
+                "provider": "omlx",
+                "available": True,
+                "models": ["omlx"],
+                "endpoint": "http://localhost:8000/v1",
+                "reason": None,
+            }
+        ),
     )
     monkeypatch.setattr(
-        "modelito.client.Client._ollama_available_for_model",
-        staticmethod(lambda model, provider_kwargs: False),
+        "modelito.client.Client._ollama_probe",
+        staticmethod(
+            lambda model, provider_kwargs, timeout: {
+                "provider": "ollama",
+                "available": False,
+                "models": [],
+                "endpoint": "http://127.0.0.1:11434",
+                "reason": "not reachable",
+            }
+        ),
     )
 
     Client(provider="auto", model="omlx")
@@ -158,12 +178,28 @@ def test_client_auto_raises_helpful_error_when_no_local_backend_on_macos_arm(mon
         staticmethod(lambda: True),
     )
     monkeypatch.setattr(
-        "modelito.client.Client._omlx_available_for_model",
-        staticmethod(lambda model, provider_kwargs: False),
+        "modelito.client.Client._omlx_probe",
+        staticmethod(
+            lambda model, provider_kwargs, timeout: {
+                "provider": "omlx",
+                "available": False,
+                "models": [],
+                "endpoint": "http://localhost:8000/v1",
+                "reason": "not reachable",
+            }
+        ),
     )
     monkeypatch.setattr(
-        "modelito.client.Client._ollama_available_for_model",
-        staticmethod(lambda model, provider_kwargs: False),
+        "modelito.client.Client._ollama_probe",
+        staticmethod(
+            lambda model, provider_kwargs, timeout: {
+                "provider": "ollama",
+                "available": False,
+                "models": [],
+                "endpoint": "http://127.0.0.1:11434",
+                "reason": "not reachable",
+            }
+        ),
     )
 
     with pytest.raises(ValueError, match="Install/start one backend"):
@@ -188,8 +224,16 @@ def test_client_auto_prefers_ollama_on_non_macos(monkeypatch):
         staticmethod(lambda: False),
     )
     monkeypatch.setattr(
-        "modelito.client.Client._ollama_available_for_model",
-        staticmethod(lambda model, provider_kwargs: True),
+        "modelito.client.Client._ollama_probe",
+        staticmethod(
+            lambda model, provider_kwargs, timeout: {
+                "provider": "ollama",
+                "available": True,
+                "models": ["llama3"],
+                "endpoint": "http://127.0.0.1:11434",
+                "reason": None,
+            }
+        ),
     )
 
     Client(provider="auto")
@@ -215,8 +259,16 @@ def test_client_auto_uses_remote_provider_env_on_non_macos_when_no_ollama(monkey
         staticmethod(lambda: False),
     )
     monkeypatch.setattr(
-        "modelito.client.Client._ollama_available_for_model",
-        staticmethod(lambda model, provider_kwargs: False),
+        "modelito.client.Client._ollama_probe",
+        staticmethod(
+            lambda model, provider_kwargs, timeout: {
+                "provider": "ollama",
+                "available": False,
+                "models": [],
+                "endpoint": "http://127.0.0.1:11434",
+                "reason": "not reachable",
+            }
+        ),
     )
 
     Client(provider="auto")
@@ -242,12 +294,67 @@ def test_client_auto_falls_back_to_default_provider(monkeypatch):
         staticmethod(lambda: False),
     )
     monkeypatch.setattr(
-        "modelito.client.Client._ollama_available_for_model",
-        staticmethod(lambda model, provider_kwargs: False),
+        "modelito.client.Client._ollama_probe",
+        staticmethod(
+            lambda model, provider_kwargs, timeout: {
+                "provider": "ollama",
+                "available": False,
+                "models": [],
+                "endpoint": "http://127.0.0.1:11434",
+                "reason": "not reachable",
+            }
+        ),
     )
 
     Client(provider="auto")
     assert called["name"] == "openai"
+
+
+def test_client_auto_honours_prefer_list(monkeypatch):
+    called = {"name": None}
+
+    def fake_get_provider(name, **kwargs):
+        called["name"] = name
+        return DummyResolvedProvider()
+
+    monkeypatch.setattr("modelito.client.get_provider", fake_get_provider)
+    monkeypatch.delenv("MODELITO_PROVIDER", raising=False)
+    monkeypatch.delenv("MODELITO_REMOTE_PROVIDER", raising=False)
+    monkeypatch.setattr(
+        "modelito.client.Client._provider_from_project_profile",
+        classmethod(lambda cls, profile_path=None: None),
+    )
+    monkeypatch.setattr(
+        "modelito.client.Client._is_macos_apple_silicon",
+        staticmethod(lambda: True),
+    )
+    monkeypatch.setattr(
+        "modelito.client.Client._omlx_probe",
+        staticmethod(
+            lambda model, provider_kwargs, timeout: {
+                "provider": "omlx",
+                "available": True,
+                "models": ["omlx"],
+                "endpoint": "http://localhost:8000/v1",
+                "reason": None,
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        "modelito.client.Client._ollama_probe",
+        staticmethod(
+            lambda model, provider_kwargs, timeout: {
+                "provider": "ollama",
+                "available": True,
+                "models": ["llama3"],
+                "endpoint": "http://127.0.0.1:11434",
+                "reason": None,
+            }
+        ),
+    )
+
+    Client(provider="auto", prefer=["ollama", "omlx"])
+    assert called["name"] == "ollama"
 
 
 def test_omlx_provider_default_base_url_matches_current_docs():

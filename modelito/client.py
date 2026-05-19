@@ -13,7 +13,7 @@ from dataclasses import is_dataclass
 import json
 import os
 import platform
-from typing import Any, Dict, Iterable, List, Optional, Type, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Type, Union, cast
 from .config import load_config
 from .ollama_service import server_is_up
 from .omlx import OMLXProvider
@@ -29,22 +29,32 @@ class Client:
     Unified LLM Client interface for all providers.
     Use Client(provider="openai", model="gpt-3.5-turbo") for runtime selection.
     """
-    def __init__(self, provider: Union[str, Provider] = "openai", model: Optional[str] = None, **kwargs):
+    def __init__(
+        self,
+        provider: Union[str, Provider] = "openai",
+        model: Optional[str] = None,
+        prefer: Optional[Iterable[str]] = None,
+        **kwargs,
+    ):
         profile_path = kwargs.pop("profile_path", None)
         provider_env_var = str(kwargs.pop("provider_env_var", "MODELITO_PROVIDER"))
         remote_provider_env_var = str(
             kwargs.pop("remote_provider_env_var", "MODELITO_REMOTE_PROVIDER")
         )
         default_provider = str(kwargs.pop("default_provider", "openai"))
+        auto_probe_timeout = float(kwargs.pop("auto_probe_timeout", 1.5))
+        prefer_list = list(prefer or [])
 
         if isinstance(provider, str):
             provider_name = self._resolve_provider_name(
                 provider=provider,
                 model=model,
+                prefer=prefer_list,
                 profile_path=profile_path,
                 provider_env_var=provider_env_var,
                 remote_provider_env_var=remote_provider_env_var,
                 default_provider=default_provider,
+                auto_probe_timeout=auto_probe_timeout,
                 provider_kwargs=kwargs,
             )
             resolved_provider = get_provider(provider_name, model=model, **kwargs)
@@ -115,10 +125,11 @@ class Client:
         }
 
     @staticmethod
-    def _omlx_available_for_model(
-        model: Optional[str], provider_kwargs: Dict[str, Any]
-    ) -> bool:
+    def _omlx_probe(
+        model: Optional[str], provider_kwargs: Dict[str, Any], timeout: float
+    ) -> Dict[str, Any]:
         kwargs: Dict[str, Any] = {"strict": True}
+        kwargs["timeout"] = timeout
         if model:
             kwargs["model"] = model
         if "base_url" in provider_kwargs:
@@ -130,34 +141,84 @@ class Client:
         try:
             provider = OMLXProvider(**kwargs)
             models = provider.list_models()
-            if model:
-                return model in set(models)
-            return True
+            available = model in set(models) if model else True
+            return {
+                "provider": "omlx",
+                "available": available,
+                "models": models,
+                "endpoint": getattr(provider, "base_url", "http://localhost:8000/v1"),
+                "reason": None if available else "requested model not found",
+                "setup_hint": "Start oMLX and download an MLX model via the admin dashboard.",
+            }
         except Exception:
-            return False
+            return {
+                "provider": "omlx",
+                "available": False,
+                "models": [],
+                "endpoint": "http://localhost:8000/v1",
+                "reason": "oMLX server not reachable",
+                "setup_hint": "Start oMLX and download an MLX model via the admin dashboard.",
+            }
 
     @staticmethod
-    def _ollama_available_for_model(
-        model: Optional[str], provider_kwargs: Dict[str, Any]
-    ) -> bool:
+    def _ollama_probe(
+        model: Optional[str], provider_kwargs: Dict[str, Any], timeout: float
+    ) -> Dict[str, Any]:
         host = str(provider_kwargs.get("host") or "http://127.0.0.1")
         port = int(provider_kwargs.get("port") or 11434)
         try:
             if not server_is_up(host, port):
-                return False
+                return {
+                    "provider": "ollama",
+                    "available": False,
+                    "models": [],
+                    "endpoint": f"{host}:{port}",
+                    "reason": "Ollama server not reachable",
+                    "setup_hint": "Start Ollama and pull the requested model with `ollama pull <model>`.",
+                }
         except Exception:
-            return False
+            return {
+                "provider": "ollama",
+                "available": False,
+                "models": [],
+                "endpoint": f"{host}:{port}",
+                "reason": "Ollama server not reachable",
+                "setup_hint": "Start Ollama and pull the requested model with `ollama pull <model>`.",
+            }
 
         kwargs: Dict[str, Any] = {"host": host, "port": port}
         if model:
             kwargs["model"] = model
         try:
             provider = OllamaProvider(**kwargs)
-            if model:
-                return model in set(provider.list_models())
-            return True
+            models = provider.list_models()
+            available = model in set(models) if model else True
+            return {
+                "provider": "ollama",
+                "available": available,
+                "models": models,
+                "endpoint": f"{host}:{port}",
+                "reason": None if available else "requested model not found",
+                "setup_hint": "Pull the requested model with `ollama pull <model>`.",
+            }
         except Exception:
-            return False
+            return {
+                "provider": "ollama",
+                "available": False,
+                "models": [],
+                "endpoint": f"{host}:{port}",
+                "reason": "Ollama probe failed",
+                "setup_hint": "Start Ollama and pull the requested model with `ollama pull <model>`.",
+            }
+
+    @staticmethod
+    def _probe_summary(probe: Dict[str, Any]) -> str:
+        status = "ready" if probe.get("available") else "not ready"
+        endpoint = probe.get("endpoint") or "unknown endpoint"
+        reason = probe.get("reason") or "ok"
+        models = probe.get("models") or []
+        model_part = f", models={models}" if models else ""
+        return f"{probe.get('provider')}: {status} at {endpoint} ({reason}{model_part})"
 
     @classmethod
     def _auto_select_provider(
@@ -165,21 +226,50 @@ class Client:
         model: Optional[str],
         provider_kwargs: Dict[str, Any],
         remote_provider_env_var: str,
+        prefer: Sequence[str],
+        auto_probe_timeout: float,
     ) -> Optional[str]:
+        probes: List[Dict[str, Any]] = []
+
+        def try_preferred(name: str) -> Optional[str]:
+            normalized = cls._normalize_provider_name(name)
+            if normalized == "omlx":
+                probe = cls._omlx_probe(model, provider_kwargs, auto_probe_timeout)
+                probes.append(probe)
+                return "omlx" if probe.get("available") else None
+            if normalized == "ollama":
+                probe = cls._ollama_probe(model, provider_kwargs, auto_probe_timeout)
+                probes.append(probe)
+                return "ollama" if probe.get("available") else None
+            if normalized in set(list_providers()):
+                return normalized
+            return None
+
+        for candidate in prefer:
+            selected = try_preferred(candidate)
+            if selected:
+                return selected
+
         if cls._is_macos_apple_silicon():
-            if cls._omlx_available_for_model(model, provider_kwargs):
+            omx_probe = cls._omlx_probe(model, provider_kwargs, auto_probe_timeout)
+            probes.append(omx_probe)
+            if omx_probe.get("available"):
                 return "omlx"
-            if cls._ollama_available_for_model(model, provider_kwargs):
+            ollama_probe = cls._ollama_probe(model, provider_kwargs, auto_probe_timeout)
+            probes.append(ollama_probe)
+            if ollama_probe.get("available"):
                 return "ollama"
             raise ValueError(
                 "Auto provider could not find a usable local backend on macOS "
-                "Apple Silicon. Tried oMLX at http://localhost:8000/v1 and "
-                "Ollama at http://127.0.0.1:11434. Install/start one backend "
-                "and ensure the requested model is available (for Ollama: "
-                "`ollama pull <model>`)."
+                "Apple Silicon. "
+                + "; ".join(cls._probe_summary(probe) for probe in probes)
+                + ". Install/start one backend and ensure the requested model is "
+                "available (for Ollama: `ollama pull <model>`)."
             )
 
-        if cls._ollama_available_for_model(model, provider_kwargs):
+        ollama_probe = cls._ollama_probe(model, provider_kwargs, auto_probe_timeout)
+        probes.append(ollama_probe)
+        if ollama_probe.get("available"):
             return "ollama"
 
         remote_provider = os.getenv(remote_provider_env_var)
@@ -197,10 +287,12 @@ class Client:
         cls,
         provider: str,
         model: Optional[str],
+        prefer: Sequence[str],
         profile_path: Optional[str],
         provider_env_var: str,
         remote_provider_env_var: str,
         default_provider: str,
+        auto_probe_timeout: float,
         provider_kwargs: Dict[str, Any],
     ) -> str:
         requested = cls._ensure_known_provider(provider, "provider argument")
@@ -227,12 +319,40 @@ class Client:
             model=model,
             provider_kwargs=provider_kwargs,
             remote_provider_env_var=remote_provider_env_var,
+            prefer=prefer,
+            auto_probe_timeout=auto_probe_timeout,
         )
         if auto_name:
             return auto_name
 
         # 5) Old/default provider fallback.
         return cls._ensure_known_provider(default_provider, "default provider")
+
+    def chat_parsed(
+        self,
+        messages: Iterable[MessageInput],
+        schema: Type[Any],
+        settings: Optional[Dict[str, Any]] = None,
+        strict_schema: bool = True,
+    ) -> Any:
+        """Return a parsed structured object instead of the raw JSON dict."""
+        result = self.chat_json(
+            messages,
+            schema=schema,
+            settings=settings,
+            strict_schema=strict_schema,
+        )
+
+        annotations = getattr(schema, "__annotations__", None)
+        if is_dataclass(schema):
+            return cast(Any, schema)(**result)
+        if callable(getattr(schema, "model_validate", None)):
+            return cast(Any, schema).model_validate(result)
+        if callable(getattr(schema, "parse_obj", None)):
+            return cast(Any, schema).parse_obj(result)
+        if annotations:
+            return result
+        return result
 
     def list_models(self) -> List[str]:
         return self.provider.list_models()

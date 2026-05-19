@@ -6,9 +6,8 @@ This file documents the public API provided by the `modelito` package.
 Package exports
 ---------------
 
-The package exposes a small, stable set of helpers and minimal provider
-compatibility shims. The primary exports (also visible via `from modelito
-import *`) are:
+The package exposes a small, stable set of helpers and a Client-first chat
+surface. The primary exports (also visible via `from modelito import *`) are:
 
 - `__version__` — package version string.
 - `count_tokens(text: str) -> int` — estimate token count (uses `tiktoken` if available).
@@ -16,12 +15,19 @@ import *`) are:
 - `estimate_remote_timeout_details(model_name: Optional[str], input_tokens: int = 2048, concurrency: int = 1) -> Tuple[int, Dict[str, Any]]` — diagnostic timeout estimator returning both timeout and computation details.
 - `OllamaConnector` — small conversation history manager and prompt builder. Connectors now prefer typed `Message`/`Response` dataclasses and provide both sync (`complete`) and async (`acomplete`) surfaces in addition to the legacy `send_sync` helper.
 - `Embedder` — small embeddings-only runtime wrapper that mirrors the provider-selection behavior of `Client` for callers that only need vector embeddings.
+- `Client` — primary application entry point with `chat()`, `chat_json()`, `chat_parsed()`, `stream()`, and provider auto-selection support.
+- `Provider`, `SyncProvider`, `AsyncProvider`, `StreamingProvider`, `EmbeddingProvider`, `ChatProvider` — structural provider protocols for legacy and chat-first code.
+- `Message`, `Response`, `MessageInput`, `OpenAIMessageDict` — message and response dataclasses / type helpers.
+- `ProviderStatus`, `check_provider_ready()`, `format_provider_status()` — readiness diagnostics helpers for local and hosted providers.
+- `OpenAICompatibleHTTPProvider` — shared HTTP base class for local OpenAI-compatible runtimes.
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama HTTP
   API when available (via the bundled `ollama_service` helpers). If the HTTP
   API is not reachable it will attempt the Ollama CLI as a best-effort
   fallback (using `run_ollama_command`) before exposing a safe deterministic
   `summarize()` fallback useful for tests.
-- `GeminiProvider`, `GrokProvider`, `OpenAIProvider`, `ClaudeProvider`, `OMLXProvider` — minimal provider shims with the same `list_models()` / `summarize()` surface.
+- `OpenAIProvider` — SDK-backed hosted OpenAI provider; can also target hosted OpenAI-compatible APIs via `base_url`.
+- `OMLXProvider` — thin preset for local oMLX runtimes, built on `OpenAICompatibleHTTPProvider`.
+- `GeminiProvider`, `GrokProvider`, `ClaudeProvider` — minimal provider shims with the legacy `list_models()` / `summarize()` surface.
 - `EmbeddingProvider` — structural protocol for provider implementations that expose `embed(texts, **kwargs)`.
 - `embed_texts(texts, dim=8) -> List[List[float]]` and `StubEmbeddingProvider` — deterministic test-friendly embedding helpers.
 - `normalize_models(raw) -> List[Dict[str, Any]]` — normalize provider model listings into dictionaries with an `id` field.
@@ -81,12 +87,13 @@ Important `OllamaConnector` methods
 Provider shims
 --------------
 
-Provider adapters implement the small provider surfaces used by the connectors. Implementations may choose to support the sync `summarize()` surface, the async `acomplete()` surface, streaming, and/or embeddings. The core convenience methods are:
+Provider adapters implement the small provider surfaces used by the connectors. Implementations may choose to support the sync `summarize()` surface, the async `acomplete()` surface, streaming, `chat()`, and/or embeddings. The core convenience methods are:
 
 - `list_models() -> List[str]` — best-effort model enumeration (may be an empty list in offline mode).
 - `summarize(messages, settings: Optional[dict] = None) -> str` — synchronous completion surface.
 - `acomplete(messages, settings: Optional[dict] = None) -> str` — asynchronous completion surface (optional).
 - `stream(messages, settings: Optional[dict] = None) -> Iterable[str]` — streaming generator (optional).
+- `chat(messages, settings: Optional[dict] = None) -> Response` — structured response surface with metadata when supported.
 - `embed(texts: Iterable[str], **kwargs) -> List[List[float]]` — embeddings surface (optional).
 
 Embeddings-only wrapper
@@ -135,6 +142,17 @@ Typical provider streaming shapes:
 The `stream(messages, settings=None)` generator returns an iterable of
 `str` fragments which, when concatenated, form the final response. Offline
 fallbacks emit a single full-text chunk.
+
+Structured output helpers
+-------------------------
+
+`Client.chat_json(messages, schema=None, settings=None, strict_schema=False) -> dict`
+: Request structured JSON output, keep the parsed dict, and optionally apply
+  lightweight schema validation.
+
+`Client.chat_parsed(messages, schema, settings=None, strict_schema=True) -> Any`
+: Request structured JSON output and construct the schema object directly when
+  the schema is a dataclass or Pydantic-style model.
 
 Ollama helpers
 --------------
@@ -196,6 +214,7 @@ CLI usage
 
 `modelito` exposes two small module-level CLIs useful during development:
 
+- `python -m modelito doctor` — diagnose provider readiness and report setup hints.
 - `python -m modelito.ollama_service` — minimal Ollama lifecycle CLI (`start`, `stop`, `install`, `inspect`, `pull`, `list-local`, `list-remote`, `version`).
 - `python -m modelito.timeout_cli` — print estimated timeouts and diagnostic details for a model.
 - `python -m modelito.timeout_calibrate` — write calibration prompts and (optionally) exercise a local Ollama server to collect timing samples.

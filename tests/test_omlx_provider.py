@@ -349,6 +349,59 @@ def test_client_chat_json_validates_schema(monkeypatch):
         client.chat_json([Message(role="user", content="plan")], schema=MovePlan)
 
 
+def test_client_chat_parsed_returns_dataclass(monkeypatch):
+    from dataclasses import dataclass
+
+    @dataclass
+    class MovePlan:
+        action: str
+        source: str
+
+    payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": '{"action": "move", "source": "a.pdf"}'
+                }
+            }
+        ]
+    }
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
+    )
+    client = Client(provider="omlx")
+    result = client.chat_parsed([Message(role="user", content="plan")], schema=MovePlan)
+
+    assert result.action == "move"
+    assert result.source == "a.pdf"
+
+
+def test_client_chat_parsed_returns_model_validate_result(monkeypatch):
+    class FakeModel:
+        @classmethod
+        def model_validate(cls, data):
+            return {"parsed": data["action"]}
+
+    payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": '{"action": "move"}'
+                }
+            }
+        ]
+    }
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
+    )
+    client = Client(provider="omlx")
+    result = client.chat_parsed([Message(role="user", content="plan")], schema=FakeModel)
+
+    assert result == {"parsed": "move"}
+
+
 def test_client_chat_json_strict_schema_validates_dataclass(monkeypatch):
     from dataclasses import dataclass
 
