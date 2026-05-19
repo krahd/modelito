@@ -178,17 +178,17 @@ class Client:
         prefer: Sequence[str],
         auto_probe_timeout: float,
     ) -> Optional[str]:
-        probes: List[Dict[str, Any]] = []
+        probe_results: List[Dict[str, Any]] = []
 
         def try_preferred(name: str) -> Optional[str]:
             normalized = cls._normalize_provider_name(name)
             if normalized == "omlx":
                 probe = cls._omlx_probe(model, provider_kwargs, auto_probe_timeout)
-                probes.append(probe)
+                probe_results.append(probe)
                 return "omlx" if probe.get("available") else None
             if normalized == "ollama":
                 probe = cls._ollama_probe(model, provider_kwargs, auto_probe_timeout)
-                probes.append(probe)
+                probe_results.append(probe)
                 return "ollama" if probe.get("available") else None
             if normalized in set(list_providers()):
                 return normalized
@@ -201,17 +201,17 @@ class Client:
 
         if cls._is_macos_apple_silicon():
             omx_probe = cls._omlx_probe(model, provider_kwargs, auto_probe_timeout)
-            probes.append(omx_probe)
+            probe_results.append(omx_probe)
             if omx_probe.get("available"):
                 return "omlx"
             ollama_probe = cls._ollama_probe(model, provider_kwargs, auto_probe_timeout)
-            probes.append(ollama_probe)
+            probe_results.append(ollama_probe)
             if ollama_probe.get("available"):
                 return "ollama"
             raise ValueError(
                 "Auto provider could not find a usable local backend on macOS "
                 "Apple Silicon. "
-                + "; ".join(cls._probe_summary(probe) for probe in probes)
+                + "; ".join(cls._probe_summary(p) for p in probe_results)
                 + ". Install/start one backend and ensure the requested model is "
                 "available (for Ollama: `ollama pull <model>`)."
             )

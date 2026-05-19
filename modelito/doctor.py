@@ -51,9 +51,9 @@ def _probe_openai(
     try:
         provider = OpenAIProvider(api_key=api_key, model=model, base_url=base_url)
         models = provider.list_models()
-        ready = probes._model_is_available(model, models)
+        ready = probes.model_is_available(model, models)
         endpoint = base_url or getattr(provider, "base_url", None) or "https://api.openai.com/v1"
-        return probes._build_status(
+        return probes.build_status(
             "openai",
             ready,
             endpoint=endpoint,
@@ -62,7 +62,7 @@ def _probe_openai(
             setup_hint="Set OPENAI_API_KEY and optional OPENAI_BASE_URL if you are targeting a hosted OpenAI-compatible API.",
         )
     except Exception as exc:
-        return probes._build_status(
+        return probes.build_status(
             "openai",
             False,
             endpoint=base_url or "https://api.openai.com/v1",
@@ -77,7 +77,7 @@ def _probe_generic_provider(provider: str, model: Optional[str]) -> ProviderStat
     try:
         resolved = get_provider(provider, model=model)
         if resolved is None:
-            return probes._build_status(
+            return probes.build_status(
                 provider,
                 False,
                 reason=f"Unknown provider: {provider}",
@@ -87,7 +87,7 @@ def _probe_generic_provider(provider: str, model: Optional[str]) -> ProviderStat
         try:
             models = list(resolved.list_models())
         except Exception as exc:
-            return probes._build_status(
+            return probes.build_status(
                 provider,
                 False,
                 models=[],
@@ -95,9 +95,9 @@ def _probe_generic_provider(provider: str, model: Optional[str]) -> ProviderStat
                 setup_hint="Check provider configuration and API credentials.",
                 details={"error": str(exc)},
             )
-        ready = probes._model_is_available(model, models)
+        ready = probes.model_is_available(model, models)
         endpoint = getattr(resolved, "base_url", None) or getattr(resolved, "host", None)
-        return probes._build_status(
+        return probes.build_status(
             provider,
             ready,
             endpoint=str(endpoint) if endpoint is not None else None,
@@ -106,7 +106,7 @@ def _probe_generic_provider(provider: str, model: Optional[str]) -> ProviderStat
             setup_hint="Check provider configuration and API credentials.",
         )
     except Exception as exc:
-        return probes._build_status(
+        return probes.build_status(
             provider,
             False,
             reason="Provider probe failed",
@@ -145,7 +145,7 @@ def check_provider_ready(
             if status.ready:
                 return status
         if _is_macos_apple_silicon():
-            return probes._build_status(
+            return probes.build_status(
                 "auto",
                 False,
                 reason="No local backend was ready on macOS Apple Silicon",
@@ -153,7 +153,7 @@ def check_provider_ready(
                     "Start oMLX at http://localhost:8000/v1 or Ollama at http://127.0.0.1:11434, then ensure the requested model is available."
                 ),
             )
-        return probes._build_status(
+        return probes.build_status(
             "auto",
             False,
             reason="No suitable provider was ready",

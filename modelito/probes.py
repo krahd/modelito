@@ -23,13 +23,17 @@ class ProviderStatus:
     details: Dict[str, Any] = field(default_factory=dict)
 
 
-def _model_is_available(model: Optional[str], models: Iterable[str]) -> bool:
+def model_is_available(model: Optional[str], models: Iterable[str]) -> bool:
     if not model:
         return True
     return model in set(models)
 
 
-def _build_status(
+# Back-compat alias used internally
+_model_is_available = model_is_available
+
+
+def build_status(
     provider: str,
     ready: bool,
     *,
@@ -48,6 +52,10 @@ def _build_status(
         setup_hint=setup_hint,
         details=dict(details or {}),
     )
+
+
+# Internal alias used within this module
+_build_status = build_status
 
 
 def probe_omlx_status(
