@@ -191,7 +191,7 @@ def _error_kind_for_exception(exc: Exception) -> str:
     if isinstance(exc, (ValueError, TypeError)):
         return "modelito_bad_request"
     if isinstance(exc, ModelitoBadResponseError):
-        return "modelito_bad_response_error"
+        return "modelito_bad_response"
     if isinstance(exc, ModelitoModelNotFoundError):
         return "modelito_model_not_found"
     if isinstance(exc, (ModelitoTimeoutError, TimeoutError)):
@@ -248,7 +248,7 @@ def _chat_completion_response(runtime: ServeRuntime, payload: Dict[str, Any]) ->
     if runtime.raw_provider is not None:
         raw = runtime.raw_provider.raw_complete(request_payload)
         if not isinstance(raw, dict):
-            raise ValueError("raw_complete must return a JSON object")
+            raise ModelitoBadResponseError("raw_complete must return a JSON object")
         return ChatCompletionResult(payload=raw)
 
     if _requires_raw_tool_support(request_payload) and runtime.config.strict:

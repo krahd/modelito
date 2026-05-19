@@ -584,6 +584,18 @@ def test_embeddings_provider_output_wrong_count_fails():
         raise AssertionError("mismatched embeddings output size should fail")
 
 
+def test_embeddings_wrong_count_route_returns_502(monkeypatch):
+    runtime = _build_runtime()
+    runtime.client.embed = lambda *_args, **_kwargs: [[1.0, 2.0], [3.0, 4.0]]
+    _patch_server_deps(monkeypatch)
+    app = create_app(runtime)
+    handler = app.routes[("POST", "/v1/embeddings")]
+
+    response = asyncio.run(handler(_FakeRequest({"model": "omlx", "input": ["alpha"]})))
+    _assert_openai_error(response, 502)
+    assert response.payload["error"]["type"] == "modelito_bad_response"
+
+
 def test_embeddings_provider_output_non_numeric_fails():
     runtime = _build_runtime()
     runtime.client.embed = lambda *_args, **_kwargs: [[1.0, "bad"]]
@@ -684,7 +696,43 @@ def test_error_payload_for_bad_response_uses_dedicated_code():
     assert payload == {
         "error": {
             "message": "bad upstream",
-            "type": "modelito_bad_response_error",
-            "code": "modelito_bad_response_error",
+            "type": "modelito_bad_response",
+            "code": "modelito_bad_response",
         }
     }
+
+
+def test_raw_provider_non_dict_response_maps_to_502(monkeypatch):
+    class BadRawProvider:
+        def raw_complete(self, payload):
+            return "bad"
+
+        def raw_stream(self, payload):
+            yield {"id": "unused"}
+
+    runtime = _build_runtime(raw_provider=BadRawProvider())
+    _patch_server_deps(monkeypatch)
+    app = create_app(runtime)
+    handler = app.routes[("POST", "/v1/chat/completions")]
+
+    response = asyncio.run(handler(_FakeRequest({"messages": [{"role": "user", "content": "hello"}]})))
+    _assert_openai_error(response, 502)
+    assert response.payload["error"]["type"] == "modelito_bad_response"
+
+
+def test_raw_provider_backend_error_maps_to_openai_error(monkeypatch):
+    class FailingRawProvider:
+        def raw_complete(self, payload):
+            raise ModelitoProviderError("backend failed")
+
+        def raw_stream(self, payload):
+            yield {"id": "unused"}
+
+    runtime = _build_runtime(raw_provider=FailingRawProvider())
+    _patch_server_deps(monkeypatch)
+    app = create_app(runtime)
+    handler = app.routes[("POST", "/v1/chat/completions")]
+
+    response = asyncio.run(handler(_FakeRequest({"messages": [{"role": "user", "content": "hello"}]})))
+    _assert_openai_error(response, 502)
+    assert response.payload["error"]["type"] == "modelito_provider_error"

@@ -188,7 +188,8 @@ Example `~/.pi/agent/models.json` provider entry:
 Tool-calling workflows require raw passthrough support. Modelito currently
 implements that on `OpenAICompatibleHTTPProvider` and the hosted
 `OpenAIProvider`; `OMLXProvider` inherits it automatically. `OllamaProvider`
-raw passthrough is deferred.
+raw passthrough is deferred. For tool-calling integrations today, prefer
+oMLX/OpenAI-compatible raw providers or hosted OpenAI.
 
 The package also exposes a small Ollama administration layer for local model
 operations, including install backend detection, remote catalog metadata,

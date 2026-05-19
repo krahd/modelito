@@ -214,6 +214,15 @@ This gates side-effectful operations so default CI remains fast and safe.
 
 ## Extension
 
+### Provider addition policy
+
+- Implement the smallest portable surface first: `list_models()`, `summarize()`, `stream()` where available, `embed()` where available, and `chat()` returning `Response` where practical.
+- Hosted SDK dependencies must remain optional extras.
+- Provider-specific helpers should not be added to the core protocol unless they generalise cleanly.
+- OpenAI-compatible local runtimes should prefer thin presets over `OpenAICompatibleHTTPProvider`.
+- Raw tool-call passthrough should use `RawChatProvider` only when full request/response fidelity can be preserved.
+- Modelito should not absorb agent-harness responsibilities.
+
 To add a new provider:
 
 1. Create a class that implements the `Provider` Protocol
