@@ -33,7 +33,7 @@ anthropic = ["anthropic"]
 gemini = ["google-generativeai"]
 grok = ["xai-sdk"]
 serve = ["fastapi", "uvicorn"]
-dev = ["pytest", "pytest-asyncio", "pytest-mock", "mypy", "ruff", "black"]
+dev = ["pytest", "pytest-asyncio", "pytest-mock", "mypy", "ruff", "black", "tomli; python_version < '3.11'"]
 
 [project.scripts]
 modelito-serve = "modelito.serve:main"
