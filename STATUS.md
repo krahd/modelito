@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-19 01:13
+Last updated: 2026-05-19 01:21
 
 ## Project purpose
 
@@ -53,7 +53,7 @@ Phase 4 server-contract hardening and provider cleanup pass complete:
 19. Latest review-feedback fixes made fallback streaming lazy, scoped warning headers to tool fallbacks, shared readiness probes between client and doctor, and cleaned up package exports.
 
 - `modelito-serve` exposes `/v1/models`, `/v1/chat/completions`, and `/v1/embeddings` for Pi and other OpenAI-compatible consumers.
-- Validation completed locally in this session: `python scripts/check_no_legacy_dicts.py` -> no literal dict-shaped message examples found in docs/examples; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean; `pytest -q` -> `236 passed, 2 skipped`; `python -c "from modelito import flatten_message_inputs; print(flatten_message_inputs(['hello']))"` -> `[{"role": "user", "content": "hello"}]`.
+- Validation status is recorded in the current session snapshot under Recent changes.
 
 ## Architecture overview
 
@@ -150,7 +150,14 @@ python -m twine check dist/*
 - Current oMLX stack uses `OpenAICompatibleHTTPProvider` with strict-mode typed error handling.
 - Current provider typing includes `ChatProvider`, `MessageInput`, and `OpenAIMessageDict` exports, with `Client` chat-related methods accepting broadened message input types; provider protocols are aligned so `SyncProvider`, `AsyncProvider`, `StreamingProvider`, and `ChatProvider` all accept `Iterable[MessageInput]`.
 - `Client.chat_json()` now supports optional stronger schema validation via `strict_schema=True` using dataclass construction or Pydantic-style `model_validate`/`parse_obj` hooks, while preserving lightweight key-presence checks by default.
-- Validation completed locally in this session: `python scripts/check_no_legacy_dicts.py` -> no literal dict-shaped message examples found in docs/examples; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean; `pytest -q --ignore=tests/integration tests` -> `250 passed, 1 skipped`; `python -c "from modelito import get_model_metadata; print(get_model_metadata('gpt-4o-mini')['provider'])"` -> `openai`; optional checks: `python -m build` succeeded and `python -m twine check dist/*` passed.
+- Validation completed locally in this session:
+  - `python scripts/check_no_legacy_dicts.py` -> clean
+  - `ruff check .` -> clean
+  - `mypy modelito --ignore-missing-imports` -> clean
+  - `pytest -q --ignore=tests/integration tests` -> `257 passed, 1 skipped`
+  - `python -c "import modelito; print(modelito.__version__)"` -> `1.4.4`
+  - `python -m build` -> succeeded
+  - `python -m twine check dist/*` -> passed
 - Trusted publishing note: the workflow is configured for PyPI trusted publishing, but PyPI project-side trusted publisher settings must be verified before release, and the release tag must match `pyproject.toml`.
 - Historical release narratives are maintained in `CHANGELOG.md`; STATUS.md is kept as a current-state snapshot.
 
@@ -187,4 +194,4 @@ python -m twine check dist/*
 
 ---
 
-Last updated: 2026-05-19 01:13
+Last updated: 2026-05-19 01:21
