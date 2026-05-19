@@ -216,11 +216,14 @@ def test_http_status_mapping_for_exceptions():
 def test_error_kind_mapping_for_exceptions():
     assert _error_kind_for_exception(ValueError("bad")) == "modelito_bad_request"
     assert _error_kind_for_exception(TypeError("bad")) == "modelito_bad_request"
-    assert _error_kind_for_exception(ModelitoBadResponseError("bad upstream")) == "modelito_bad_response"
-    assert _error_kind_for_exception(ModelitoModelNotFoundError("missing")) == "modelito_model_not_found"
+    assert _error_kind_for_exception(ModelitoBadResponseError(
+        "bad upstream")) == "modelito_bad_response"
+    assert _error_kind_for_exception(ModelitoModelNotFoundError(
+        "missing")) == "modelito_model_not_found"
     assert _error_kind_for_exception(ModelitoTimeoutError("timeout")) == "modelito_timeout_error"
     assert _error_kind_for_exception(TimeoutError("timeout")) == "modelito_timeout_error"
-    assert _error_kind_for_exception(ModelitoConnectionError("offline")) == "modelito_connection_error"
+    assert _error_kind_for_exception(ModelitoConnectionError(
+        "offline")) == "modelito_connection_error"
     assert _error_kind_for_exception(ModelitoProviderError("provider")) == "modelito_provider_error"
     assert _error_kind_for_exception(RuntimeError("boom")) == "modelito_internal_error"
 
@@ -787,7 +790,8 @@ def test_raw_provider_bad_request_payload_is_not_over_validated(monkeypatch):
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest({"model": "omlx", "messages": "hello", "extra": {"x": 1}})))
+    response = asyncio.run(handler(_FakeRequest(
+        {"model": "omlx", "messages": "hello", "extra": {"x": 1}})))
     assert response.status_code == 200
     assert raw_provider.last_payload["messages"] == "hello"
     assert raw_provider.last_payload["extra"] == {"x": 1}
