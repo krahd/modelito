@@ -93,9 +93,10 @@ Recommended entry point:
 
 ```py
 from modelito import Client
+from modelito.messages import Message
 
 client = Client(provider="auto", prefer=["omlx", "ollama"], model="omlx")
-response = client.chat([{"role": "user", "content": "Hello"}])
+response = client.chat([Message(role="user", content="Hello")])
 print(response.text)
 ```
 

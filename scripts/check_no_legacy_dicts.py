@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""CI helper: fail if legacy dict-shaped messages are present in docs/examples/tests.
+"""CI helper: fail if legacy dict-shaped messages are present in docs/examples.
 
-This script scans the repository (docs, examples, and tests) for simple
-patterns that indicate legacy dict-style messages like
-`{'role': 'user', 'content': '...'}` or calls to `to_message(...)`.
-If any matches are found the script exits non-zero so CI can fail and
-prevent regressions.
+This script scans public-facing documentation examples for simple patterns
+that indicate legacy dict-style messages like
+`{'role': 'user', 'content': '...'}`.
+If any matches are found the script exits non-zero so CI can fail and prevent
+regressions.
 """
 from __future__ import annotations
 
@@ -14,8 +14,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Scan non-library files (docs, examples, tests) for literal dict-shaped
-# message examples that look like: [{ 'role': 'user', 'content': '...' }]
+# Scan non-library docs/examples for literal dict-shaped message examples
+# that look like: [{ 'role': 'user', 'content': '...' }]. Tests are allowed to
+# use dict-shaped messages to verify MessageInput compatibility.
 TARGET_EXTS = {".py", ".md", ".rst"}
 EXCLUDE_DIRS = {".venv", "docs/build", "dist", ".git"}
 
@@ -42,9 +43,9 @@ def scan() -> int:
         if _is_excluded(p):
             continue
 
-        # Only scan docs, examples, and tests (and top-level README files).
+        # Only scan docs, examples, and top-level README files.
         rel = p.relative_to(ROOT)
-        if not (rel.parts[0] in ("docs", "examples", "tests") or rel.name.lower() in ("readme.md", "readme.rst")):
+        if not (rel.parts[0] in ("docs", "examples") or rel.name.lower() in ("readme.md", "readme.rst")):
             continue
 
         text = p.read_text(encoding="utf8")
@@ -72,7 +73,7 @@ def scan() -> int:
         print("\nPlease update examples to use `modelito.messages.Message` dataclasses.")
         return 2
 
-    print("No literal dict-shaped message examples found in docs/examples/tests.")
+    print("No literal dict-shaped message examples found in docs/examples.")
     return 0
 
 
