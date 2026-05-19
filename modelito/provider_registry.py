@@ -57,7 +57,20 @@ def get_embedder(name: str, **kwargs: Any) -> Optional[EmbeddingProvider]:
     """Factory to instantiate an embedder by name."""
     cls = EMBEDDER_REGISTRY.get(name.lower())
     if cls is not None:
-        return cls(**kwargs)
+        try:
+            params = signature(cls.__init__).parameters
+            accepts_var_kwargs = any(
+                param.kind == Parameter.VAR_KEYWORD for param in params.values())
+            if accepts_var_kwargs:
+                return cls(**kwargs)
+            filtered = {
+                key: value
+                for key, value in kwargs.items()
+                if key in params and key != "self"
+            }
+            return cls(**filtered)
+        except Exception:
+            return cls(**kwargs)
     return None
 
 

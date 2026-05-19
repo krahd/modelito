@@ -217,7 +217,7 @@ class Client:
             )
 
         ollama_probe = cls._ollama_probe(model, provider_kwargs, auto_probe_timeout)
-        probes.append(ollama_probe)
+        probe_results.append(ollama_probe)
         if ollama_probe.get("available"):
             return "ollama"
 

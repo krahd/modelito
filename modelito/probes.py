@@ -99,9 +99,9 @@ def probe_ollama_status(
     model: Optional[str],
     host: Optional[str],
     port: Optional[int],
-    probe_timeout: float,
+    probe_timeout: float,  # kept for API symmetry with probe_omlx_status; server_is_up has no timeout
 ) -> ProviderStatus:
-    del probe_timeout
+    _ = probe_timeout
     host_value = host or DEFAULT_URL
     port_value = int(port or DEFAULT_PORT)
     endpoint = f"{host_value}:{port_value}"

@@ -1,3 +1,4 @@
+import modelito.probes as probes_module
 from modelito.doctor import ProviderStatus, check_provider_ready, format_provider_status, main
 
 
@@ -98,3 +99,17 @@ def test_doctor_main_non_ready_returns_nonzero(monkeypatch, capsys):
 
     assert code == 1
     assert "offline" in captured.out
+
+
+def test_probes_build_status_is_public():
+    status = probes_module.build_status("test", True, endpoint="http://x", models=["m"])
+    assert status.provider == "test"
+    assert status.ready is True
+    assert status.endpoint == "http://x"
+    assert status.models == ["m"]
+
+
+def test_probes_model_is_available_public():
+    assert probes_module.model_is_available(None, []) is True
+    assert probes_module.model_is_available("llama3", ["llama3", "phi3"]) is True
+    assert probes_module.model_is_available("missing", ["llama3"]) is False

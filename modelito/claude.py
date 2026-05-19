@@ -9,7 +9,7 @@ from __future__ import annotations
 import importlib
 
 from typing import Any, Iterable, List, Optional
-from .messages import Message
+from .messages import Message, Response
 from types import ModuleType
 
 def _extract_text_from_response(res: Any) -> str:
@@ -257,6 +257,11 @@ class ClaudeProvider:
             pass
         for i in range(0, len(text), chunk_size):
             yield text[i: i + chunk_size]
+
+    def chat(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> Response:
+        """Return a Response wrapping the summarize() result."""
+        text = self.summarize(messages, settings=settings)
+        return Response(text=text, model=self.model)
 
     def embed(self, texts: Iterable[str], **kwargs: Any) -> List[List[float]]:
         """Embedding surface for tests: delegate to the embeddings helper."""
