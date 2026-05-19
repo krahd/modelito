@@ -23,6 +23,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Validate tag matches package version
         run: |
           python - <<'PY'
@@ -44,11 +49,6 @@ jobs:
 
           print(f"release version OK: {package_version}")
           PY
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
 
       - name: Build distributions
         run: |

@@ -149,12 +149,13 @@ Structured output helpers
 -------------------------
 
 `Client.chat_json(messages, schema=None, settings=None, strict_schema=False) -> dict`
-: Request structured JSON output, keep the parsed dict, and optionally apply
-  lightweight schema validation.
+: Request structured JSON output and return a parsed `dict`; optionally apply
+  key-presence schema checks and stricter runtime validation when
+  `strict_schema=True`.
 
 `Client.chat_parsed(messages, schema, settings=None, strict_schema=True) -> Any`
-: Request structured JSON output and construct the schema object directly when
-  the schema is a dataclass or Pydantic-style model.
+: Request structured JSON output and return a parsed schema object when
+  supported (dataclass or Pydantic-style model hooks).
 
 Ollama helpers
 --------------
