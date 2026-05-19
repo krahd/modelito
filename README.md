@@ -80,6 +80,7 @@ See the `docs/` folder for more details:
 - [USAGE.md](docs/USAGE.md) — Usage guide and examples
 - [local-openai-compatible.md](docs/local-openai-compatible.md) — Using local OpenAI-compatible servers
 - [INSTALL.md](docs/INSTALL.md), [API.md](docs/API.md) — Installation and API reference
+- [RELEASE.md](docs/RELEASE.md) — Release checklist and publication steps
 
 Providers
 ---------

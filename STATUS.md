@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-19 00:11
+Last updated: 2026-05-19 00:16
 
 ## Project purpose
 
@@ -23,6 +23,7 @@ The package provides:
 - raw OpenAI chat-completions passthrough via `RawChatProvider`, `OpenAICompatibleHTTPProvider`, `OMLXProvider`, and `OpenAIProvider`
 - shared readiness probes in `modelito/probes.py`, with `modelito-doctor` as a console script and `flatten_message_inputs` exported from the package root for convenience
 - comprehensive docs under `docs/` including architecture, usage, API reference, install guide, and local server integration
+- concise release checklist documentation in `docs/RELEASE.md`
 - pytest, ruff, mypy, build, twine, CI, and publishing workflows
 
 Release `v1.4.3` was tagged in git and published to PyPI after the local OpenAI-compatible server support landed in `v1.4.2`.
@@ -137,6 +138,7 @@ python -m twine check dist/*
 ## Recent changes
 
 - Latest cleanup pass fixed fallback streaming laziness, provider warning header scope, shared probe reuse, and `flatten_message_inputs` / `modelito-doctor` export surface.
+- Added a concise release checklist document and linked it from the README docs index.
 - Current release line is `1.4.4`.
 - Current oMLX stack uses `OpenAICompatibleHTTPProvider` with strict-mode typed error handling.
 - Current provider typing includes `ChatProvider`, `MessageInput`, and `OpenAIMessageDict` exports, with `Client` chat-related methods accepting broadened message input types; provider protocols are aligned so `SyncProvider`, `AsyncProvider`, `StreamingProvider`, and `ChatProvider` all accept `Iterable[MessageInput]`.
@@ -175,4 +177,4 @@ python -m twine check dist/*
 
 ---
 
-Last updated: 2026-05-19 00:11
+Last updated: 2026-05-19 00:16
