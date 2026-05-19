@@ -105,11 +105,11 @@ Provided shims and utilities:
   falling back to deterministic behavior otherwise.
 - `GeminiProvider`, `GrokProvider` — lightweight shims.
 - `OMLXProvider` — thin oMLX preset built on `OpenAICompatibleHTTPProvider`.
-- `OllamaProvider` — HTTP-aware provider that will call a local Ollama
-  HTTP API when available (requires `pip install modelito[ollama]` for the HTTP
-  client library). If the HTTP API is unavailable the provider will attempt to
-  use the local Ollama CLI as a best-effort fallback before returning a
-  deterministic stub suitable for tests and examples.
+- `OllamaProvider` — HTTP-aware provider that can call a local Ollama HTTP API
+  through stdlib helpers and can fall back to the local Ollama CLI or
+  deterministic test behavior when needed. The `modelito[ollama]` extra installs
+  optional support dependencies used by the broader Ollama service-management
+  helpers.
 
 The client layer recognises the same provider stack through `ChatProvider`,
 `MessageInput`, and structured response helpers such as `Client.chat()` and
@@ -139,6 +139,9 @@ Server mode for non-Python clients:
 pip install "modelito[serve]"
 modelito-serve --provider omlx --port 11436 --host 127.0.0.1 --strict
 ```
+
+`--profile` and `--profile-path` are currently treated as profile file paths;
+`--profile-path` takes precedence when both are provided.
 
 `modelito-serve` exposes OpenAI-compatible `/v1/models`,
 `/v1/chat/completions`, and `/v1/embeddings` endpoints.
@@ -185,7 +188,8 @@ Example `~/.pi/agent/models.json` provider entry:
 Tool-calling workflows require raw passthrough support. Modelito currently
 implements that on `OpenAICompatibleHTTPProvider` and the hosted
 `OpenAIProvider`; `OMLXProvider` inherits it automatically. `OllamaProvider`
-raw passthrough is deferred.
+raw passthrough is deferred. For tool-calling integrations today, prefer
+oMLX/OpenAI-compatible raw providers or hosted OpenAI.
 
 The package also exposes a small Ollama administration layer for local model
 operations, including install backend detection, remote catalog metadata,
