@@ -10,6 +10,8 @@ modelito is a compact, dependency-light Python library that provides provider-ag
 
 Current package metadata version is `1.4.5` in `pyproject.toml`.
 
+Release `v1.4.5` was tagged and published to GitHub on 2026-05-19. PyPI publish is pending PyPI trusted publisher configuration.
+
 The package provides:
 
 - core provider protocols and dataclasses
@@ -157,7 +159,7 @@ python -m twine check dist/*
 - Model metadata helpers are now exported from the package root (`ModelMetadata`, `get_model_info`, `get_model_metadata`, `infer_model_metadata`).
 - Release checklist now includes explicit trusted publishing requirements, tag/publish commands, and clean-environment install checks.
 - README now embeds standalone current-state SVG assets from `docs/assets/`, and the architecture/usage docs call out `modelito-serve`, shared probes, raw-capable providers, and deferred Ollama raw passthrough.
-- Current release line is `1.4.4`.
+- Current release line is `1.4.5` (tagged and GitHub-released 2026-05-19; PyPI publish pending trusted publisher configuration on PyPI account).
 - Current oMLX stack uses `OpenAICompatibleHTTPProvider` with strict-mode typed error handling.
 - Current provider typing includes `ChatProvider`, `MessageInput`, and `OpenAIMessageDict` exports, with `Client` chat-related methods accepting broadened message input types; provider protocols are aligned so `SyncProvider`, `AsyncProvider`, `StreamingProvider`, and `ChatProvider` all accept `Iterable[MessageInput]`.
 - `Client.chat_json()` now supports optional stronger schema validation via `strict_schema=True` using dataclass construction or Pydantic-style `model_validate`/`parse_obj` hooks, while preserving lightweight key-presence checks by default.
@@ -166,22 +168,22 @@ python -m twine check dist/*
   - `ruff check .` -> clean
   - `mypy modelito --ignore-missing-imports` -> clean
   - `pytest -q --ignore=tests/integration tests` -> `257 passed, 1 skipped`
-  - `python -c "import modelito; print(modelito.__version__)"` -> `1.4.4`
-  - `python -m build` -> succeeded
-  - `python -m twine check dist/*` -> passed
-- Trusted publishing note: the workflow is configured for PyPI trusted publishing, but PyPI project-side trusted publisher settings must be verified before release, and the release tag must match `pyproject.toml`.
+  - `python -c "import modelito; print(modelito.__version__)"` -> `1.4.5`
+  - `python -m build` -> succeeded; `1.4.5` wheel and sdist validated
+  - `python -m twine check dist/*` -> all packages passed (1.4.3, 1.4.4, 1.4.5)
+- Trusted publishing note: GitHub Actions workflow is configured correctly (`pyproject.toml` version matches tag `v1.4.5`), but PyPI project must register a trusted publisher for repository `krahd/modelito` with environment `pypi`; without this configuration, the automatic publish workflow will fail with "invalid-publisher" error.
 - Historical release narratives are maintained in `CHANGELOG.md`; STATUS.md is kept as a current-state snapshot.
 
 ## Pending tasks
 
-- Verify PyPI project-side trusted publisher settings before the next release.
+- Configure PyPI trusted publisher for repository `krahd/modelito` with environment `pypi` (or use manual `twine upload dist/modelito-1.4.5.*` to push to PyPI).
 - ClaudeProvider still has no raw_complete()/raw_stream() — it can't serve as a pi tool-calling backend through the modelito HTTP server. Implementing these requires the Anthropic SDK's tool-call response format, which is non-trivial and would need a dedicated follow-up.
 - GeminiProvider and GrokProvider have no chat() — same pattern as Claude, lower priority since they're compatibility shims.
 
 
 ## Next steps
 
-1. Verify PyPI project-side trusted publisher settings before the next release.
+1. Configure PyPI trusted publisher or manually upload v1.4.5 to PyPI.
 2. Keep reviewing provider additions against the portable-common-surface rule.
 3. Decide whether to add optional Ollama raw passthrough in a later milestone.
 
