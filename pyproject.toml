@@ -37,6 +37,7 @@ dev = ["pytest", "pytest-asyncio", "pytest-mock", "mypy", "ruff", "black"]
 
 [project.scripts]
 modelito-serve = "modelito.serve:main"
+modelito-doctor = "modelito.doctor:main"
 
 [project.urls]
 Homepage = "https://github.com/krahd/modelito"

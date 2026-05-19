@@ -15,14 +15,12 @@ import os
 import platform
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Type, Union, cast
 from .config import load_config
-from .ollama_service import server_is_up
-from .omlx import OMLXProvider
-from .ollama import OllamaProvider
 from .provider_registry import get_provider, list_embedders, list_providers
 from .provider import MessageInput, Provider
 from .messages import Response
 from .model_metadata import get_model_metadata
 from .normalization import normalize_metadata
+from .probes import probe_ollama_status, probe_omlx_status
 
 class Client:
     """
@@ -128,88 +126,39 @@ class Client:
     def _omlx_probe(
         model: Optional[str], provider_kwargs: Dict[str, Any], timeout: float
     ) -> Dict[str, Any]:
-        kwargs: Dict[str, Any] = {"strict": True}
-        kwargs["timeout"] = timeout
-        if model:
-            kwargs["model"] = model
-        if "base_url" in provider_kwargs:
-            kwargs["base_url"] = provider_kwargs["base_url"]
-        if "api_key" in provider_kwargs:
-            kwargs["api_key"] = provider_kwargs["api_key"]
-        if "timeout" in provider_kwargs:
-            kwargs["timeout"] = provider_kwargs["timeout"]
-        try:
-            provider = OMLXProvider(**kwargs)
-            models = provider.list_models()
-            available = model in set(models) if model else True
-            return {
-                "provider": "omlx",
-                "available": available,
-                "models": models,
-                "endpoint": getattr(provider, "base_url", "http://localhost:8000/v1"),
-                "reason": None if available else "requested model not found",
-                "setup_hint": "Start oMLX and download an MLX model via the admin dashboard.",
-            }
-        except Exception:
-            return {
-                "provider": "omlx",
-                "available": False,
-                "models": [],
-                "endpoint": "http://localhost:8000/v1",
-                "reason": "oMLX server not reachable",
-                "setup_hint": "Start oMLX and download an MLX model via the admin dashboard.",
-            }
+        status = probe_omlx_status(
+            model=model,
+            base_url=provider_kwargs.get("base_url"),
+            api_key=provider_kwargs.get("api_key"),
+            probe_timeout=float(provider_kwargs.get("timeout") or timeout),
+        )
+        return {
+            "provider": status.provider,
+            "available": status.ready,
+            "models": status.models,
+            "endpoint": status.endpoint,
+            "reason": status.reason or None,
+            "setup_hint": status.setup_hint,
+        }
 
     @staticmethod
     def _ollama_probe(
         model: Optional[str], provider_kwargs: Dict[str, Any], timeout: float
     ) -> Dict[str, Any]:
-        host = str(provider_kwargs.get("host") or "http://127.0.0.1")
-        port = int(provider_kwargs.get("port") or 11434)
-        try:
-            if not server_is_up(host, port):
-                return {
-                    "provider": "ollama",
-                    "available": False,
-                    "models": [],
-                    "endpoint": f"{host}:{port}",
-                    "reason": "Ollama server not reachable",
-                    "setup_hint": "Start Ollama and pull the requested model with `ollama pull <model>`.",
-                }
-        except Exception:
-            return {
-                "provider": "ollama",
-                "available": False,
-                "models": [],
-                "endpoint": f"{host}:{port}",
-                "reason": "Ollama server not reachable",
-                "setup_hint": "Start Ollama and pull the requested model with `ollama pull <model>`.",
-            }
-
-        kwargs: Dict[str, Any] = {"host": host, "port": port}
-        if model:
-            kwargs["model"] = model
-        try:
-            provider = OllamaProvider(**kwargs)
-            models = provider.list_models()
-            available = model in set(models) if model else True
-            return {
-                "provider": "ollama",
-                "available": available,
-                "models": models,
-                "endpoint": f"{host}:{port}",
-                "reason": None if available else "requested model not found",
-                "setup_hint": "Pull the requested model with `ollama pull <model>`.",
-            }
-        except Exception:
-            return {
-                "provider": "ollama",
-                "available": False,
-                "models": [],
-                "endpoint": f"{host}:{port}",
-                "reason": "Ollama probe failed",
-                "setup_hint": "Start Ollama and pull the requested model with `ollama pull <model>`.",
-            }
+        status = probe_ollama_status(
+            model=model,
+            host=provider_kwargs.get("host"),
+            port=provider_kwargs.get("port"),
+            probe_timeout=timeout,
+        )
+        return {
+            "provider": status.provider,
+            "available": status.ready,
+            "models": status.models,
+            "endpoint": status.endpoint,
+            "reason": status.reason or None,
+            "setup_hint": status.setup_hint,
+        }
 
     @staticmethod
     def _probe_summary(probe: Dict[str, Any]) -> str:

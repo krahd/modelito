@@ -25,7 +25,7 @@ from .exceptions import (
     ModelitoProviderError,
     ModelitoTimeoutError,
 )
-from .messages import Message, Response
+from .messages import Response, flatten_message_inputs
 
 
 def _extract_chat_text(payload: Any) -> str:
@@ -146,30 +146,7 @@ class OpenAICompatibleHTTPProvider:
         return headers
 
     def _flatten_messages(self, messages: Iterable[Any]) -> List[Dict[str, str]]:
-        """Convert messages to OpenAI-style dicts.
-
-        Accepts :class:`~modelito.messages.Message` instances, plain strings
-        (treated as ``role="user"``), and dicts with ``role``/``content`` keys.
-        """
-        out: List[Dict[str, str]] = []
-        for m in messages or []:
-            if isinstance(m, Message):
-                out.append({"role": m.role, "content": m.content})
-            elif isinstance(m, str):
-                out.append({"role": "user", "content": m})
-            elif isinstance(m, dict):
-                out.append(
-                    {
-                        "role": str(m.get("role", "user")),
-                        "content": str(m.get("content", "")),
-                    }
-                )
-            else:
-                raise TypeError(
-                    f"Messages must be Message, str, or dict with role/content; "
-                    f"got {type(m).__name__}"
-                )
-        return out
+        return flatten_message_inputs(messages)
 
     def _classify_error(self, exc: Exception) -> LLMProviderError:
         """Convert a raw exception into a typed Modelito error."""

@@ -135,6 +135,9 @@ from modelito import check_provider_ready
 status = check_provider_ready("omlx", model="omlx")
 print(status.ready, status.reason)
 ```
+The shared message normaliser is exported as `flatten_message_inputs` from
+both `modelito` and `modelito.messages` for callers that need OpenAI-style
+dict conversion.
 
 ```sh
 python -m modelito doctor --provider omlx --model omlx

@@ -366,7 +366,7 @@ def test_fallback_text_only_completion_and_embeddings(monkeypatch):
         {"model": "omlx", "messages": [{"role": "user", "content": "hello"}]},
     )
     assert completion.payload["choices"][0]["message"]["content"] == "fallback text"
-    assert "fallback" in completion.headers.get("X-Modelito-Warning", "")
+    assert completion.headers == {}
 
     embedding = _embedding_response(runtime, {"model": "omlx", "input": ["alpha", "beta"]})
     assert embedding.payload["object"] == "list"
@@ -436,6 +436,33 @@ def test_non_strict_tool_choice_fallback_sets_warning_header():
     )
     assert completion.payload["choices"][0]["message"]["content"] == "fallback text"
     assert "fallback" in completion.headers.get("X-Modelito-Warning", "")
+
+
+def test_fallback_stream_events_are_lazy_and_unwarned_for_plain_chat():
+    runtime = _build_runtime(strict=False, raw_provider=None)
+    side_effects = []
+
+    def fake_stream(messages, settings=None):
+        side_effects.append("iterated")
+        yield "fallback"
+        yield " stream"
+
+    runtime.client.stream = fake_stream
+
+    result = _stream_completion_events(
+        runtime,
+        {"model": "omlx", "messages": [{"role": "user", "content": "hello"}]},
+    )
+
+    assert side_effects == []
+    assert result.headers == {}
+
+    body = list(_stream_response_body(result.events))
+
+    assert side_effects == ["iterated"]
+    assert body[0].startswith("data: {")
+    assert "fallback" in body[1]
+    assert body[-1] == "data: [DONE]\n\n"
 
 
 def test_chat_missing_messages_returns_openai_error(monkeypatch):

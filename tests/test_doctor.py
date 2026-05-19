@@ -2,14 +2,15 @@ from modelito.doctor import ProviderStatus, check_provider_ready, format_provide
 
 
 def test_check_provider_ready_omlx_success(monkeypatch):
-    class FakeOMLX:
-        def __init__(self, **kwargs):
-            self.base_url = kwargs.get("base_url")
-
-        def list_models(self):
-            return ["omlx", "other"]
-
-    monkeypatch.setattr("modelito.doctor.OMLXProvider", FakeOMLX)
+    monkeypatch.setattr(
+        "modelito.probes.probe_omlx_status",
+        lambda *args, **kwargs: ProviderStatus(
+            provider="omlx",
+            ready=True,
+            endpoint="http://localhost:8000/v1",
+            models=["omlx", "other"],
+        ),
+    )
 
     status = check_provider_ready("omlx", model="omlx")
 
@@ -21,7 +22,16 @@ def test_check_provider_ready_omlx_success(monkeypatch):
 
 
 def test_check_provider_ready_ollama_failure(monkeypatch):
-    monkeypatch.setattr("modelito.doctor.server_is_up", lambda host, port: False)
+    monkeypatch.setattr(
+        "modelito.probes.probe_ollama_status",
+        lambda *args, **kwargs: ProviderStatus(
+            provider="ollama",
+            ready=False,
+            endpoint="http://127.0.0.1:11434",
+            reason="Ollama server not reachable",
+            setup_hint="Start Ollama and pull the requested model with `ollama pull <model>`.",
+        ),
+    )
 
     status = check_provider_ready("ollama", model="qwen2.5:7b", host="http://127.0.0.1", port=11434)
 

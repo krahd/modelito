@@ -171,6 +171,12 @@ def _fallback_warning(reason: str) -> Dict[str, str]:
     return {"X-Modelito-Warning": reason}
 
 
+def _fallback_headers_for_payload(payload: Dict[str, Any], message: str) -> Dict[str, str]:
+    if _requires_raw_tool_support(payload):
+        return _fallback_warning(message)
+    return {}
+
+
 def _http_status_for_exception(exc: Exception) -> int:
     if isinstance(exc, (ValueError, TypeError)):
         return 400
@@ -279,7 +285,12 @@ def _chat_completion_response(runtime: ServeRuntime, payload: Dict[str, Any]) ->
             "total_tokens": (response.tokens_in or 0) + (response.tokens_out or 0),
         },
     }
-    return ChatCompletionResult(payload=completion, headers=_fallback_warning("modelito fallback response; tool calls are not supported"))
+    return ChatCompletionResult(
+        payload=completion,
+        headers=_fallback_headers_for_payload(
+            request_payload, "modelito fallback response; tool calls are not supported"
+        ),
+    )
 
 
 def _stream_delta_text(delta: Dict[str, Any]) -> Optional[str]:
@@ -303,44 +314,47 @@ def _stream_completion_events(runtime: ServeRuntime, payload: Dict[str, Any]) ->
             "tools require raw passthrough support; run with --no-strict to allow text-only fallback")
 
     settings = _chat_settings(request_payload)
-    chunks = list(runtime.client.stream(_messages_from_payload(request_payload), settings=settings))
-    events: List[Dict[str, Any]] = [
-        {
-            "id": f"chatcmpl-modelito-{int(time.time() * 1000)}",
+    created = int(time.time())
+    event_id = f"chatcmpl-modelito-{int(time.time() * 1000)}"
+
+    def _fallback_stream_events() -> Iterable[Dict[str, Any]]:
+        yield {
+            "id": event_id,
             "object": "chat.completion.chunk",
-            "created": int(time.time()),
+            "created": created,
             "model": model,
             "choices": [
                 {"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}
             ],
         }
-    ]
-    for chunk in chunks:
-        if not chunk:
-            continue
-        events.append(
-            {
-                "id": f"chatcmpl-modelito-{int(time.time() * 1000)}",
+        for chunk in runtime.client.stream(_messages_from_payload(request_payload), settings=settings):
+            if not chunk:
+                continue
+            yield {
+                "id": event_id,
                 "object": "chat.completion.chunk",
-                "created": int(time.time()),
+                "created": created,
                 "model": model,
                 "choices": [
                     {"index": 0, "delta": {"content": chunk}, "finish_reason": None}
                 ],
             }
-        )
-    events.append(
-        {
-            "id": f"chatcmpl-modelito-{int(time.time() * 1000)}",
+        yield {
+            "id": event_id,
             "object": "chat.completion.chunk",
-            "created": int(time.time()),
+            "created": created,
             "model": model,
             "choices": [
                 {"index": 0, "delta": {}, "finish_reason": "stop"}
             ],
         }
+
+    return StreamResult(
+        events=_fallback_stream_events(),
+        headers=_fallback_headers_for_payload(
+            request_payload, "modelito fallback stream; tool calls are not supported"
+        ),
     )
-    return StreamResult(events=events, headers=_fallback_warning("modelito fallback stream; tool calls are not supported"))
 
 
 def _embedding_response(runtime: ServeRuntime, payload: Dict[str, Any]) -> EmbeddingResult:
@@ -487,8 +501,4 @@ __all__ = [
     "build_runtime",
     "create_app",
     "main",
-    "_models_response",
-    "_chat_completion_response",
-    "_stream_completion_events",
-    "_embedding_response",
 ]

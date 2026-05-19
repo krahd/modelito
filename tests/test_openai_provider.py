@@ -81,6 +81,31 @@ def test_openai_provider_raw_complete_non_strict_returns_fallback():
     assert result["model"] == "gpt-test"
 
 
+def test_openai_provider_raw_complete_non_strict_fallback_does_not_call_summarize():
+    class FakeCompletions:
+        create_calls = 0
+
+        @staticmethod
+        def create(**kwargs):
+            FakeCompletions.create_calls += 1
+            raise RuntimeError("boom")
+
+    fake_client = SimpleNamespace(chat=SimpleNamespace(completions=FakeCompletions()))
+    provider = OpenAIProvider(client=fake_client, model="gpt-test", strict=False)
+    provider.summarize = lambda *_args, **_kwargs: (_ for _ in ()
+                                                    ).throw(AssertionError("summarize should not be called"))
+
+    result = provider.raw_complete(
+        {
+            "messages": [{"role": "user", "content": "hello"}],
+            "tools": [{"type": "function", "function": {"name": "lookup"}}],
+        }
+    )
+
+    assert FakeCompletions.create_calls == 1
+    assert result["choices"][0]["message"]["content"] == "hello"
+
+
 def test_openai_provider_raw_stream_with_create_stream_true_payload():
     captured = {}
 

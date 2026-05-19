@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-18 23:16
+Last updated: 2026-05-19 00:11
 
 ## Project purpose
 
@@ -21,6 +21,7 @@ The package provides:
 - provider readiness diagnostics via `check_provider_ready()` and `python -m modelito doctor`
 - optional OpenAI-compatible server mode via `modelito-serve` for non-Python clients such as Pi, with bind settings kept separate from provider backend configuration
 - raw OpenAI chat-completions passthrough via `RawChatProvider`, `OpenAICompatibleHTTPProvider`, `OMLXProvider`, and `OpenAIProvider`
+- shared readiness probes in `modelito/probes.py`, with `modelito-doctor` as a console script and `flatten_message_inputs` exported from the package root for convenience
 - comprehensive docs under `docs/` including architecture, usage, API reference, install guide, and local server integration
 - pytest, ruff, mypy, build, twine, CI, and publishing workflows
 
@@ -28,7 +29,7 @@ Release `v1.4.3` was tagged in git and published to PyPI after the local OpenAI-
 
 ## Active focus
 
-Phase 4 server-contract hardening pass complete:
+Phase 4 server-contract hardening and provider cleanup pass complete:
 
 1. `modelito-serve` now keeps bind `host`/`port` separate from provider backend configuration, and its raw streaming path forwards provider generators lazily instead of buffering them.
 2. `OpenAIProvider.raw_complete()` and `raw_stream()` are strict in strict mode, and `OpenAIProvider.chat()` now returns `Response` metadata for server use.
@@ -48,9 +49,10 @@ Phase 4 server-contract hardening pass complete:
 16. `MessageInput` type alias (`Union[Message, str, Mapping[str, Any]]`) added to `provider.py` and exported; `Client` method signatures broadened from `Iterable[Message]` to `Iterable[MessageInput]`; `SyncProvider.summarize()` and `AsyncProvider.acomplete()` signatures similarly broadened.
 17. Provider readiness diagnostics added through `check_provider_ready()` / `ProviderStatus` and the `python -m modelito doctor` CLI.
 18. OpenAI-compatible server support is provided through `modelito.serve`, `modelito-serve`, `RawChatProvider`, raw passthrough on the OpenAI-compatible HTTP base, and the hosted OpenAI provider.
+19. Latest review-feedback fixes made fallback streaming lazy, scoped warning headers to tool fallbacks, shared readiness probes between client and doctor, and cleaned up package exports.
 
 - `modelito-serve` exposes `/v1/models`, `/v1/chat/completions`, and `/v1/embeddings` for Pi and other OpenAI-compatible consumers.
-- Validation completed locally in this session: `python scripts/check_no_legacy_dicts.py` -> no literal dict-shaped message examples found in docs/examples; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean; `pytest -q` -> `231 passed, 2 skipped`.
+- Validation completed locally in this session: `python scripts/check_no_legacy_dicts.py` -> no literal dict-shaped message examples found in docs/examples; `ruff check .` clean; `mypy modelito --ignore-missing-imports` clean; `pytest -q` -> `236 passed, 2 skipped`; `python -c "from modelito import flatten_message_inputs; print(flatten_message_inputs(['hello']))"` -> `[{"role": "user", "content": "hello"}]`.
 
 ## Architecture overview
 
@@ -134,6 +136,7 @@ python -m twine check dist/*
 
 ## Recent changes
 
+- Latest cleanup pass fixed fallback streaming laziness, provider warning header scope, shared probe reuse, and `flatten_message_inputs` / `modelito-doctor` export surface.
 - Current release line is `1.4.4`.
 - Current oMLX stack uses `OpenAICompatibleHTTPProvider` with strict-mode typed error handling.
 - Current provider typing includes `ChatProvider`, `MessageInput`, and `OpenAIMessageDict` exports, with `Client` chat-related methods accepting broadened message input types; provider protocols are aligned so `SyncProvider`, `AsyncProvider`, `StreamingProvider`, and `ChatProvider` all accept `Iterable[MessageInput]`.
@@ -172,4 +175,4 @@ python -m twine check dist/*
 
 ---
 
-Last updated: 2026-05-18 23:59
+Last updated: 2026-05-19 00:11

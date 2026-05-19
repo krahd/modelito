@@ -15,6 +15,18 @@ from .exceptions import ModelitoProviderError
 from .messages import Response, flatten_message_inputs
 
 
+def _fallback_text_from_messages(messages: Any) -> str:
+    try:
+        flattened = flatten_message_inputs(messages or [])
+    except Exception:
+        return ""
+    return "\n".join(
+        item.get("content", "")
+        for item in flattened
+        if item.get("content")
+    )
+
+
 
 def _extract_text_from_response(res: Any) -> str:
     if not res:
@@ -225,7 +237,7 @@ class OpenAIProvider:
         if self.strict:
             raise ModelitoProviderError("OpenAI provider unavailable")
 
-        text = self.summarize(request_payload.get("messages", []), settings=request_payload)
+        text = _fallback_text_from_messages(request_payload.get("messages", []))
         return {
             "id": "chatcmpl-modelito-fallback",
             "object": "chat.completion",

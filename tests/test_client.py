@@ -1,4 +1,5 @@
 from modelito.client import Client
+from modelito.doctor import check_provider_ready
 from modelito.messages import Message
 from modelito.omlx import OMLXProvider
 import pytest
@@ -238,6 +239,27 @@ def test_client_auto_prefers_ollama_on_non_macos(monkeypatch):
 
     Client(provider="auto")
     assert called["name"] == "ollama"
+
+
+def test_client_and_doctor_share_omlx_probe_results(monkeypatch):
+    from modelito.probes import ProviderStatus
+
+    status = ProviderStatus(
+        provider="omlx",
+        ready=False,
+        endpoint="http://localhost:8000/v1",
+        models=[],
+        reason="oMLX server not reachable",
+        setup_hint="Start oMLX",
+    )
+    monkeypatch.setattr("modelito.probes.probe_omlx_status", lambda *args, **kwargs: status)
+
+    client_probe = Client._omlx_probe("omlx", {}, 1.5)
+    doctor_status = check_provider_ready("omlx", model="omlx")
+
+    assert client_probe["available"] is False
+    assert doctor_status.ready is False
+    assert client_probe["endpoint"] == doctor_status.endpoint
 
 
 def test_client_auto_uses_remote_provider_env_on_non_macos_when_no_ollama(monkeypatch):

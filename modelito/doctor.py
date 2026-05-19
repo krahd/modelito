@@ -9,30 +9,13 @@ from __future__ import annotations
 import argparse
 import json
 import platform
-from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional, Sequence
+from typing import List, Optional, Sequence
 
-from .ollama_service import DEFAULT_PORT, DEFAULT_URL, list_local_models, server_is_up
-from .omlx import OMLXProvider
+from . import probes
 from .openai import OpenAIProvider
 from .provider_registry import get_provider
 
-
-@dataclass(frozen=True)
-class ProviderStatus:
-    """Structured readiness result for a provider.
-
-    Fields are deliberately simple so CLI, UI, and downstream applications can
-    render them without extra adaptation.
-    """
-
-    provider: str
-    ready: bool
-    endpoint: Optional[str] = None
-    models: List[str] = field(default_factory=list)
-    reason: str = ""
-    setup_hint: str = ""
-    details: Dict[str, Any] = field(default_factory=dict)
+ProviderStatus = probes.ProviderStatus
 
 
 def _normalize_provider_name(provider: str) -> str:
@@ -42,72 +25,13 @@ def _normalize_provider_name(provider: str) -> str:
     return name
 
 
-def _model_is_available(model: Optional[str], models: Iterable[str]) -> bool:
-    if not model:
-        return True
-    return model in set(models)
-
-
-def _build_status(
-    provider: str,
-    ready: bool,
-    *,
-    endpoint: Optional[str] = None,
-    models: Optional[Iterable[str]] = None,
-    reason: str = "",
-    setup_hint: str = "",
-    details: Optional[Dict[str, Any]] = None,
-) -> ProviderStatus:
-    return ProviderStatus(
-        provider=provider,
-        ready=ready,
-        endpoint=endpoint,
-        models=list(models or []),
-        reason=reason,
-        setup_hint=setup_hint,
-        details=dict(details or {}),
-    )
-
-
 def _probe_omlx(
     model: Optional[str],
     base_url: Optional[str],
     api_key: Optional[str],
     probe_timeout: float,
 ) -> ProviderStatus:
-    endpoint = base_url or "http://localhost:8000/v1"
-    try:
-        provider = OMLXProvider(
-            base_url=endpoint,
-            model=model,
-            api_key=api_key,
-            timeout=probe_timeout,
-            strict=True,
-        )
-        models = provider.list_models()
-        ready = _model_is_available(model, models)
-        return _build_status(
-            "omlx",
-            ready,
-            endpoint=getattr(provider, "base_url", endpoint),
-            models=models,
-            reason="" if ready else "requested model not found",
-            setup_hint=(
-                "Start oMLX and download an MLX model via the admin dashboard."
-            ),
-        )
-    except Exception as exc:
-        return _build_status(
-            "omlx",
-            False,
-            endpoint=endpoint,
-            models=[],
-            reason="oMLX server not reachable",
-            setup_hint=(
-                "Start oMLX and download an MLX model via the admin dashboard."
-            ),
-            details={"error": str(exc)},
-        )
+    return probes.probe_omlx_status(model, base_url, api_key, probe_timeout)
 
 
 def _probe_ollama(
@@ -116,40 +40,7 @@ def _probe_ollama(
     port: Optional[int],
     probe_timeout: float,
 ) -> ProviderStatus:
-    host_value = host or DEFAULT_URL
-    port_value = int(port or DEFAULT_PORT)
-    endpoint = f"{host_value}:{port_value}"
-    try:
-        if not server_is_up(host_value, port_value):
-            return _build_status(
-                "ollama",
-                False,
-                endpoint=endpoint,
-                models=[],
-                reason="Ollama server not reachable",
-                setup_hint="Start Ollama and pull the requested model with `ollama pull <model>`.",
-            )
-
-        models = list_local_models()
-        ready = _model_is_available(model, models)
-        return _build_status(
-            "ollama",
-            ready,
-            endpoint=endpoint,
-            models=models,
-            reason="" if ready else "requested model not found",
-            setup_hint="Pull the requested model with `ollama pull <model>`.",
-        )
-    except Exception as exc:
-        return _build_status(
-            "ollama",
-            False,
-            endpoint=endpoint,
-            models=[],
-            reason="Ollama probe failed",
-            setup_hint="Start Ollama and pull the requested model with `ollama pull <model>`.",
-            details={"error": str(exc)},
-        )
+    return probes.probe_ollama_status(model, host, port, probe_timeout)
 
 
 def _probe_openai(
@@ -160,9 +51,9 @@ def _probe_openai(
     try:
         provider = OpenAIProvider(api_key=api_key, model=model, base_url=base_url)
         models = provider.list_models()
-        ready = _model_is_available(model, models)
+        ready = probes._model_is_available(model, models)
         endpoint = base_url or getattr(provider, "base_url", None) or "https://api.openai.com/v1"
-        return _build_status(
+        return probes._build_status(
             "openai",
             ready,
             endpoint=endpoint,
@@ -171,7 +62,7 @@ def _probe_openai(
             setup_hint="Set OPENAI_API_KEY and optional OPENAI_BASE_URL if you are targeting a hosted OpenAI-compatible API.",
         )
     except Exception as exc:
-        return _build_status(
+        return probes._build_status(
             "openai",
             False,
             endpoint=base_url or "https://api.openai.com/v1",
@@ -186,7 +77,7 @@ def _probe_generic_provider(provider: str, model: Optional[str]) -> ProviderStat
     try:
         resolved = get_provider(provider, model=model)
         if resolved is None:
-            return _build_status(
+            return probes._build_status(
                 provider,
                 False,
                 reason=f"Unknown provider: {provider}",
@@ -196,7 +87,7 @@ def _probe_generic_provider(provider: str, model: Optional[str]) -> ProviderStat
         try:
             models = list(resolved.list_models())
         except Exception as exc:
-            return _build_status(
+            return probes._build_status(
                 provider,
                 False,
                 models=[],
@@ -204,9 +95,9 @@ def _probe_generic_provider(provider: str, model: Optional[str]) -> ProviderStat
                 setup_hint="Check provider configuration and API credentials.",
                 details={"error": str(exc)},
             )
-        ready = _model_is_available(model, models)
+        ready = probes._model_is_available(model, models)
         endpoint = getattr(resolved, "base_url", None) or getattr(resolved, "host", None)
-        return _build_status(
+        return probes._build_status(
             provider,
             ready,
             endpoint=str(endpoint) if endpoint is not None else None,
@@ -215,7 +106,7 @@ def _probe_generic_provider(provider: str, model: Optional[str]) -> ProviderStat
             setup_hint="Check provider configuration and API credentials.",
         )
     except Exception as exc:
-        return _build_status(
+        return probes._build_status(
             provider,
             False,
             reason="Provider probe failed",
@@ -254,7 +145,7 @@ def check_provider_ready(
             if status.ready:
                 return status
         if _is_macos_apple_silicon():
-            return _build_status(
+            return probes._build_status(
                 "auto",
                 False,
                 reason="No local backend was ready on macOS Apple Silicon",
@@ -262,7 +153,7 @@ def check_provider_ready(
                     "Start oMLX at http://localhost:8000/v1 or Ollama at http://127.0.0.1:11434, then ensure the requested model is available."
                 ),
             )
-        return _build_status(
+        return probes._build_status(
             "auto",
             False,
             reason="No suitable provider was ready",
