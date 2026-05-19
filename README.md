@@ -24,6 +24,12 @@ pip install modelito
 `pip install modelito` does not install FastAPI/Uvicorn. Those are optional
 and only needed for `modelito-serve`.
 
+Release publishing uses PyPI trusted publishing through
+`.github/workflows/publish.yml`. The PyPI project must have a matching trusted
+publisher configured for repository `krahd/modelito`, workflow `publish.yml`,
+and environment `pypi`. The workflow also checks that the tag version matches
+`pyproject.toml` before building or publishing.
+
 For development / contributor setup (editable install and dev dependencies):
 
 ```sh
@@ -204,11 +210,16 @@ This software is provided "AS IS" and without warranties of any kind. See
 the included `LICENSE` file for the full MIT license text.
 
 CI / Integration Tests
-----------------------
 
 This repository includes a consolidated GitHub Actions workflow at
 `.github/workflows/ci.yml`. It runs linting/type checks and unit tests for pull
 requests and pushes to `main`, and builds docs on non-PR runs.
+
+Release publishing uses PyPI trusted publishing through
+`.github/workflows/publish.yml`. The PyPI project must have a matching trusted
+publisher configured for repository `krahd/modelito`, workflow `publish.yml`,
+and environment `pypi`. The workflow also checks that the tag version matches
+`pyproject.toml` before building or publishing.
 
 Ollama integration tests are intentionally gated and will only run when you
 explicitly enable them. To run integration tests locally or in CI set the

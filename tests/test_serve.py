@@ -15,10 +15,12 @@ from modelito.serve import (
     _chat_completion_response,
     _embedding_response,
     _error_payload,
+    _error_kind_for_exception,
     _http_status_for_exception,
     _messages_from_payload,
     _models_response,
     _requires_raw_tool_support,
+    _read_json_payload,
     _stream_completion_events,
     _stream_response_body,
     build_runtime,
@@ -39,6 +41,11 @@ class _FakeRequest:
 class _InvalidJSONRequest:
     async def json(self):
         raise ValueError("invalid json")
+
+
+class _ArrayJSONRequest:
+    async def json(self):
+        return [1, 2, 3]
 
 
 class _FakeJSONResponse:
@@ -204,6 +211,43 @@ def test_http_status_mapping_for_exceptions():
     assert _http_status_for_exception(ModelitoConnectionError("offline")) == 503
     assert _http_status_for_exception(ModelitoProviderError("provider")) == 502
     assert _http_status_for_exception(RuntimeError("boom")) == 500
+
+
+def test_error_kind_mapping_for_exceptions():
+    assert _error_kind_for_exception(ValueError("bad")) == "modelito_bad_request"
+    assert _error_kind_for_exception(TypeError("bad")) == "modelito_bad_request"
+    assert _error_kind_for_exception(ModelitoBadResponseError(
+        "bad upstream")) == "modelito_bad_response"
+    assert _error_kind_for_exception(ModelitoModelNotFoundError(
+        "missing")) == "modelito_model_not_found"
+    assert _error_kind_for_exception(ModelitoTimeoutError("timeout")) == "modelito_timeout_error"
+    assert _error_kind_for_exception(TimeoutError("timeout")) == "modelito_timeout_error"
+    assert _error_kind_for_exception(ModelitoConnectionError(
+        "offline")) == "modelito_connection_error"
+    assert _error_kind_for_exception(ModelitoProviderError("provider")) == "modelito_provider_error"
+    assert _error_kind_for_exception(RuntimeError("boom")) == "modelito_internal_error"
+
+
+def test_read_json_payload_validation():
+    async def _run(request):
+        return await _read_json_payload(request)
+
+    try:
+        asyncio.run(_run(_InvalidJSONRequest()))
+    except ValueError as exc:
+        assert "valid JSON" in str(exc)
+    else:
+        raise AssertionError("invalid JSON should fail")
+
+    try:
+        asyncio.run(_run(_ArrayJSONRequest()))
+    except ValueError as exc:
+        assert "JSON object" in str(exc)
+    else:
+        raise AssertionError("array JSON should fail")
+
+    payload = asyncio.run(_run(_FakeRequest({"hello": "world"})))
+    assert payload == {"hello": "world"}
 
 
 def test_models_response_returns_openai_shape():
@@ -715,9 +759,42 @@ def test_raw_provider_non_dict_response_maps_to_502(monkeypatch):
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest({"messages": [{"role": "user", "content": "hello"}]})))
+    response = asyncio.run(handler(_FakeRequest(
+        {"messages": [{"role": "user", "content": "hello"}]})))
     _assert_openai_error(response, 502)
     assert response.payload["error"]["type"] == "modelito_bad_response"
+
+
+def test_raw_provider_bad_request_payload_is_not_over_validated(monkeypatch):
+    class EchoRawProvider:
+        def __init__(self):
+            self.last_payload = None
+
+        def raw_complete(self, payload):
+            self.last_payload = dict(payload)
+            return {
+                "id": "chatcmpl-echo",
+                "object": "chat.completion",
+                "created": 0,
+                "model": payload.get("model", "omlx"),
+                "choices": [{"index": 0, "message": {"role": "assistant", "content": "ok"}, "finish_reason": "stop"}],
+            }
+
+        def raw_stream(self, payload):
+            self.last_payload = dict(payload)
+            yield {"id": "chunk-1", "object": "chat.completion.chunk", "choices": [{"index": 0, "delta": {"content": "ok"}, "finish_reason": None}]}
+
+    raw_provider = EchoRawProvider()
+    runtime = _build_runtime(raw_provider=raw_provider)
+    _patch_server_deps(monkeypatch)
+    app = create_app(runtime)
+    handler = app.routes[("POST", "/v1/chat/completions")]
+
+    response = asyncio.run(handler(_FakeRequest(
+        {"model": "omlx", "messages": "hello", "extra": {"x": 1}})))
+    assert response.status_code == 200
+    assert raw_provider.last_payload["messages"] == "hello"
+    assert raw_provider.last_payload["extra"] == {"x": 1}
 
 
 def test_raw_provider_backend_error_maps_to_openai_error(monkeypatch):
@@ -733,6 +810,7 @@ def test_raw_provider_backend_error_maps_to_openai_error(monkeypatch):
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest({"messages": [{"role": "user", "content": "hello"}]})))
+    response = asyncio.run(handler(_FakeRequest(
+        {"messages": [{"role": "user", "content": "hello"}]})))
     _assert_openai_error(response, 502)
     assert response.payload["error"]["type"] == "modelito_provider_error"

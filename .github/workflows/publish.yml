@@ -23,6 +23,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate tag matches package version
+        run: |
+          python - <<'PY'
+          import os
+          import tomllib
+
+          ref = os.environ.get("GITHUB_REF_NAME", "")
+          if not ref.startswith("v"):
+              raise SystemExit(f"release tag must start with v, got {ref!r}")
+
+          tag_version = ref[1:]
+          with open("pyproject.toml", "rb") as f:
+              package_version = tomllib.load(f)["project"]["version"]
+
+          if tag_version != package_version:
+              raise SystemExit(
+                  f"release tag v{tag_version} does not match pyproject version {package_version}"
+              )
+
+          print(f"release version OK: {package_version}")
+          PY
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
