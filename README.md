@@ -79,7 +79,7 @@ See the `docs/` folder for more details:
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) — Core design, Provider Protocol, and SDK hierarchy
 - [USAGE.md](docs/USAGE.md) — Usage guide and examples
 - [local-openai-compatible.md](docs/local-openai-compatible.md) — Using local OpenAI-compatible servers
-- [INSTALL.md](docs/INSTALL.md), [API.md](docs/API.md) — Installation and API reference
+- [INSTALL.md](docs/INSTALL.md), [API.md](docs/API.md), [RELEASE.md](docs/RELEASE.md) — Installation, API reference, and release checklist
 
 Providers
 ---------
