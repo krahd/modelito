@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-19 01:21
+Last updated: 2026-05-19 01:32
 
 ## Project purpose
 
@@ -53,41 +53,50 @@ Phase 4 server-contract hardening and provider cleanup pass complete:
 19. Latest review-feedback fixes made fallback streaming lazy, scoped warning headers to tool fallbacks, shared readiness probes between client and doctor, and cleaned up package exports.
 
 - `modelito-serve` exposes `/v1/models`, `/v1/chat/completions`, and `/v1/embeddings` for Pi and other OpenAI-compatible consumers.
+- Pi/tool-calling should use raw-capable OpenAI-compatible providers such as `OMLXProvider` or hosted `OpenAIProvider`; Ollama raw passthrough remains explicitly deferred.
 - Validation status is recorded in the current session snapshot under Recent changes.
 
 ## Architecture overview
 
-modelito exposes a small common provider protocol, concrete adapters, connectors, and helper modules. Optional provider SDKs are used when installed; otherwise providers fall back to deterministic behaviour. Ollama service and API helpers provide local-model administration while remaining explicitly gated for integration tests.
+modelito exposes a small common provider protocol, concrete adapters, connectors, and helper modules. Optional provider SDKs are used when installed; otherwise providers fall back to deterministic behaviour. Detailed architecture policy lives in `docs/ARCHITECTURE.md`. The SVGs below are intentionally compact and current-state oriented. Ollama service and API helpers provide local-model administration while remaining explicitly gated for integration tests.
 
 ### Architecture diagram
 
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="500" viewBox="0 0 1040 500" role="img" aria-labelledby="modelito-arch-title modelito-arch-desc">
   <title id="modelito-arch-title">modelito architecture</title>
-  <desc id="modelito-arch-desc">Core protocols connect clients to provider adapters, streaming and embedding surfaces, Ollama administration helpers, and package documentation/tests.</desc>
+  <desc id="modelito-arch-desc">Core protocols connect clients, Pi and OpenAI-compatible callers, modelito-serve, provider adapters, shared probes, model metadata helpers, and package documentation/tests.</desc>
   <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" /></marker></defs>
-  <rect x="40" y="190" width="170" height="75" rx="10" fill="none" stroke="black" /><text x="125" y="220" text-anchor="middle" font-size="14">Applications</text><text x="125" y="242" text-anchor="middle" font-size="12">and examples</text>
-  <rect x="280" y="170" width="200" height="105" rx="10" fill="none" stroke="black" /><text x="380" y="205" text-anchor="middle" font-size="14">Core API</text><text x="380" y="228" text-anchor="middle" font-size="12">Provider, Message,</text><text x="380" y="246" text-anchor="middle" font-size="12">Response, registry</text>
-  <rect x="560" y="40" width="190" height="80" rx="10" fill="none" stroke="black" /><text x="655" y="72" text-anchor="middle" font-size="14">Hosted adapters</text><text x="655" y="94" text-anchor="middle" font-size="12">OpenAI, Claude,</text><text x="655" y="112" text-anchor="middle" font-size="12">Gemini, Grok</text>
-  <rect x="560" y="160" width="190" height="80" rx="10" fill="none" stroke="black" /><text x="655" y="192" text-anchor="middle" font-size="14">Local Ollama</text><text x="655" y="214" text-anchor="middle" font-size="12">provider and API</text>
-  <rect x="560" y="280" width="190" height="80" rx="10" fill="none" stroke="black" /><text x="655" y="312" text-anchor="middle" font-size="14">Streaming and</text><text x="655" y="334" text-anchor="middle" font-size="12">embeddings</text>
-  <rect x="805" y="150" width="190" height="100" rx="10" fill="none" stroke="black" /><text x="900" y="184" text-anchor="middle" font-size="14">Ollama admin</text><text x="900" y="206" text-anchor="middle" font-size="12">install, lifecycle,</text><text x="900" y="224" text-anchor="middle" font-size="12">catalog, readiness</text>
-  <rect x="280" y="365" width="200" height="70" rx="10" fill="none" stroke="black" /><text x="380" y="394" text-anchor="middle" font-size="14">docs and tests</text><text x="380" y="414" text-anchor="middle" font-size="12">CI, build, release</text>
-  <line x1="210" y1="227" x2="280" y2="222" stroke="black" marker-end="url(#arrow)" /><line x1="480" y1="195" x2="560" y2="80" stroke="black" marker-end="url(#arrow)" /><line x1="480" y1="220" x2="560" y2="200" stroke="black" marker-end="url(#arrow)" /><line x1="480" y1="250" x2="560" y2="320" stroke="black" marker-end="url(#arrow)" /><line x1="750" y1="200" x2="805" y2="200" stroke="black" marker-end="url(#arrow)" /><line x1="380" y1="275" x2="380" y2="365" stroke="black" marker-end="url(#arrow)" />
+  <rect x="30" y="185" width="145" height="85" rx="10" fill="none" stroke="black" /><text x="102" y="218" text-anchor="middle" font-size="14">Pi / OpenAI</text><text x="102" y="240" text-anchor="middle" font-size="12">compatible clients</text>
+  <rect x="200" y="55" width="165" height="85" rx="10" fill="none" stroke="black" /><text x="282" y="88" text-anchor="middle" font-size="14">modelito-serve</text><text x="282" y="110" text-anchor="middle" font-size="12">/v1/models</text><text x="282" y="128" text-anchor="middle" font-size="12">/v1/chat/completions</text>
+  <rect x="200" y="190" width="165" height="85" rx="10" fill="none" stroke="black" /><text x="282" y="223" text-anchor="middle" font-size="14">Client</text><text x="282" y="245" text-anchor="middle" font-size="12">chat / json / parsed</text><text x="282" y="263" text-anchor="middle" font-size="12">package-root exports</text>
+  <rect x="400" y="55" width="170" height="85" rx="10" fill="none" stroke="black" /><text x="485" y="88" text-anchor="middle" font-size="14">Raw-capable path</text><text x="485" y="110" text-anchor="middle" font-size="12">RawChatProvider,</text><text x="485" y="128" text-anchor="middle" font-size="12">OpenAICompat, OMLX, OpenAI</text>
+  <rect x="400" y="190" width="170" height="85" rx="10" fill="none" stroke="black" /><text x="485" y="223" text-anchor="middle" font-size="14">Fallback path</text><text x="485" y="245" text-anchor="middle" font-size="12">summarize / stream</text><text x="485" y="263" text-anchor="middle" font-size="12">Response / dict output</text>
+  <rect x="600" y="40" width="180" height="95" rx="10" fill="none" stroke="black" /><text x="690" y="74" text-anchor="middle" font-size="14">Hosted adapters</text><text x="690" y="96" text-anchor="middle" font-size="12">OpenAI, Claude,</text><text x="690" y="114" text-anchor="middle" font-size="12">Gemini, Grok</text>
+  <rect x="600" y="155" width="180" height="95" rx="10" fill="none" stroke="black" /><text x="690" y="189" text-anchor="middle" font-size="14">Shared probes</text><text x="690" y="211" text-anchor="middle" font-size="12">modelito/probes.py</text><text x="690" y="229" text-anchor="middle" font-size="12">modelito-doctor</text>
+  <rect x="600" y="270" width="180" height="95" rx="10" fill="none" stroke="black" /><text x="690" y="304" text-anchor="middle" font-size="14">Local Ollama</text><text x="690" y="326" text-anchor="middle" font-size="12">provider and admin</text><text x="690" y="344" text-anchor="middle" font-size="12">raw passthrough deferred</text>
+  <rect x="815" y="40" width="180" height="95" rx="10" fill="none" stroke="black" /><text x="905" y="74" text-anchor="middle" font-size="14">Metadata helpers</text><text x="905" y="96" text-anchor="middle" font-size="12">ModelMetadata,</text><text x="905" y="114" text-anchor="middle" font-size="12">get_model_info, infer</text>
+  <rect x="815" y="270" width="180" height="95" rx="10" fill="none" stroke="black" /><text x="905" y="304" text-anchor="middle" font-size="14">docs and tests</text><text x="905" y="326" text-anchor="middle" font-size="12">CI, build, release</text><text x="905" y="344" text-anchor="middle" font-size="12">current-state snapshot</text>
+  <line x1="175" y1="227" x2="200" y2="227" stroke="black" marker-end="url(#arrow)" /><line x1="365" y1="97" x2="400" y2="97" stroke="black" marker-end="url(#arrow)" /><line x1="365" y1="232" x2="400" y2="232" stroke="black" marker-end="url(#arrow)" /><line x1="570" y1="97" x2="600" y2="87" stroke="black" marker-end="url(#arrow)" /><line x1="570" y1="232" x2="600" y2="202" stroke="black" marker-end="url(#arrow)" /><line x1="780" y1="87" x2="815" y2="87" stroke="black" marker-end="url(#arrow)" /><line x1="780" y1="202" x2="815" y2="202" stroke="black" marker-end="url(#arrow)" /><line x1="690" y1="250" x2="690" y2="270" stroke="black" marker-end="url(#arrow)" />
 </svg>
 
 ### Flow chart
 
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="350" viewBox="0 0 1040 350" role="img" aria-labelledby="modelito-flow-title modelito-flow-desc">
   <title id="modelito-flow-title">modelito provider request flow</title>
-  <desc id="modelito-flow-desc">An application builds messages, selects a provider, modelito normalises the request, calls an SDK/local backend or fallback, then returns normalised text or chunks.</desc>
+  <desc id="modelito-flow-desc">Pi or OpenAI-compatible clients call modelito-serve or the Client API, modelito chooses a raw-capable or fallback provider path, shared probes assist detection, and responses are returned as parsed data or text.</desc>
   <defs><marker id="flowarrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" /></marker></defs>
-  <rect x="30" y="140" width="135" height="65" rx="10" fill="none" stroke="black" /><text x="97" y="168" text-anchor="middle" font-size="12">Build</text><text x="97" y="186" text-anchor="middle" font-size="12">messages</text>
-  <rect x="210" y="140" width="135" height="65" rx="10" fill="none" stroke="black" /><text x="277" y="168" text-anchor="middle" font-size="12">Select</text><text x="277" y="186" text-anchor="middle" font-size="12">provider</text>
-  <rect x="390" y="140" width="135" height="65" rx="10" fill="none" stroke="black" /><text x="457" y="168" text-anchor="middle" font-size="12">Normalise</text><text x="457" y="186" text-anchor="middle" font-size="12">request</text>
-  <rect x="570" y="140" width="135" height="65" rx="10" fill="none" stroke="black" /><text x="637" y="168" text-anchor="middle" font-size="12">Call SDK,</text><text x="637" y="186" text-anchor="middle" font-size="12">Ollama, fallback</text>
-  <rect x="750" y="140" width="135" height="65" rx="10" fill="none" stroke="black" /><text x="817" y="168" text-anchor="middle" font-size="12">Normalise</text><text x="817" y="186" text-anchor="middle" font-size="12">response</text>
-  <rect x="930" y="140" width="90" height="65" rx="10" fill="none" stroke="black" /><text x="975" y="168" text-anchor="middle" font-size="12">Return</text><text x="975" y="186" text-anchor="middle" font-size="12">text</text>
-  <line x1="165" y1="172" x2="210" y2="172" stroke="black" marker-end="url(#flowarrow)" /><line x1="345" y1="172" x2="390" y2="172" stroke="black" marker-end="url(#flowarrow)" /><line x1="525" y1="172" x2="570" y2="172" stroke="black" marker-end="url(#flowarrow)" /><line x1="705" y1="172" x2="750" y2="172" stroke="black" marker-end="url(#flowarrow)" /><line x1="885" y1="172" x2="930" y2="172" stroke="black" marker-end="url(#flowarrow)" />
+  <rect x="20" y="135" width="120" height="70" rx="10" fill="none" stroke="black" /><text x="80" y="163" text-anchor="middle" font-size="12">Pi / OpenAI</text><text x="80" y="181" text-anchor="middle" font-size="12">clients</text>
+  <rect x="165" y="135" width="120" height="70" rx="10" fill="none" stroke="black" /><text x="225" y="163" text-anchor="middle" font-size="12">modelito-serve</text><text x="225" y="181" text-anchor="middle" font-size="12">/v1/models</text>
+  <rect x="310" y="135" width="120" height="70" rx="10" fill="none" stroke="black" /><text x="370" y="163" text-anchor="middle" font-size="12">/chat/completions</text><text x="370" y="181" text-anchor="middle" font-size="12">/embeddings</text>
+  <rect x="455" y="135" width="120" height="70" rx="10" fill="none" stroke="black" /><text x="515" y="163" text-anchor="middle" font-size="12">Raw-capable</text><text x="515" y="181" text-anchor="middle" font-size="12">providers</text>
+  <rect x="600" y="135" width="120" height="70" rx="10" fill="none" stroke="black" /><text x="660" y="163" text-anchor="middle" font-size="12">RawChatProvider</text><text x="660" y="181" text-anchor="middle" font-size="12">OpenAICompat</text>
+  <rect x="745" y="135" width="120" height="70" rx="10" fill="none" stroke="black" /><text x="805" y="163" text-anchor="middle" font-size="12">OMLX / OpenAI</text><text x="805" y="181" text-anchor="middle" font-size="12">raw passthrough</text>
+  <rect x="890" y="135" width="120" height="70" rx="10" fill="none" stroke="black" /><text x="950" y="163" text-anchor="middle" font-size="12">Response</text><text x="950" y="181" text-anchor="middle" font-size="12">or parsed dict</text>
+  <rect x="455" y="240" width="120" height="65" rx="10" fill="none" stroke="black" /><text x="515" y="267" text-anchor="middle" font-size="12">Fallback path</text><text x="515" y="285" text-anchor="middle" font-size="12">summarize / stream</text>
+  <rect x="600" y="240" width="120" height="65" rx="10" fill="none" stroke="black" /><text x="660" y="267" text-anchor="middle" font-size="12">Non-raw</text><text x="660" y="285" text-anchor="middle" font-size="12">Response / text</text>
+  <rect x="745" y="240" width="120" height="65" rx="10" fill="none" stroke="black" /><text x="805" y="267" text-anchor="middle" font-size="12">Shared probes</text><text x="805" y="285" text-anchor="middle" font-size="12">modelito-doctor</text>
+  <rect x="890" y="240" width="120" height="65" rx="10" fill="none" stroke="black" /><text x="950" y="267" text-anchor="middle" font-size="12">Package root</text><text x="950" y="285" text-anchor="middle" font-size="12">exports</text>
+  <line x1="140" y1="170" x2="165" y2="170" stroke="black" marker-end="url(#flowarrow)" /><line x1="285" y1="170" x2="310" y2="170" stroke="black" marker-end="url(#flowarrow)" /><line x1="430" y1="170" x2="455" y2="170" stroke="black" marker-end="url(#flowarrow)" /><line x1="575" y1="170" x2="600" y2="170" stroke="black" marker-end="url(#flowarrow)" /><line x1="720" y1="170" x2="745" y2="170" stroke="black" marker-end="url(#flowarrow)" /><line x1="865" y1="170" x2="890" y2="170" stroke="black" marker-end="url(#flowarrow)" /><line x1="515" y1="205" x2="515" y2="240" stroke="black" marker-end="url(#flowarrow)" /><line x1="575" y1="273" x2="600" y2="273" stroke="black" marker-end="url(#flowarrow)" /><line x1="720" y1="273" x2="745" y2="273" stroke="black" marker-end="url(#flowarrow)" /><line x1="865" y1="273" x2="890" y2="273" stroke="black" marker-end="url(#flowarrow)" />
 </svg>
 
 ## Setup and run instructions
@@ -194,4 +203,4 @@ python -m twine check dist/*
 
 ---
 
-Last updated: 2026-05-19 01:21
+Last updated: 2026-05-19 01:32
