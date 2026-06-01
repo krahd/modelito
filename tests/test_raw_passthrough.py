@@ -10,7 +10,9 @@ from modelito.omlx import OMLXProvider
 
 class _FakeResponse:
     def __init__(self, lines):
-        self._lines = [item if isinstance(item, bytes) else item.encode("utf-8") for item in lines]
+        self._lines = [
+            item if isinstance(item, bytes) else item.encode("utf-8") for item in lines
+        ]
         self._idx = 0
 
     def read(self):
@@ -84,7 +86,8 @@ def test_openai_compatible_raw_complete_preserves_payload(monkeypatch):
     monkeypatch.setattr("modelito.openai_compat.urlopen", fake_urlopen)
 
     provider = OpenAICompatibleHTTPProvider(
-        base_url="http://example.test/v1", model="omlx", strict=True)
+        base_url="http://example.test/v1", model="omlx", strict=True
+    )
     raw = provider.raw_complete(payload)
 
     sent_payload = json.loads(captured["request"].data.decode("utf-8"))
@@ -103,9 +106,12 @@ def test_openai_compatible_raw_stream_preserves_chunks(monkeypatch):
         "tools": [{"type": "function", "function": {"name": "lookup"}}],
     }
     lines = [
-        'data: {"id":"chunk-1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}' + "\n",
-        'data: {"id":"chunk-1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_1","type":"function","function":{"name":"lookup","arguments":"{}"}}]},"finish_reason":null}]}' + "\n",
-        'data: {"id":"chunk-1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"done"},"finish_reason":null}]}' + "\n",
+        'data: {"id":"chunk-1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}'
+        + "\n",
+        'data: {"id":"chunk-1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_1","type":"function","function":{"name":"lookup","arguments":"{}"}}]},"finish_reason":null}]}'
+        + "\n",
+        'data: {"id":"chunk-1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"done"},"finish_reason":null}]}'
+        + "\n",
         "data: [DONE]\n",
     ]
 
@@ -116,14 +122,34 @@ def test_openai_compatible_raw_stream_preserves_chunks(monkeypatch):
     monkeypatch.setattr("modelito.openai_compat.urlopen", fake_urlopen)
 
     provider = OpenAICompatibleHTTPProvider(
-        base_url="http://example.test/v1", model="omlx", strict=True)
+        base_url="http://example.test/v1", model="omlx", strict=True
+    )
     events = list(provider.raw_stream(payload))
 
     sent_payload = json.loads(captured["request"].data.decode("utf-8"))
     assert sent_payload["stream"] is True
     assert sent_payload["model"] == "omlx"
-    assert events[1]["choices"][0]["delta"]["tool_calls"][0]["function"]["name"] == "lookup"
+    assert (
+        events[1]["choices"][0]["delta"]["tool_calls"][0]["function"]["name"]
+        == "lookup"
+    )
     assert events[2]["choices"][0]["delta"]["content"] == "done"
+
+
+def test_openai_compatible_fallback_uses_requested_model(monkeypatch):
+    def failing_urlopen(req, timeout=0):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("modelito.openai_compat.urlopen", failing_urlopen)
+
+    provider = OpenAICompatibleHTTPProvider(
+        base_url="http://example.test/v1", model="default-model", strict=False
+    )
+    result = provider.raw_complete(
+        {"model": "test-model", "messages": [{"role": "user", "content": "hello"}]}
+    )
+
+    assert result["model"] == "test-model"
 
 
 def test_omlx_inherits_raw_passthrough(monkeypatch):
@@ -156,7 +182,10 @@ def test_openai_provider_accepts_dict_messages_and_raw_tool_calls():
                                         {
                                             "id": "tool_call_1",
                                             "type": "function",
-                                            "function": {"name": "lookup", "arguments": "{}"},
+                                            "function": {
+                                                "name": "lookup",
+                                                "arguments": "{}",
+                                            },
                                         }
                                     ],
                                 },

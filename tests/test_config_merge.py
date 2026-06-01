@@ -10,31 +10,37 @@ def test_load_config_data_merge(tmp_path: Path):
     project = tmp_path / "project.json"
 
     base.write_text(
-        json.dumps({
-            "llm": {
-                "model": "base-model",
-                "model_timeouts": {"a": 1, "b": 2},
-                "timeout": 10,
+        json.dumps(
+            {
+                "llm": {
+                    "model": "base-model",
+                    "model_timeouts": {"a": 1, "b": 2},
+                    "timeout": 10,
+                }
             }
-        })
+        )
     )
 
     user.write_text(
-        json.dumps({
-            "llm": {
-                "model": "user-model",
-                "model_timeouts": {"b": 20, "c": 30},
+        json.dumps(
+            {
+                "llm": {
+                    "model": "user-model",
+                    "model_timeouts": {"b": 20, "c": 30},
+                }
             }
-        })
+        )
     )
 
     project.write_text(
-        json.dumps({
-            "llm": {
-                "last_served_model": "project-last",
-                "model_timeouts": {"c": 300},
+        json.dumps(
+            {
+                "llm": {
+                    "last_served_model": "project-last",
+                    "model_timeouts": {"c": 300},
+                }
             }
-        })
+        )
     )
 
     merged = load_config_data(str(base), str(user), str(project))

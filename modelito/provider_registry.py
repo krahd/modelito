@@ -1,4 +1,5 @@
 """Provider and embedder registry helpers for Modelito."""
+
 from inspect import signature, Parameter
 from typing import Any, Dict, List, Optional, Type
 from .provider import EmbeddingProvider, SyncProvider
@@ -25,6 +26,7 @@ PROVIDER_REGISTRY: Dict[str, Type] = {
 
 EMBEDDER_REGISTRY: Dict[str, Type] = dict(PROVIDER_REGISTRY)
 
+
 def get_provider(name: str, **kwargs: Any) -> Optional[SyncProvider]:
     """
     Factory to instantiate a provider by name.
@@ -39,7 +41,8 @@ def get_provider(name: str, **kwargs: Any) -> Optional[SyncProvider]:
         try:
             params = signature(cls.__init__).parameters
             accepts_var_kwargs = any(
-                param.kind == Parameter.VAR_KEYWORD for param in params.values())
+                param.kind == Parameter.VAR_KEYWORD for param in params.values()
+            )
             if accepts_var_kwargs:
                 return cls(**kwargs)
             filtered = {
@@ -60,7 +63,8 @@ def get_embedder(name: str, **kwargs: Any) -> Optional[EmbeddingProvider]:
         try:
             params = signature(cls.__init__).parameters
             accepts_var_kwargs = any(
-                param.kind == Parameter.VAR_KEYWORD for param in params.values())
+                param.kind == Parameter.VAR_KEYWORD for param in params.values()
+            )
             if accepts_var_kwargs:
                 return cls(**kwargs)
             filtered = {

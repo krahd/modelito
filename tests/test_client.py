@@ -35,7 +35,10 @@ class MetadataProvider:
 def test_client_stream_yields_provider_chunks():
     client = Client(provider=StreamingProvider())
 
-    assert list(client.stream([Message(role="user", content="hello")])) == ["one", "two"]
+    assert list(client.stream([Message(role="user", content="hello")])) == [
+        "one",
+        "two",
+    ]
 
 
 def test_client_model_metadata_uses_provider_when_available():
@@ -91,7 +94,9 @@ def test_client_auto_prefers_project_profile_provider(monkeypatch, tmp_path):
     monkeypatch.setattr(
         "modelito.client.Client._auto_select_provider",
         classmethod(
-            lambda cls, model, provider_kwargs, remote_provider_env_var, prefer, auto_probe_timeout: "openai"
+            lambda cls, model, provider_kwargs, remote_provider_env_var, prefer, auto_probe_timeout: (
+                "openai"
+            )
         ),
     )
 
@@ -115,7 +120,9 @@ def test_client_auto_prefers_env_provider_when_no_profile(monkeypatch):
     monkeypatch.setattr(
         "modelito.client.Client._auto_select_provider",
         classmethod(
-            lambda cls, model, provider_kwargs, remote_provider_env_var, prefer, auto_probe_timeout: "openai"
+            lambda cls, model, provider_kwargs, remote_provider_env_var, prefer, auto_probe_timeout: (
+                "openai"
+            )
         ),
     )
 
@@ -169,7 +176,9 @@ def test_client_auto_uses_omlx_on_macos_apple_silicon(monkeypatch):
     assert called["name"] == "omlx"
 
 
-def test_client_auto_raises_helpful_error_when_no_local_backend_on_macos_arm(monkeypatch):
+def test_client_auto_raises_helpful_error_when_no_local_backend_on_macos_arm(
+    monkeypatch,
+):
     monkeypatch.delenv("MODELITO_PROVIDER", raising=False)
     monkeypatch.setattr(
         "modelito.client.Client._provider_from_project_profile",
@@ -253,7 +262,9 @@ def test_client_and_doctor_share_omlx_probe_results(monkeypatch):
         reason="oMLX server not reachable",
         setup_hint="Start oMLX",
     )
-    monkeypatch.setattr("modelito.probes.probe_omlx_status", lambda *args, **kwargs: status)
+    monkeypatch.setattr(
+        "modelito.probes.probe_omlx_status", lambda *args, **kwargs: status
+    )
 
     client_probe = Client._omlx_probe("omlx", {}, 1.5)
     doctor_status = check_provider_ready("omlx", model="omlx")

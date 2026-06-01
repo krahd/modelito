@@ -21,7 +21,9 @@ def _catalog_path() -> Path:
     Returns:
         A :class:`pathlib.Path` pointing to the JSON catalog file.
     """
-    return Path(__file__).resolve().parent / "data" / "ollama_remote_timeout_catalog.json"
+    return (
+        Path(__file__).resolve().parent / "data" / "ollama_remote_timeout_catalog.json"
+    )
 
 
 def load_catalog() -> Dict[str, Any]:
@@ -55,14 +57,20 @@ def load_catalog() -> Dict[str, Any]:
     }
 
 
-def estimate_remote_timeout(model_name: str | None, input_tokens: int = 2048, concurrency: int = 1, with_source: bool = False) -> "int | Tuple[int, Dict[str, Any]]":
+def estimate_remote_timeout(
+    model_name: str | None,
+    input_tokens: int = 2048,
+    concurrency: int = 1,
+    with_source: bool = False,
+) -> "int | Tuple[int, Dict[str, Any]]":
     """Estimate a conservative timeout (in seconds) for calling a remote model.
 
     This wrapper returns the integer timeout. For a diagnostic breakdown of
     how the timeout was computed, use :func:`estimate_remote_timeout_details`.
     """
     t, details = estimate_remote_timeout_details(
-        model_name, input_tokens=input_tokens, concurrency=concurrency)
+        model_name, input_tokens=input_tokens, concurrency=concurrency
+    )
     return (t, details) if with_source else t
 
 
@@ -93,7 +101,9 @@ def estimate_remote_timeout_details(
         except Exception:
             continue
     if base_timeout is None:
-        base_timeout = int(size_bands[-1].get("timeout_seconds", 300)) if size_bands else 60
+        base_timeout = (
+            int(size_bands[-1].get("timeout_seconds", 300)) if size_bands else 60
+        )
 
     details: Dict[str, Any] = {
         "model": model_name,
@@ -127,11 +137,13 @@ def estimate_remote_timeout_details(
 
     # pattern overrides (regex)
     pattern_mult = None
-    for patt in (catalog.get("pattern_overrides") or []):
+    for patt in catalog.get("pattern_overrides") or []:
         try:
             if re.match(patt.get("pattern", ""), model or ""):
                 pattern_mult = float(patt.get("multiplier", 1.0))
-                details.setdefault("pattern_overrides_matched", []).append(patt.get("pattern"))
+                details.setdefault("pattern_overrides_matched", []).append(
+                    patt.get("pattern")
+                )
         except Exception:
             continue
 
@@ -158,7 +170,9 @@ def estimate_remote_timeout_details(
     final_multiplier = max(float(m) for m in multipliers)
 
     # concurrency adjustment (linear fallback)
-    per_extra = float((catalog.get("concurrency_factor") or {}).get("per_extra_request", 1.15))
+    per_extra = float(
+        (catalog.get("concurrency_factor") or {}).get("per_extra_request", 1.15)
+    )
     concurrency_multiplier = 1.0 + max(0, int(concurrency) - 1) * per_extra
 
     timeout = int(max(5, base_timeout * final_multiplier * concurrency_multiplier))

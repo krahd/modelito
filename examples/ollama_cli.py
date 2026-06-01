@@ -4,9 +4,16 @@
 This script is safe to run offline; functions will return empty lists or False
 when the `ollama` CLI is not present.
 """
+
 from __future__ import annotations
 
-from modelito.ollama_service import get_ollama_binary, list_local_models, list_remote_models, server_is_up, endpoint_url
+from modelito.ollama_service import (
+    get_ollama_binary,
+    list_local_models,
+    list_remote_models,
+    server_is_up,
+    endpoint_url,
+)
 
 
 def main() -> None:

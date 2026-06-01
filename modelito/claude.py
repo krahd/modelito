@@ -5,12 +5,14 @@ to call the SDK for completions. When the SDK is unavailable or the call
 fails, it falls back to a deterministic join of message contents for
 offline-friendly behavior.
 """
+
 from __future__ import annotations
 import importlib
 
 from typing import Any, Iterable, List, Optional
 from .messages import Message, Response
 from types import ModuleType
+
 
 def _extract_text_from_response(res: Any) -> str:
     try:
@@ -47,7 +49,12 @@ class ClaudeProvider:
     to an offline stub when calls fail.
     """
 
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None, client: Any = None):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        client: Any = None,
+    ):
         self.api_key = api_key
         self.model = model or "claude-2.1"
         self._client = client
@@ -61,14 +68,20 @@ class ClaudeProvider:
             try:
                 if hasattr(self._anthropic, "Anthropic"):
                     try:
-                        self._client = self._anthropic.Anthropic(
-                            api_key=api_key) if api_key else self._anthropic.Anthropic()
+                        self._client = (
+                            self._anthropic.Anthropic(api_key=api_key)
+                            if api_key
+                            else self._anthropic.Anthropic()
+                        )
                     except Exception:
                         self._client = None
                 elif hasattr(self._anthropic, "Client"):
                     try:
-                        self._client = self._anthropic.Client(
-                            api_key=api_key) if api_key else self._anthropic.Client()
+                        self._client = (
+                            self._anthropic.Client(api_key=api_key)
+                            if api_key
+                            else self._anthropic.Client()
+                        )
                     except Exception:
                         self._client = None
             except Exception:
@@ -86,18 +99,23 @@ class ClaudeProvider:
             pass
         return []
 
-    def summarize(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> str:
+    def summarize(
+        self,
+        messages: Iterable[Message | str],
+        settings: Optional[dict[str, Any]] = None,
+    ) -> str:
         def _flatten(msgs: Any) -> str:
             try:
                 parts = []
-                for m in (msgs or []):
+                for m in msgs or []:
                     if isinstance(m, Message):
                         parts.append(m.content)
                     elif isinstance(m, str):
                         parts.append(m)
                     else:
                         raise TypeError(
-                            "ClaudeProvider.summarize requires modelito.messages.Message instances; dicts are not supported")
+                            "ClaudeProvider.summarize requires modelito.messages.Message instances; dicts are not supported"
+                        )
                 return "\n".join(p for p in parts if p)
             except Exception:
                 return ""
@@ -108,10 +126,13 @@ class ClaudeProvider:
             try:
                 client = self._client
                 # modern: client.completions.create
-                if hasattr(client, "completions") and hasattr(client.completions, "create"):
+                if hasattr(client, "completions") and hasattr(
+                    client.completions, "create"
+                ):
                     try:
                         res = client.completions.create(
-                            model=self.model, prompt=prompt, **(settings or {}))
+                            model=self.model, prompt=prompt, **(settings or {})
+                        )
                         text = _extract_text_from_response(res)
                         if text:
                             return text
@@ -121,7 +142,8 @@ class ClaudeProvider:
                 if hasattr(client, "create_completion"):
                     try:
                         res = client.create_completion(
-                            model=self.model, prompt=prompt, **(settings or {}))
+                            model=self.model, prompt=prompt, **(settings or {})
+                        )
                         text = _extract_text_from_response(res)
                         if text:
                             return text
@@ -136,24 +158,30 @@ class ClaudeProvider:
         except Exception:
             return ""
 
-    def stream(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
+    def stream(
+        self,
+        messages: Iterable[Message | str],
+        settings: Optional[dict[str, Any]] = None,
+    ) -> Iterable[str]:
         """SDK-aware streaming for Claude.
 
         Try several common client shapes for streaming completions and
         yield incremental text chunks. Falls back to deterministic
         chunking via `summarize()` when streaming isn't available.
         """
+
         def _flatten(msgs: Any) -> str:
             try:
                 parts = []
-                for m in (msgs or []):
+                for m in msgs or []:
                     if isinstance(m, Message):
                         parts.append(m.content)
                     elif isinstance(m, str):
                         parts.append(m)
                     else:
                         raise TypeError(
-                            "ClaudeProvider.stream requires modelito.messages.Message instances; dicts are not supported")
+                            "ClaudeProvider.stream requires modelito.messages.Message instances; dicts are not supported"
+                        )
                 return "\n".join(p for p in parts if p)
             except Exception:
                 return ""
@@ -215,7 +243,9 @@ class ClaudeProvider:
                 # Try modern streaming: client.completions.stream(...)
                 comps = getattr(client, "completions", None)
                 if comps is not None and hasattr(comps, "stream"):
-                    for e in comps.stream(model=self.model, prompt=prompt, **(settings or {})):
+                    for e in comps.stream(
+                        model=self.model, prompt=prompt, **(settings or {})
+                    ):
                         txt = _extract_delta_text(e)
                         if txt:
                             yield txt
@@ -224,7 +254,12 @@ class ClaudeProvider:
                 # Try create(..., stream=True)
                 if comps is not None and hasattr(comps, "create"):
                     try:
-                        for e in comps.create(model=self.model, prompt=prompt, stream=True, **(settings or {})):
+                        for e in comps.create(
+                            model=self.model,
+                            prompt=prompt,
+                            stream=True,
+                            **(settings or {}),
+                        ):
                             txt = _extract_delta_text(e)
                             if txt:
                                 yield txt
@@ -235,7 +270,12 @@ class ClaudeProvider:
                 # Try alternate client shape
                 if hasattr(client, "create_completion"):
                     try:
-                        for e in client.create_completion(model=self.model, prompt=prompt, stream=True, **(settings or {})):
+                        for e in client.create_completion(
+                            model=self.model,
+                            prompt=prompt,
+                            stream=True,
+                            **(settings or {}),
+                        ):
                             txt = _extract_delta_text(e)
                             if txt:
                                 yield txt
@@ -256,9 +296,13 @@ class ClaudeProvider:
         except Exception:
             pass
         for i in range(0, len(text), chunk_size):
-            yield text[i: i + chunk_size]
+            yield text[i : i + chunk_size]
 
-    def chat(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> Response:
+    def chat(
+        self,
+        messages: Iterable[Message | str],
+        settings: Optional[dict[str, Any]] = None,
+    ) -> Response:
         """Return a Response wrapping the summarize() result."""
         text = self.summarize(messages, settings=settings)
         return Response(text=text, model=self.model)

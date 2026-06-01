@@ -73,7 +73,7 @@ modelito-serve --help
 
 ## Deferred release-adjacent work
 
-- Ollama raw passthrough/tool-call preservation remains deferred.
+- Keep Ollama raw passthrough docs/tests aligned with current `/v1/chat/completions` behaviour.
 - Continue applying provider-addition policy in `docs/ARCHITECTURE.md`.
 - Keep FastAPI/Uvicorn optional under `[serve]`.
 - PyPI project-side trusted publisher settings must be verified externally before tagging.

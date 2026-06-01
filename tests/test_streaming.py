@@ -3,6 +3,7 @@ from modelito.openai import OpenAIProvider
 from modelito.mock_provider import MockProvider
 from modelito.messages import Message
 
+
 class DummyStreamingProvider:
     def stream(self, messages, settings=None):
         # simulate chunked output

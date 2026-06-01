@@ -5,6 +5,7 @@ OpenAI-compatible APIs via ``base_url`` when callers explicitly want that
 behavior, but local HTTP runtimes should generally use
 ``OpenAICompatibleHTTPProvider`` and its thin presets such as ``OMLXProvider``.
 """
+
 from __future__ import annotations
 import importlib
 
@@ -21,11 +22,8 @@ def _fallback_text_from_messages(messages: Any) -> str:
     except Exception:
         return ""
     return "\n".join(
-        item.get("content", "")
-        for item in flattened
-        if item.get("content")
+        item.get("content", "") for item in flattened if item.get("content")
     )
-
 
 
 def _extract_text_from_response(res: Any) -> str:
@@ -142,8 +140,11 @@ class OpenAIProvider:
                             kwargs["api_key"] = api_key
                         if base_url:
                             kwargs["base_url"] = base_url
-                        self._client = self._openai.OpenAI(
-                            **kwargs) if kwargs else self._openai.OpenAI()
+                        self._client = (
+                            self._openai.OpenAI(**kwargs)
+                            if kwargs
+                            else self._openai.OpenAI()
+                        )
                     except Exception:
                         self._client = None
             except Exception:
@@ -160,34 +161,53 @@ class OpenAIProvider:
                         return [getattr(m, "id", str(m)) for m in (data or [])]
                     except Exception:
                         pass
-                if self._openai is not None and hasattr(self._openai, "Model") and hasattr(self._openai.Model, "list"):
+                if (
+                    self._openai is not None
+                    and hasattr(self._openai, "Model")
+                    and hasattr(self._openai.Model, "list")
+                ):
                     try:
                         res = self._openai.Model.list()
-                        return [getattr(m, "id", str(m)) for m in getattr(res, "data", [])]
+                        return [
+                            getattr(m, "id", str(m)) for m in getattr(res, "data", [])
+                        ]
                     except Exception:
                         pass
         except Exception:
             pass
         return []
 
-    def summarize(self, messages: Iterable[Any], settings: Optional[dict[str, Any]] = None) -> str:
+    def summarize(
+        self, messages: Iterable[Any], settings: Optional[dict[str, Any]] = None
+    ) -> str:
         msgs = flatten_message_inputs(messages)
 
         # Try SDK-backed chat completion (modern and legacy APIs).
         if self._openai is not None:
             try:
                 client = self._client
-                if client and hasattr(client, "chat") and hasattr(client.chat, "completions") and hasattr(client.chat.completions, "create"):
+                if (
+                    client
+                    and hasattr(client, "chat")
+                    and hasattr(client.chat, "completions")
+                    and hasattr(client.chat.completions, "create")
+                ):
                     res = client.chat.completions.create(
-                        model=self.model, messages=msgs, **(settings or {}))
+                        model=self.model, messages=msgs, **(settings or {})
+                    )
                     text = _extract_text_from_response(res)
                     if text:
                         return text
 
                 oi = self._openai
-                if oi is not None and hasattr(oi, "ChatCompletion") and hasattr(oi.ChatCompletion, "create"):
+                if (
+                    oi is not None
+                    and hasattr(oi, "ChatCompletion")
+                    and hasattr(oi.ChatCompletion, "create")
+                ):
                     res = oi.ChatCompletion.create(
-                        model=self.model, messages=msgs, **(settings or {}))
+                        model=self.model, messages=msgs, **(settings or {})
+                    )
                     text = _extract_text_from_response(res)
                     if text:
                         return text
@@ -197,7 +217,7 @@ class OpenAIProvider:
         # Deterministic fallback — operate on the flattened `msgs` list
         try:
             parts = []
-            for m in (msgs or []):
+            for m in msgs or []:
                 if isinstance(m, dict):
                     parts.append(str(m.get("content", "") or ""))
                 else:
@@ -224,7 +244,11 @@ class OpenAIProvider:
                         return {"raw": plain}
 
                 oi = self._openai
-                if oi is not None and hasattr(oi, "ChatCompletion") and hasattr(oi.ChatCompletion, "create"):
+                if (
+                    oi is not None
+                    and hasattr(oi, "ChatCompletion")
+                    and hasattr(oi.ChatCompletion, "create")
+                ):
                     res = oi.ChatCompletion.create(**request_payload)
                     plain = _to_plain_data(res)
                     if isinstance(plain, dict):
@@ -279,7 +303,11 @@ class OpenAIProvider:
                             return
 
                 oi = self._openai
-                if oi is not None and hasattr(oi, "ChatCompletion") and hasattr(oi.ChatCompletion, "create"):
+                if (
+                    oi is not None
+                    and hasattr(oi, "ChatCompletion")
+                    and hasattr(oi.ChatCompletion, "create")
+                ):
                     for event in oi.ChatCompletion.create(**request_payload):
                         plain = _to_plain_data(event)
                         if isinstance(plain, dict):
@@ -318,14 +346,17 @@ class OpenAIProvider:
             "object": "chat.completion.chunk",
             "created": 0,
             "model": request_payload.get("model", self.model),
-            "choices": [
-                {"index": 0, "delta": {}, "finish_reason": "stop"}
-            ],
+            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
         }
 
-    def chat(self, messages: Iterable[Any], settings: Optional[dict[str, Any]] = None) -> Response:
-        payload: Dict[str, Any] = {"model": self.model,
-                                   "messages": flatten_message_inputs(messages), "stream": False}
+    def chat(
+        self, messages: Iterable[Any], settings: Optional[dict[str, Any]] = None
+    ) -> Response:
+        payload: Dict[str, Any] = {
+            "model": self.model,
+            "messages": flatten_message_inputs(messages),
+            "stream": False,
+        }
         if isinstance(settings, dict):
             payload.update(settings)
 
@@ -366,7 +397,9 @@ class OpenAIProvider:
             tokens_out=tokens_out,
         )
 
-    def stream(self, messages: Iterable[Any], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
+    def stream(
+        self, messages: Iterable[Any], settings: Optional[dict[str, Any]] = None
+    ) -> Iterable[str]:
         """Streaming provider surface attempting SDK streaming first.
 
         Tries several common client shapes (modern and legacy). Falls back
@@ -444,14 +477,21 @@ class OpenAIProvider:
                     comps = getattr(chat, "completions", None)
                     if comps is not None:
                         if hasattr(comps, "stream"):
-                            for evt in comps.stream(model=self.model, messages=msgs, **(settings or {})):
+                            for evt in comps.stream(
+                                model=self.model, messages=msgs, **(settings or {})
+                            ):
                                 txt = _extract_delta_text(evt)
                                 if txt:
                                     yield txt
                             return
                         if hasattr(comps, "create"):
                             try:
-                                for evt in comps.create(model=self.model, messages=msgs, stream=True, **(settings or {})):
+                                for evt in comps.create(
+                                    model=self.model,
+                                    messages=msgs,
+                                    stream=True,
+                                    **(settings or {}),
+                                ):
                                     txt = _extract_delta_text(evt)
                                     if txt:
                                         yield txt
@@ -462,9 +502,18 @@ class OpenAIProvider:
 
                 # legacy module-level ChatCompletion.create(..., stream=True)
                 oi = self._openai
-                if oi is not None and hasattr(oi, "ChatCompletion") and hasattr(oi.ChatCompletion, "create"):
+                if (
+                    oi is not None
+                    and hasattr(oi, "ChatCompletion")
+                    and hasattr(oi.ChatCompletion, "create")
+                ):
                     try:
-                        for evt in oi.ChatCompletion.create(model=self.model, messages=msgs, stream=True, **(settings or {})):
+                        for evt in oi.ChatCompletion.create(
+                            model=self.model,
+                            messages=msgs,
+                            stream=True,
+                            **(settings or {}),
+                        ):
                             txt = _extract_delta_text(evt)
                             if txt:
                                 yield txt
@@ -475,7 +524,9 @@ class OpenAIProvider:
                 # Newer "responses" streaming API
                 if hasattr(client, "responses") and hasattr(client.responses, "stream"):
                     try:
-                        for evt in client.responses.stream(model=self.model, input=msgs, **(settings or {})):
+                        for evt in client.responses.stream(
+                            model=self.model, input=msgs, **(settings or {})
+                        ):
                             txt = _extract_delta_text(evt)
                             if txt:
                                 yield txt
@@ -496,15 +547,19 @@ class OpenAIProvider:
         except Exception:
             pass
         for i in range(0, len(text), chunk_size):
-            yield text[i: i + chunk_size]
+            yield text[i : i + chunk_size]
 
-    async def acomplete(self, messages: Iterable[Any], settings: Optional[dict[str, Any]] = None) -> str:
+    async def acomplete(
+        self, messages: Iterable[Any], settings: Optional[dict[str, Any]] = None
+    ) -> str:
         """Async wrapper for `summarize()` using a threadpool executor."""
         try:
             import asyncio
 
             loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(None, lambda: self.summarize(messages, settings=settings))
+            return await loop.run_in_executor(
+                None, lambda: self.summarize(messages, settings=settings)
+            )
         except Exception:
             return self.summarize(messages, settings=settings)
 
@@ -521,10 +576,13 @@ class OpenAIProvider:
                 emb_api = getattr(client, "embeddings", None)
                 if emb_api is not None and hasattr(emb_api, "create"):
                     res = emb_api.create(input=list(texts or []), **kwargs)
-                    data = getattr(res, "data", None) if not isinstance(
-                        res, dict) else res.get("data")
+                    data = (
+                        getattr(res, "data", None)
+                        if not isinstance(res, dict)
+                        else res.get("data")
+                    )
                     out: List[List[float]] = []
-                    for item in (data or []):
+                    for item in data or []:
                         if isinstance(item, dict) and "embedding" in item:
                             out.append(list(item.get("embedding") or []))
                         else:
@@ -535,10 +593,13 @@ class OpenAIProvider:
                 # older shape: client.Embedding.create(input=[...])
                 if hasattr(client, "Embedding") and hasattr(client.Embedding, "create"):
                     res = client.Embedding.create(input=list(texts or []), **kwargs)
-                    data = getattr(res, "data", None) if not isinstance(
-                        res, dict) else res.get("data")
+                    data = (
+                        getattr(res, "data", None)
+                        if not isinstance(res, dict)
+                        else res.get("data")
+                    )
                     out = []
-                    for item in (data or []):
+                    for item in data or []:
                         if isinstance(item, dict) and "embedding" in item:
                             out.append(list(item.get("embedding") or []))
                         else:

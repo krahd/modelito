@@ -62,7 +62,7 @@ class Response:
 - `flatten_message_inputs` is exported from the package root for callers that need OpenAI-style dict conversion.
 - `ModelMetadata`, `get_model_info()`, `get_model_metadata()`, and `infer_model_metadata()` are exported for best-effort, conservative metadata lookups.
 - Shared provider readiness probes live in `modelito/probes.py` and are surfaced via `check_provider_ready()` and `python -m modelito doctor`.
-- `OllamaProvider` raw passthrough remains deferred; use raw-capable OpenAI-compatible providers for Pi or tool-calling workflows.
+- `OllamaProvider` supports raw passthrough via Ollama's `/v1/chat/completions`; use raw-capable providers when tool-calling and payload fidelity are required.
 
 ## Provider implementations
 
@@ -122,7 +122,7 @@ Tool-calling integrations should prefer the raw-capable path only when full requ
 - **Testing:** Tests run without network or binaries by hitting the shim tier.
 - **Resilience:** If an API is down or a CLI isn't installed, the fallback keeps things working (degraded).
 - **Flexibility:** Users can choose: bring your own SDK, use a local Ollama, or test offline.
-- **Pi / tool-calling:** use raw-capable OpenAI-compatible providers such as `OMLXProvider` or hosted `OpenAIProvider`; do not rely on Ollama raw passthrough yet.
+- **Pi / tool-calling:** use raw-capable providers (`OpenAICompatibleHTTPProvider`, `OMLXProvider`, hosted `OpenAIProvider`, or `OllamaProvider`) when full request/response fidelity is required.
 
 ## Connectors and higher-level API
 

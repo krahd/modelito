@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.4.6 - 2026-05-19
+
+- Added OpenAI-compatible raw passthrough support to `OllamaProvider` via Ollama's `/v1/chat/completions` endpoint.
+- Added `OllamaProvider.raw_complete()` and `OllamaProvider.raw_stream()` for preserving raw OpenAI-compatible chat payloads, including tool-call metadata.
+- Added tests for Ollama raw passthrough, including endpoint selection, stream parsing, payload immutability, strict malformed-event handling, fallback behaviour, and preservation of OpenAI-compatible generation fields.
+- Updated raw fallback responses in `OpenAICompatibleHTTPProvider` to preserve the requested model.
+- Updated documentation for Ollama raw passthrough, namespaced recording/replay helpers, and LiteLLM as a future optional adapter rather than a core dependency.
+
 ## 1.4.5 - 2026-05-19
 
 - Python 3.10 test compatibility fixed by using `tomli` as fallback for `tomllib` (available from Python 3.11+).

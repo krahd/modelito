@@ -1,12 +1,17 @@
 from modelito.mock_provider import MockProvider
 from modelito.messages import Message, Response
 
+
 def test_mockprovider_summarize():
     provider = MockProvider()
-    msgs = [Message(role="user", content="hello"), Message(role="assistant", content="world")]
+    msgs = [
+        Message(role="user", content="hello"),
+        Message(role="assistant", content="world"),
+    ]
     out = provider.summarize(msgs)
     assert out.startswith("[MOCK]")
     assert "hello" in out and "world" in out
+
 
 def test_mockprovider_stream():
     provider = MockProvider()
@@ -14,6 +19,7 @@ def test_mockprovider_stream():
     chunks = list(provider.stream(msgs))
     assert all(isinstance(c, str) for c in chunks)
     assert "[MOCK]" in "".join(chunks)
+
 
 def test_mockprovider_embed():
     provider = MockProvider()

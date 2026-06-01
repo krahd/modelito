@@ -3,14 +3,15 @@ About
 
 Modelito is a lightweight Python library that provides provider abstractions,
 compatibility shims, and small utilities for interacting with both local and
-cloud and local LLM runtimes (Ollama, OpenAI, Anthropic/Claude, Gemini, oMLX). The project
+cloud LLM runtimes (Ollama, OpenAI, Anthropic/Claude, Gemini, oMLX). The project
 is intentionally dependency-light: install optional extras when you need the
 real SDKs, otherwise the shims provide deterministic fallbacks suitable for
 testing and offline use.
 
 Current state: `modelito-serve` exposes `/v1/models`, `/v1/chat/completions`,
 and `/v1/embeddings`; raw-capable OpenAI-compatible providers are `OpenAICompatibleHTTPProvider`,
-`OMLXProvider`, and hosted `OpenAIProvider`; `OllamaProvider` raw passthrough remains deferred.
+`OMLXProvider`, hosted `OpenAIProvider`, and `OllamaProvider` via Ollama's
+`/v1/chat/completions` endpoint.
 
 Usage
 -----
@@ -186,6 +187,78 @@ python -m modelito.timeout_cli --model llama-2-13b --input-tokens 2048
 python -m modelito.timeout_calibrate --model llama-2-13b --outdir ./calib
 python -m modelito.timeout_calibrate --model llama-2-13b --execute
 ```
+
+OpenAI-compatible raw passthrough (tool calling)
+-------------------------------------------------
+
+The `raw_complete()` and `raw_stream()` methods enable direct OpenAI-compatible
+passthrough, preserving tool definitions and function calling metadata. This is
+especially useful with `OllamaProvider` when you want to forward structured
+tool-calling requests directly to Ollama's `/v1/chat/completions` endpoint.
+
+Example: Ollama with function calling
+
+```python
+from modelito import OllamaProvider
+
+provider = OllamaProvider(model="llama3.2")
+
+# Define a tool (function) that the model can call
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get the weather for a location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "The location to get weather for"
+                    }
+                },
+                "required": ["location"]
+            }
+        }
+    }
+]
+
+# Raw passthrough preserves tools and tool_choice fields
+payload = {
+    "model": "llama3.2",
+    "messages": [
+        {"role": "user", "content": "What is the weather in New York?"}
+    ],
+    "tools": tools,
+    "tool_choice": "auto",  # Let the model decide when to call tools
+    "temperature": 0.7
+}
+
+# Get the complete response (tool calls preserved)
+response = provider.raw_complete(payload)
+print(response)
+
+# Or stream the response
+for chunk in provider.raw_stream(payload):
+    if "choices" in chunk and chunk["choices"]:
+        delta = chunk["choices"][0].get("delta", {})
+        if "tool_calls" in delta:
+            print("Tool call:", delta["tool_calls"])
+```
+
+All OpenAI-compatible request fields are preserved: `temperature`, `top_p`,
+`max_tokens`, `stop`, `response_format`, etc. The response contains the full
+OpenAI-compatible structure with `choices`, `message`, `tool_calls`, and
+other metadata intact.
+
+Future adapters: LiteLLM
+------------------------
+
+**Note**: LiteLLM support is planned as a future optional adapter (`modelito[litellm]`)
+but is not yet implemented. The core `modelito` package maintains `dependencies = []`
+to stay lightweight and independent. A LiteLLM adapter, if added, would be distributed
+as an optional extra alongside other provider-specific integrations.
 
 Recording and replay
 --------------------

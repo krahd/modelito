@@ -1,5 +1,10 @@
 import modelito.probes as probes_module
-from modelito.doctor import ProviderStatus, check_provider_ready, format_provider_status, main
+from modelito.doctor import (
+    ProviderStatus,
+    check_provider_ready,
+    format_provider_status,
+    main,
+)
 
 
 def test_check_provider_ready_omlx_success(monkeypatch):
@@ -34,7 +39,9 @@ def test_check_provider_ready_ollama_failure(monkeypatch):
         ),
     )
 
-    status = check_provider_ready("ollama", model="qwen2.5:7b", host="http://127.0.0.1", port=11434)
+    status = check_provider_ready(
+        "ollama", model="qwen2.5:7b", host="http://127.0.0.1", port=11434
+    )
 
     assert status.ready is False
     assert status.provider == "ollama"
@@ -53,8 +60,10 @@ def test_check_provider_ready_auto_prefers_omlx_on_macos(monkeypatch):
             models=["omlx"],
         ),
     )
-    monkeypatch.setattr("modelito.doctor._probe_ollama", lambda *args, **
-                        kwargs: ProviderStatus(provider="ollama", ready=False))
+    monkeypatch.setattr(
+        "modelito.doctor._probe_ollama",
+        lambda *args, **kwargs: ProviderStatus(provider="ollama", ready=False),
+    )
 
     status = check_provider_ready("auto", model="omlx")
 
@@ -80,8 +89,12 @@ def test_format_provider_status_includes_core_fields():
 
 
 def test_doctor_main_json_output(monkeypatch, capsys):
-    monkeypatch.setattr("modelito.doctor.check_provider_ready", lambda *args, **
-                        kwargs: ProviderStatus(provider="omlx", ready=True, endpoint="http://localhost:8000/v1"))
+    monkeypatch.setattr(
+        "modelito.doctor.check_provider_ready",
+        lambda *args, **kwargs: ProviderStatus(
+            provider="omlx", ready=True, endpoint="http://localhost:8000/v1"
+        ),
+    )
 
     code = main(["doctor", "--provider", "omlx", "--json"])
     captured = capsys.readouterr()
@@ -91,8 +104,12 @@ def test_doctor_main_json_output(monkeypatch, capsys):
 
 
 def test_doctor_main_non_ready_returns_nonzero(monkeypatch, capsys):
-    monkeypatch.setattr("modelito.doctor.check_provider_ready", lambda *args, **
-                        kwargs: ProviderStatus(provider="ollama", ready=False, reason="offline"))
+    monkeypatch.setattr(
+        "modelito.doctor.check_provider_ready",
+        lambda *args, **kwargs: ProviderStatus(
+            provider="ollama", ready=False, reason="offline"
+        ),
+    )
 
     code = main(["doctor", "--provider", "ollama"])
     captured = capsys.readouterr()

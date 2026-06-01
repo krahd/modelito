@@ -3,6 +3,7 @@
 
 Run this script to exercise the shipped provider shims and connector.
 """
+
 from __future__ import annotations
 
 from modelito import (
@@ -23,8 +24,10 @@ def main() -> None:
     text = "Hello from modelito example. This is a short message."
     print("text:", text)
     print("tokens:", count_tokens(text))
-    print("timeout estimate:", estimate_remote_timeout(
-        "gpt-3.5-turbo", input_tokens=50, concurrency=1))
+    print(
+        "timeout estimate:",
+        estimate_remote_timeout("gpt-3.5-turbo", input_tokens=50, concurrency=1),
+    )
 
     provider = OllamaProvider()
     provider: Provider = OllamaProvider()

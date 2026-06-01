@@ -1,6 +1,9 @@
-
-
-from modelito.ollama_api import api_list_local, api_list_remote, api_delete_model, api_pull_stream
+from modelito.ollama_api import (
+    api_list_local,
+    api_list_remote,
+    api_delete_model,
+    api_pull_stream,
+)
 
 
 def test_api_list_local(monkeypatch):
@@ -10,7 +13,9 @@ def test_api_list_local(monkeypatch):
 
 
 def test_api_list_remote(monkeypatch):
-    monkeypatch.setattr("modelito.ollama_service.list_remote_models", lambda: ["r1", "r2"])
+    monkeypatch.setattr(
+        "modelito.ollama_service.list_remote_models", lambda: ["r1", "r2"]
+    )
     res = api_list_remote()
     assert res == ["r1", "r2"]
 

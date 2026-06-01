@@ -1,10 +1,18 @@
 """
 Standardized error types and diagnostics for Modelito
 """
+
 from typing import Optional, Any
 
+
 class ModelitoError(Exception):
-    def __init__(self, message: str, provider: Optional[str] = None, code: Optional[str] = None, details: Optional[Any] = None):
+    def __init__(
+        self,
+        message: str,
+        provider: Optional[str] = None,
+        code: Optional[str] = None,
+        details: Optional[Any] = None,
+    ):
         super().__init__(message)
         self.provider = provider
         self.code = code
@@ -19,20 +27,26 @@ class ModelitoError(Exception):
             "details": self.details,
         }
 
+
 class APIKeyError(ModelitoError):
     pass
+
 
 class ProviderError(ModelitoError):
     pass
 
+
 class ModelNotFoundError(ModelitoError):
     pass
+
 
 class StreamingError(ModelitoError):
     pass
 
+
 class EmbeddingError(ModelitoError):
     pass
+
 
 class DiagnosticInfo:
     def __init__(self, context: str, info: Any):

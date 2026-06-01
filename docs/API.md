@@ -38,8 +38,38 @@ surface. The primary exports (also visible via `from modelito import *`) are:
   JSON/YAML parsing.
 - `parse_host_port(host_url: str) -> Tuple[str, int]` — parse `host:port` or URL into `(host, port)`.
 - `LLMProviderError` — base exception used by connector/provider helpers.
-- Recording and replay: `RecordingProvider`, `ReplayProvider`, `CassetteFormatError`, `ReplayMissError` from `modelito.recording` — zero-dependency JSONL cassette wrappers for offline testing and debugging.
 - Ollama helpers: `server_is_up`, `endpoint_url`, `ensure_ollama_running`, `get_ollama_binary`, `install_ollama`, `start_ollama`, `stop_ollama`, `update_ollama`, `list_local_models`, `list_remote_models`, `download_model`, `delete_model`, `serve_model`, `change_ollama_config`, `run_ollama_command`, etc.
+
+Namespaced public helpers
+-------------------------
+
+Some functionality is grouped into namespaced submodules to keep the primary
+`modelito` namespace focused and stable. These helpers are part of the public
+API and are safe to import directly from their namespace:
+
+- **Recording and Replay**: `from modelito.recording import RecordingProvider, ReplayProvider, CassetteFormatError, ReplayMissError`
+  - `RecordingProvider` — wraps any modelito provider and persists request/response pairs to a JSONL cassette file for offline testing.
+  - `ReplayProvider` — reads a cassette file and returns stored responses without touching the network.
+  - Both are zero-dependency and work entirely with stdlib, making them suitable for tests and examples.
+
+Example usage:
+
+```python
+from modelito.mock_provider import MockProvider
+from modelito.messages import Message
+from modelito.recording import RecordingProvider, ReplayProvider
+
+# Record calls to a cassette
+provider = RecordingProvider(
+    wrapped=MockProvider(),
+    cassette="tests/cassettes/demo.jsonl"
+)
+response = provider.summarize(messages=[Message(role="user", content="Hello")])
+
+# Replay from cassette
+replay = ReplayProvider(cassette="tests/cassettes/demo.jsonl")
+cached_response = replay.summarize(messages=[Message(role="user", content="Hello")])
+```
 
 Key classes and functions
 -------------------------
@@ -157,6 +187,70 @@ Structured output helpers
 `Client.chat_parsed(messages, schema, settings=None, strict_schema=True) -> Any`
 : Request structured JSON output and return a parsed schema object when
   supported (dataclass or Pydantic-style model hooks).
+
+OpenAI-compatible raw passthrough
+----------------------------------
+
+The `raw_complete()` and `raw_stream()` methods enable direct passthrough of
+OpenAI-compatible request payloads to supported providers. These methods preserve
+all request fields (including `tools`, `tool_choice`, `response_format`, etc.)
+and return raw OpenAI-compatible response dicts or streams without transformation.
+
+**Availability**: `OpenAIProvider`, `OMLXProvider`, `OpenAICompatibleHTTPProvider`,
+and `OllamaProvider` support raw passthrough.
+
+`raw_complete(payload: dict[str, Any]) -> dict[str, Any]`
+: Send a raw OpenAI-compatible request payload and return the complete response
+  dict. All standard OpenAI request fields are preserved: `model`, `messages`,
+  `tools`, `tool_choice`, `temperature`, `max_tokens`, etc.
+  Raises `ModelitoBadResponseError` or `ModelitoConnectionError` in strict mode;
+  non-strict mode returns a deterministic fallback response dict.
+
+`raw_stream(payload: dict[str, Any]) -> Iterable[dict[str, Any]]`
+: Send a raw OpenAI-compatible request with `stream=True` and yield parsed JSON
+  chunks from the Server-Sent Events (SSE) stream. The generator yields `dict`
+  objects with keys like `choices`, `delta`, etc., stopping at the `[DONE]` marker.
+  Raises on malformed events in strict mode; non-strict mode yields fallback chunks.
+
+**Tool preservation**: These methods are designed to preserve tool definitions and
+function calling metadata. When using `OllamaProvider` with `modelito-serve`, you can
+forward OpenAI-compatible tool-calling requests directly to the underlying Ollama
+instance via `/v1/chat/completions`, enabling tool-calling workflows with local models.
+
+Example with `OllamaProvider`:
+
+```python
+from modelito import OllamaProvider
+
+provider = OllamaProvider(model="llama3.2")
+
+# Raw passthrough preserves tools and tool_choice
+payload = {
+    "model": "llama3.2",
+    "messages": [
+        {"role": "user", "content": "What is the weather?"}
+    ],
+    "tools": [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_weather",
+                "description": "Get the weather for a location",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "location": {"type": "string"}
+                    }
+                }
+            }
+        }
+    ],
+    "tool_choice": "auto"
+}
+
+response = provider.raw_complete(payload)
+# response["choices"][0]["message"]["tool_calls"] contains function calls if generated
+```
 
 Ollama helpers
 --------------

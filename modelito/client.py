@@ -8,6 +8,7 @@ Unified Client interface for all providers.
 - Unified interface: summarize, stream, list_models, etc.
 - Provider-specific features accessible via .provider
 """
+
 from __future__ import annotations
 from dataclasses import is_dataclass
 import json
@@ -22,11 +23,13 @@ from .model_metadata import get_model_metadata
 from .normalization import normalize_metadata
 from .probes import probe_ollama_status, probe_omlx_status
 
+
 class Client:
     """
     Unified LLM Client interface for all providers.
     Use Client(provider="openai", model="gpt-3.5-turbo") for runtime selection.
     """
+
     def __init__(
         self,
         provider: Union[str, Provider] = "openai",
@@ -97,7 +100,9 @@ class Client:
         return None
 
     @classmethod
-    def _provider_from_project_profile(cls, profile_path: Optional[str] = None) -> Optional[str]:
+    def _provider_from_project_profile(
+        cls, profile_path: Optional[str] = None
+    ) -> Optional[str]:
         candidates: List[str] = []
         if profile_path:
             candidates.append(str(profile_path))
@@ -306,10 +311,18 @@ class Client:
     def list_models(self) -> List[str]:
         return self.provider.list_models()
 
-    def summarize(self, messages: Iterable[MessageInput], settings: Optional[Dict[str, Any]] = None) -> str:
+    def summarize(
+        self,
+        messages: Iterable[MessageInput],
+        settings: Optional[Dict[str, Any]] = None,
+    ) -> str:
         return self.provider.summarize(messages, settings)
 
-    def stream(self, messages: Iterable[MessageInput], settings: Optional[Dict[str, Any]] = None) -> Iterable[str]:
+    def stream(
+        self,
+        messages: Iterable[MessageInput],
+        settings: Optional[Dict[str, Any]] = None,
+    ) -> Iterable[str]:
         if hasattr(self.provider, "stream"):
             yield from cast(Any, self.provider).stream(messages, settings)
             return
@@ -386,18 +399,14 @@ class Client:
         try:
             result: dict = json.loads(text)
         except json.JSONDecodeError as exc:
-            raise ValueError(
-                f"Provider did not return valid JSON: {text!r}"
-            ) from exc
+            raise ValueError(f"Provider did not return valid JSON: {text!r}") from exc
 
         if schema is not None:
             annotations = getattr(schema, "__annotations__", None)
             if annotations:
                 missing = [k for k in annotations if k not in result]
                 if missing:
-                    raise ValueError(
-                        f"JSON response missing required keys: {missing}"
-                    )
+                    raise ValueError(f"JSON response missing required keys: {missing}")
 
         if strict_schema and schema is not None:
             if is_dataclass(schema):

@@ -16,7 +16,15 @@ from modelito import tokenizer
 from modelito import ollama_service
 
 
-def measure_model(url: str, port: int, model: str, prompts: List[str], iterations: int, max_tokens: int, timeout: int) -> Dict[str, Any]:
+def measure_model(
+    url: str,
+    port: int,
+    model: str,
+    prompts: List[str],
+    iterations: int,
+    max_tokens: int,
+    timeout: int,
+) -> Dict[str, Any]:
     results: Dict[str, Any] = {"model": model, "samples": []}
     endpoint = ollama_service.endpoint_url(url, port, "/api/generate")
     total_latency = 0.0
@@ -26,8 +34,12 @@ def measure_model(url: str, port: int, model: str, prompts: List[str], iteration
         for _ in range(iterations):
             payload = {"model": model, "prompt": prompt, "max_tokens": max_tokens}
             data = json.dumps(payload).encode("utf-8")
-            req = Request(endpoint, data=data, headers={
-                          "Content-Type": "application/json"}, method="POST")
+            req = Request(
+                endpoint,
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
             start = time.monotonic()
             try:
                 with urlopen(req, timeout=timeout) as resp:
@@ -39,15 +51,23 @@ def measure_model(url: str, port: int, model: str, prompts: List[str], iteration
             latency = end - start
             input_tokens = tokenizer.count_tokens(prompt)
             results["samples"].append(
-                {"prompt_len": len(prompt), "input_tokens": input_tokens, "latency": latency})
+                {
+                    "prompt_len": len(prompt),
+                    "input_tokens": input_tokens,
+                    "latency": latency,
+                }
+            )
             total_latency += latency
             total_input_tokens += input_tokens
             runs += 1
 
     if runs:
         avg_latency = total_latency / runs
-        avg_per_1k = (total_latency / total_input_tokens) * \
-            1000 if total_input_tokens else avg_latency
+        avg_per_1k = (
+            (total_latency / total_input_tokens) * 1000
+            if total_input_tokens
+            else avg_latency
+        )
     else:
         avg_latency = 0.0
         avg_per_1k = 0.0
@@ -60,11 +80,13 @@ def measure_model(url: str, port: int, model: str, prompts: List[str], iteration
 
 def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Calibrate timeout catalog using Ollama generate latencies")
+        description="Calibrate timeout catalog using Ollama generate latencies"
+    )
     parser.add_argument("--url", default="http://localhost")
     parser.add_argument("--port", type=int, default=11434)
-    parser.add_argument("--models", default="llama-2-13b",
-                        help="Comma-separated model names to test")
+    parser.add_argument(
+        "--models", default="llama-2-13b", help="Comma-separated model names to test"
+    )
     parser.add_argument("--iterations", type=int, default=3)
     parser.add_argument("--max-tokens", type=int, default=64)
     parser.add_argument("--timeout", type=int, default=60)
@@ -82,12 +104,21 @@ def main(argv: List[str] | None = None) -> int:
         print(f"Ollama server not available at {args.url}:{args.port}. Aborting.")
         return 2
 
-    report: Dict[str, Any] = {"calibrated_at": time.strftime(
-        "%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "models": []}
+    report: Dict[str, Any] = {
+        "calibrated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "models": [],
+    }
     for model in models:
         print(f"Measuring model {model}...")
-        res = measure_model(args.url, args.port, model, default_prompts,
-                            args.iterations, args.max_tokens, args.timeout)
+        res = measure_model(
+            args.url,
+            args.port,
+            model,
+            default_prompts,
+            args.iterations,
+            args.max_tokens,
+            args.timeout,
+        )
         report["models"].append(res)
 
     out_text = json.dumps(report, indent=2)

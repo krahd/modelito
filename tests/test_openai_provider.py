@@ -22,7 +22,11 @@ def test_openai_provider_chat_returns_response_metadata():
                         "finish_reason": "stop",
                     }
                 ],
-                "usage": {"prompt_tokens": 11, "completion_tokens": 7, "total_tokens": 18},
+                "usage": {
+                    "prompt_tokens": 11,
+                    "completion_tokens": 7,
+                    "total_tokens": 18,
+                },
             }
 
     fake_client = SimpleNamespace(chat=SimpleNamespace(completions=FakeCompletions()))
@@ -92,8 +96,9 @@ def test_openai_provider_raw_complete_non_strict_fallback_does_not_call_summariz
 
     fake_client = SimpleNamespace(chat=SimpleNamespace(completions=FakeCompletions()))
     provider = OpenAIProvider(client=fake_client, model="gpt-test", strict=False)
-    provider.summarize = lambda *_args, **_kwargs: (_ for _ in ()
-                                                    ).throw(AssertionError("summarize should not be called"))
+    provider.summarize = lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        AssertionError("summarize should not be called")
+    )
 
     result = provider.raw_complete(
         {
@@ -137,7 +142,9 @@ def test_openai_provider_raw_stream_with_create_stream_true_payload():
     fake_client = SimpleNamespace(chat=SimpleNamespace(completions=FakeCompletions()))
     provider = OpenAIProvider(client=fake_client, model="gpt-test", strict=True)
 
-    chunks = list(provider.raw_stream({"messages": [{"role": "user", "content": "hello"}]}))
+    chunks = list(
+        provider.raw_stream({"messages": [{"role": "user", "content": "hello"}]})
+    )
 
     assert captured["kwargs"]["stream"] is True
     assert chunks[0]["choices"][0]["delta"]["content"] == "alpha"

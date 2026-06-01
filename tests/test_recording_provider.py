@@ -33,6 +33,7 @@ from modelito.recording import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def msgs(*contents: str) -> list[Message]:
     return [Message(role="user", content=c) for c in contents]
 
@@ -50,6 +51,7 @@ def read_cassette(path: Path) -> list[dict]:
 # ---------------------------------------------------------------------------
 # _message_to_dict
 # ---------------------------------------------------------------------------
+
 
 class TestMessageToDict:
     def test_from_message_object(self):
@@ -74,6 +76,7 @@ class TestMessageToDict:
 # _normalise_messages
 # ---------------------------------------------------------------------------
 
+
 class TestNormaliseMessages:
     def test_list_of_messages(self):
         items, dicts = _normalise_messages(msgs("hello", "world"))
@@ -93,10 +96,12 @@ class TestNormaliseMessages:
         assert [d["content"] for d in dicts] == ["hello", "world"]
 
     def test_list_of_dicts_becomes_message_objects(self):
-        items, dicts = _normalise_messages([
-            {"role": "user", "content": "hello"},
-            {"role": "assistant", "content": "world"},
-        ])
+        items, dicts = _normalise_messages(
+            [
+                {"role": "user", "content": "hello"},
+                {"role": "assistant", "content": "world"},
+            ]
+        )
         assert all(hasattr(m, "content") for m in items)
         assert dicts[0]["content"] == "hello"
         assert dicts[1]["content"] == "world"
@@ -144,6 +149,7 @@ class TestNormaliseMessages:
 # _to_message
 # ---------------------------------------------------------------------------
 
+
 class TestToMessage:
     def test_message_object_passes_through(self):
         m = Message(role="user", content="hello")
@@ -167,6 +173,7 @@ class TestToMessage:
         class Custom:
             role = "user"
             content = "hi"
+
         obj = Custom()
         assert _to_message(obj) is obj
 
@@ -175,15 +182,24 @@ class TestToMessage:
 # _normalise_messages — iterable str/dict (previously broken cases)
 # ---------------------------------------------------------------------------
 
+
 class TestStableRequestHash:
     def test_identical_inputs_same_hash(self):
-        h1 = _stable_request_hash("summarize", [{"role": "user", "content": "hi"}], {}, None)
-        h2 = _stable_request_hash("summarize", [{"role": "user", "content": "hi"}], {}, None)
+        h1 = _stable_request_hash(
+            "summarize", [{"role": "user", "content": "hi"}], {}, None
+        )
+        h2 = _stable_request_hash(
+            "summarize", [{"role": "user", "content": "hi"}], {}, None
+        )
         assert h1 == h2
 
     def test_different_content_different_hash(self):
-        h1 = _stable_request_hash("summarize", [{"role": "user", "content": "hi"}], {}, None)
-        h2 = _stable_request_hash("summarize", [{"role": "user", "content": "bye"}], {}, None)
+        h1 = _stable_request_hash(
+            "summarize", [{"role": "user", "content": "hi"}], {}, None
+        )
+        h2 = _stable_request_hash(
+            "summarize", [{"role": "user", "content": "bye"}], {}, None
+        )
         assert h1 != h2
 
     def test_different_kind_different_hash(self):
@@ -211,6 +227,7 @@ class TestStableRequestHash:
 # RecordingProvider — summarize
 # ---------------------------------------------------------------------------
 
+
 class TestRecordingProviderSummarize:
     def test_returns_wrapped_result(self, tmp_path):
         p = RecordingProvider(wrapped=MockProvider(), cassette=tmp_path / "t.jsonl")
@@ -234,31 +251,49 @@ class TestRecordingProviderSummarize:
 
     def test_writes_one_record(self, tmp_path):
         cassette = tmp_path / "t.jsonl"
-        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(msgs("hello"))
+        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(
+            msgs("hello")
+        )
         assert len(read_cassette(cassette)) == 1
 
     def test_record_schema(self, tmp_path):
         cassette = tmp_path / "t.jsonl"
-        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(msgs("hello"))
+        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(
+            msgs("hello")
+        )
         record = read_cassette(cassette)[0]
-        for key in ("version", "kind", "provider", "model", "request_hash",
-                    "request", "response", "error", "created_at"):
+        for key in (
+            "version",
+            "kind",
+            "provider",
+            "model",
+            "request_hash",
+            "request",
+            "response",
+            "error",
+            "created_at",
+        ):
             assert key in record, f"missing key: {key}"
 
     def test_record_kind(self, tmp_path):
         cassette = tmp_path / "t.jsonl"
-        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(msgs("hello"))
+        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(
+            msgs("hello")
+        )
         assert read_cassette(cassette)[0]["kind"] == "summarize"
 
     def test_record_provider_name(self, tmp_path):
         cassette = tmp_path / "t.jsonl"
-        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(msgs("hello"))
+        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(
+            msgs("hello")
+        )
         assert read_cassette(cassette)[0]["provider"] == "MockProvider"
 
     def test_record_stores_message_content(self, tmp_path):
         cassette = tmp_path / "t.jsonl"
         RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(
-            msgs("distinct-content"))
+            msgs("distinct-content")
+        )
         record = read_cassette(cassette)[0]
         assert record["request"]["messages"][0]["content"] == "distinct-content"
 
@@ -279,7 +314,9 @@ class TestRecordingProviderSummarize:
 
     def test_creates_parent_dirs(self, tmp_path):
         cassette = tmp_path / "nested" / "deep" / "t.jsonl"
-        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(msgs("hello"))
+        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(
+            msgs("hello")
+        )
         assert cassette.exists()
 
     def test_generator_messages_are_not_exhausted_before_delegation(self, tmp_path):
@@ -288,13 +325,18 @@ class TestRecordingProviderSummarize:
 
         class SpyProvider:
             model = "spy"
-            def list_models(self): return ["spy"]
+
+            def list_models(self):
+                return ["spy"]
+
             def summarize(self, messages, settings=None):
                 received.append(list(messages))
                 return "spy-result"
+
             def chat(self, messages, settings=None):
                 received.append(list(messages))
                 from modelito import Response
+
                 return Response(text="spy")
 
         gen = (Message(role="user", content=c) for c in ["a", "b", "c"])
@@ -320,7 +362,10 @@ class TestRecordingProviderSummarize:
 
         class SpyProvider:
             model = "spy"
-            def list_models(self): return ["spy"]
+
+            def list_models(self):
+                return ["spy"]
+
             def summarize(self, messages, settings=None):
                 received.append(list(messages))
                 return "ok"
@@ -343,7 +388,10 @@ class TestRecordingProviderSummarize:
     def test_error_is_recorded_and_reraised(self, tmp_path):
         class BrokenProvider:
             model = None
-            def list_models(self): return []
+
+            def list_models(self):
+                return []
+
             def summarize(self, messages, settings=None):
                 raise RuntimeError("provider failed")
 
@@ -359,6 +407,7 @@ class TestRecordingProviderSummarize:
 # ---------------------------------------------------------------------------
 # RecordingProvider — chat
 # ---------------------------------------------------------------------------
+
 
 class TestRecordingProviderChat:
     def test_returns_response_with_text(self, tmp_path):
@@ -378,18 +427,23 @@ class TestRecordingProviderChat:
     def test_chat_on_provider_without_chat_raises(self, tmp_path):
         class NoChat:
             model = None
-            def list_models(self): return []
-            def summarize(self, messages, settings=None): return "ok"
+
+            def list_models(self):
+                return []
+
+            def summarize(self, messages, settings=None):
+                return "ok"
 
         with pytest.raises(NotImplementedError, match="chat"):
-            RecordingProvider(
-                wrapped=NoChat(), cassette=tmp_path / "t.jsonl"
-            ).chat(msgs("hello"))
+            RecordingProvider(wrapped=NoChat(), cassette=tmp_path / "t.jsonl").chat(
+                msgs("hello")
+            )
 
 
 # ---------------------------------------------------------------------------
 # RecordingProvider — list_models
 # ---------------------------------------------------------------------------
+
 
 class TestRecordingProviderListModels:
     def test_returns_list(self, tmp_path):
@@ -408,6 +462,7 @@ class TestRecordingProviderListModels:
 # RecordingProvider — unsupported methods
 # ---------------------------------------------------------------------------
 
+
 class TestRecordingProviderUnsupported:
     def test_stream_raises(self, tmp_path):
         p = RecordingProvider(wrapped=MockProvider(), cassette=tmp_path / "t.jsonl")
@@ -424,6 +479,7 @@ class TestRecordingProviderUnsupported:
 # ReplayProvider — model-agnostic behaviour (the critical correctness test)
 # ---------------------------------------------------------------------------
 
+
 class TestReplayModelAgnostic:
     def test_replays_without_passing_model(self, tmp_path):
         """
@@ -436,9 +492,9 @@ class TestReplayModelAgnostic:
         """
         cassette = tmp_path / "t.jsonl"
         mock = MockProvider()
-        expected = RecordingProvider(
-            wrapped=mock, cassette=cassette
-        ).summarize(msgs("hello"))
+        expected = RecordingProvider(wrapped=mock, cassette=cassette).summarize(
+            msgs("hello")
+        )
 
         # Replay without supplying model — the default should work.
         result = ReplayProvider(cassette=cassette).summarize(msgs("hello"))
@@ -449,9 +505,9 @@ class TestReplayModelAgnostic:
         Passing an incorrect explicit model causes a miss even if messages match.
         """
         cassette = tmp_path / "t.jsonl"
-        RecordingProvider(
-            wrapped=MockProvider(), cassette=cassette
-        ).summarize(msgs("hello"))
+        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(
+            msgs("hello")
+        )
 
         replay = ReplayProvider(cassette=cassette, strict=True, model="wrong-model-xyz")
         with pytest.raises(ReplayMissError):
@@ -464,19 +520,20 @@ class TestReplayModelAgnostic:
         cassette = tmp_path / "t.jsonl"
         mock = MockProvider()
         recorded_model = mock.model  # e.g. "mock-model"
-        expected = RecordingProvider(
-            wrapped=mock, cassette=cassette
-        ).summarize(msgs("hello"))
+        expected = RecordingProvider(wrapped=mock, cassette=cassette).summarize(
+            msgs("hello")
+        )
 
-        result = ReplayProvider(
-            cassette=cassette, model=recorded_model
-        ).summarize(msgs("hello"))
+        result = ReplayProvider(cassette=cassette, model=recorded_model).summarize(
+            msgs("hello")
+        )
         assert result == expected
 
 
 # ---------------------------------------------------------------------------
 # ReplayProvider — summarize
 # ---------------------------------------------------------------------------
+
 
 class TestReplayProviderSummarize:
     def test_replays_recorded_result(self, tmp_path):
@@ -488,7 +545,9 @@ class TestReplayProviderSummarize:
 
     def test_deterministic_across_calls(self, tmp_path):
         cassette = tmp_path / "t.jsonl"
-        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(msgs("hello"))
+        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(
+            msgs("hello")
+        )
         replay = ReplayProvider(cassette=cassette)
         assert replay.summarize(msgs("hello")) == replay.summarize(msgs("hello"))
 
@@ -507,9 +566,9 @@ class TestReplayProviderSummarize:
             )
 
     def test_non_strict_miss_returns_empty_string(self, tmp_path):
-        result = ReplayProvider(
-            cassette=tmp_path / "t.jsonl", strict=False
-        ).summarize(msgs("not recorded"))
+        result = ReplayProvider(cassette=tmp_path / "t.jsonl", strict=False).summarize(
+            msgs("not recorded")
+        )
         assert result == ""
 
     def test_replay_miss_error_attributes(self, tmp_path):
@@ -529,14 +588,18 @@ class TestReplayProviderSummarize:
 
     def test_last_write_wins_on_duplicate_hash(self, tmp_path):
         cassette = tmp_path / "t.jsonl"
-        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(msgs("hello"))
+        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(
+            msgs("hello")
+        )
         # Append an override record with the same hash but different response.
         first = read_cassette(cassette)[0]
         override = dict(first)
         override["response"] = {"text": "overridden"}
         with cassette.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(override) + "\n")
-        assert ReplayProvider(cassette=cassette).summarize(msgs("hello")) == "overridden"
+        assert (
+            ReplayProvider(cassette=cassette).summarize(msgs("hello")) == "overridden"
+        )
 
     def test_nonexistent_cassette_non_strict_returns_empty(self, tmp_path):
         result = ReplayProvider(
@@ -549,12 +612,13 @@ class TestReplayProviderSummarize:
 # ReplayProvider — chat
 # ---------------------------------------------------------------------------
 
+
 class TestReplayProviderChat:
     def test_replays_chat_text(self, tmp_path):
         cassette = tmp_path / "t.jsonl"
-        expected = RecordingProvider(
-            wrapped=MockProvider(), cassette=cassette
-        ).chat(msgs("hello"))
+        expected = RecordingProvider(wrapped=MockProvider(), cassette=cassette).chat(
+            msgs("hello")
+        )
         result = ReplayProvider(cassette=cassette).chat(msgs("hello"))
         assert result.text == expected.text
 
@@ -570,6 +634,7 @@ class TestReplayProviderChat:
 # ReplayProvider — list_models
 # ---------------------------------------------------------------------------
 
+
 class TestReplayProviderListModels:
     def test_replays_models(self, tmp_path):
         cassette = tmp_path / "t.jsonl"
@@ -582,6 +647,7 @@ class TestReplayProviderListModels:
 # ---------------------------------------------------------------------------
 # ReplayProvider — unsupported methods
 # ---------------------------------------------------------------------------
+
 
 class TestReplayProviderUnsupported:
     def test_stream_raises(self, tmp_path):
@@ -596,6 +662,7 @@ class TestReplayProviderUnsupported:
 # ---------------------------------------------------------------------------
 # ReplayProvider — recorded errors re-raised
 # ---------------------------------------------------------------------------
+
 
 class TestReplayProviderRecordedErrors:
     def test_recorded_error_is_raised_on_replay(self, tmp_path):
@@ -627,6 +694,7 @@ class TestReplayProviderRecordedErrors:
 # Cassette format errors
 # ---------------------------------------------------------------------------
 
+
 class TestCassetteFormatErrors:
     def test_malformed_json_raises_cassette_format_error_by_default(self, tmp_path):
         cassette = tmp_path / "bad.jsonl"
@@ -639,15 +707,15 @@ class TestCassetteFormatErrors:
     def test_malformed_json_skipped_when_strict_cassette_false(self, tmp_path):
         cassette = tmp_path / "bad.jsonl"
         # Record a valid entry first, then write a corrupt line.
-        RecordingProvider(
-            wrapped=MockProvider(), cassette=cassette
-        ).summarize(msgs("hello"))
+        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(
+            msgs("hello")
+        )
         with cassette.open("a") as fh:
             fh.write("not valid json\n")
         # Should still find the valid record, skipping the bad line.
-        result = ReplayProvider(
-            cassette=cassette, strict_cassette=False
-        ).summarize(msgs("hello"))
+        result = ReplayProvider(cassette=cassette, strict_cassette=False).summarize(
+            msgs("hello")
+        )
         assert isinstance(result, str)
 
     def test_cassette_format_error_attributes(self, tmp_path):
@@ -665,6 +733,7 @@ class TestCassetteFormatErrors:
 # Composability
 # ---------------------------------------------------------------------------
 
+
 class TestComposability:
     def test_recording_wraps_recording(self, tmp_path):
         inner = tmp_path / "inner.jsonl"
@@ -679,7 +748,9 @@ class TestComposability:
     def test_replay_wrapped_by_recording(self, tmp_path):
         base = tmp_path / "base.jsonl"
         outer = tmp_path / "outer.jsonl"
-        RecordingProvider(wrapped=MockProvider(), cassette=base).summarize(msgs("hello"))
+        RecordingProvider(wrapped=MockProvider(), cassette=base).summarize(
+            msgs("hello")
+        )
         result = RecordingProvider(
             wrapped=ReplayProvider(cassette=base), cassette=outer
         ).summarize(msgs("hello"))
@@ -689,7 +760,9 @@ class TestComposability:
     def test_full_chain(self, tmp_path):
         base = tmp_path / "base.jsonl"
         outer = tmp_path / "outer.jsonl"
-        RecordingProvider(wrapped=MockProvider(), cassette=base).summarize(msgs("chain"))
+        RecordingProvider(wrapped=MockProvider(), cassette=base).summarize(
+            msgs("chain")
+        )
         result = RecordingProvider(
             wrapped=ReplayProvider(cassette=base), cassette=outer
         ).summarize(msgs("chain"))

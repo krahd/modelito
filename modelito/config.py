@@ -98,7 +98,9 @@ def _deep_merge(a: dict, b: dict) -> dict:
     return result
 
 
-def load_config_data(*paths: Union[str, Path], default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def load_config_data(
+    *paths: Union[str, Path], default: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     """Load and merge configuration files from multiple paths.
 
     Paths are applied in the order given; later paths override earlier ones.

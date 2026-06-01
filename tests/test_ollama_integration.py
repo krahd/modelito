@@ -12,8 +12,10 @@ def _env_true(name: str) -> bool:
 
 
 if not _env_true("RUN_OLLAMA_INTEGRATION"):
-    pytest.skip("Ollama integration tests disabled (set RUN_OLLAMA_INTEGRATION=1)",
-                allow_module_level=True)
+    pytest.skip(
+        "Ollama integration tests disabled (set RUN_OLLAMA_INTEGRATION=1)",
+        allow_module_level=True,
+    )
 
 
 def test_install_and_update_if_needed():

@@ -5,9 +5,21 @@ intend to support in the v0.3 API. Providers may implement one or more of
 these protocols; `Provider` is kept as a convenient alias for the
 sync/legacy surface.
 """
+
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Protocol, TypedDict, Union, runtime_checkable
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Protocol,
+    TypedDict,
+    Union,
+    runtime_checkable,
+)
 
 from .messages import Message, Response
 
@@ -31,11 +43,13 @@ class SyncProvider(Protocol):
     Implementations should provide `list_models()` and `summarize()`.
     """
 
-    def list_models(self) -> List[str]:
-        ...
+    def list_models(self) -> List[str]: ...
 
-    def summarize(self, messages: Iterable[MessageInput], settings: Optional[Dict[str, Any]] = None) -> str:
-        ...
+    def summarize(
+        self,
+        messages: Iterable[MessageInput],
+        settings: Optional[Dict[str, Any]] = None,
+    ) -> str: ...
 
 
 @runtime_checkable
@@ -46,26 +60,29 @@ class AsyncProvider(Protocol):
     mirrors `summarize()` but is awaitable.
     """
 
-    async def acomplete(self, messages: Iterable[MessageInput], settings: Optional[Dict[str, Any]] = None) -> str:
-        ...
+    async def acomplete(
+        self,
+        messages: Iterable[MessageInput],
+        settings: Optional[Dict[str, Any]] = None,
+    ) -> str: ...
 
 
 @runtime_checkable
 class StreamingProvider(Protocol):
-    """Streaming provider surface. Yields incremental text chunks.
-    """
+    """Streaming provider surface. Yields incremental text chunks."""
 
-    def stream(self, messages: Iterable[MessageInput], settings: Optional[Dict[str, Any]] = None) -> Iterable[str]:
-        ...
+    def stream(
+        self,
+        messages: Iterable[MessageInput],
+        settings: Optional[Dict[str, Any]] = None,
+    ) -> Iterable[str]: ...
 
 
 @runtime_checkable
 class EmbeddingProvider(Protocol):
-    """Embedding surface: produce vector embeddings for a list of texts.
-    """
+    """Embedding surface: produce vector embeddings for a list of texts."""
 
-    def embed(self, texts: Iterable[str], **kwargs: Any) -> List[List[float]]:
-        ...
+    def embed(self, texts: Iterable[str], **kwargs: Any) -> List[List[float]]: ...
 
 
 @runtime_checkable
@@ -80,8 +97,7 @@ class ChatProvider(Protocol):
         self,
         messages: Iterable[MessageInput],
         settings: Optional[Dict[str, Any]] = None,
-    ) -> Response:
-        ...
+    ) -> Response: ...
 
 
 @runtime_checkable
@@ -93,11 +109,9 @@ class RawChatProvider(Protocol):
     without collapsing them into plain text.
     """
 
-    def raw_complete(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        ...
+    def raw_complete(self, payload: Dict[str, Any]) -> Dict[str, Any]: ...
 
-    def raw_stream(self, payload: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
-        ...
+    def raw_stream(self, payload: Dict[str, Any]) -> Iterable[Dict[str, Any]]: ...
 
 
 # Keep a small alias for older code that imported `Provider`.

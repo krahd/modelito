@@ -5,6 +5,7 @@ Python packages (for example `google.generativeai` or similar client
 shapes). When an SDK is available it will attempt a text generation call;
 otherwise it falls back to joining message contents deterministically.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -19,14 +20,23 @@ class GeminiProvider:
     and falls back to a local deterministic summarizer when calls fail.
     """
 
-    def __init__(self, host: Optional[str] = None, client: Any = None, model: Optional[str] = None):
+    def __init__(
+        self,
+        host: Optional[str] = None,
+        client: Any = None,
+        model: Optional[str] = None,
+    ):
         # host is informational; default is a placeholder URL
         self.host = host or "https://gemini.local"
         self.model = model
         self._client = client
         # try common module names used by Google/third-party SDKs
         mod = None
-        for name in ("google.generativeai", "google.ai.generativelanguage", "generativeai"):
+        for name in (
+            "google.generativeai",
+            "google.ai.generativelanguage",
+            "generativeai",
+        ):
             try:
                 mod = importlib.import_module(name)
                 break
@@ -54,7 +64,9 @@ class GeminiProvider:
                         return list(self._gemini_mod.list_models())
                     except Exception:
                         pass
-                if hasattr(self._gemini_mod, "models") and hasattr(self._gemini_mod.models, "list"):
+                if hasattr(self._gemini_mod, "models") and hasattr(
+                    self._gemini_mod.models, "list"
+                ):
                     try:
                         return list(self._gemini_mod.models.list())
                     except Exception:
@@ -63,19 +75,24 @@ class GeminiProvider:
             pass
         return []
 
-    def summarize(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> str:
+    def summarize(
+        self,
+        messages: Iterable[Message | str],
+        settings: Optional[dict[str, Any]] = None,
+    ) -> str:
         def _flatten(msgs: Any) -> str:
             if not msgs:
                 return ""
             out = []
-            for m in (msgs or []):
+            for m in msgs or []:
                 if isinstance(m, Message):
                     out.append(m.content)
                 elif isinstance(m, str):
                     out.append(m)
                 else:
                     raise TypeError(
-                        "GeminiProvider.summarize requires modelito.messages.Message instances; dicts are not supported")
+                        "GeminiProvider.summarize requires modelito.messages.Message instances; dicts are not supported"
+                    )
             return "\n".join(p for p in out if p)
 
         prompt = _flatten(messages)
@@ -86,19 +103,32 @@ class GeminiProvider:
                 # preferred shape: generate_text(model=..., prompt=...)
                 if hasattr(gen, "generate_text"):
                     try:
-                        res = gen.generate_text(model=self.model or "gemini-1.0",
-                                                prompt=prompt, **(settings or {}))
+                        res = gen.generate_text(
+                            model=self.model or "gemini-1.0",
+                            prompt=prompt,
+                            **(settings or {}),
+                        )
                         # dict-like responses
                         if isinstance(res, dict):
-                            if "candidates" in res and isinstance(res["candidates"], list) and res["candidates"]:
+                            if (
+                                "candidates" in res
+                                and isinstance(res["candidates"], list)
+                                and res["candidates"]
+                            ):
                                 first = res["candidates"][0]
                                 if isinstance(first, dict):
-                                    return str(first.get("content") or first.get("output") or "")
+                                    return str(
+                                        first.get("content")
+                                        or first.get("output")
+                                        or ""
+                                    )
                                 return str(first)
                             if "text" in res:
                                 return str(res.get("text") or "")
                         else:
-                            text = getattr(res, "text", None) or getattr(res, "content", None)
+                            text = getattr(res, "text", None) or getattr(
+                                res, "content", None
+                            )
                             if text:
                                 return str(text)
                     except Exception:
@@ -107,17 +137,26 @@ class GeminiProvider:
                 if hasattr(gen, "client") and hasattr(gen.client, "generate_text"):
                     try:
                         res = gen.client.generate_text(
-                            model=self.model or "gemini-1.0", prompt=prompt, **(settings or {}))
+                            model=self.model or "gemini-1.0",
+                            prompt=prompt,
+                            **(settings or {}),
+                        )
                         if isinstance(res, dict):
                             if "candidates" in res and res["candidates"]:
                                 first = res["candidates"][0]
                                 if isinstance(first, dict):
-                                    return str(first.get("content") or first.get("output") or "")
+                                    return str(
+                                        first.get("content")
+                                        or first.get("output")
+                                        or ""
+                                    )
                                 return str(first)
                             if "text" in res:
                                 return str(res.get("text") or "")
                         else:
-                            text = getattr(res, "text", None) or getattr(res, "content", None)
+                            text = getattr(res, "text", None) or getattr(
+                                res, "content", None
+                            )
                             if text:
                                 return str(text)
                     except Exception:
@@ -128,25 +167,31 @@ class GeminiProvider:
         # deterministic fallback
         return prompt
 
-    def stream(self, messages: Iterable[Message | str], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
+    def stream(
+        self,
+        messages: Iterable[Message | str],
+        settings: Optional[dict[str, Any]] = None,
+    ) -> Iterable[str]:
         """SDK-aware streaming for Gemini-like providers.
 
         Attempts common SDK streaming shapes (`generate_text` generators,
         client.generate_text with streaming, or `.stream()` helpers). Falls
         back to deterministic chunking when not available.
         """
+
         def _flatten(msgs: Any) -> str:
             if not msgs:
                 return ""
             out = []
-            for m in (msgs or []):
+            for m in msgs or []:
                 if isinstance(m, Message):
                     out.append(m.content)
                 elif isinstance(m, str):
                     out.append(m)
                 else:
                     raise TypeError(
-                        "GeminiProvider.stream requires modelito.messages.Message instances; dicts are not supported")
+                        "GeminiProvider.stream requires modelito.messages.Message instances; dicts are not supported"
+                    )
             return "\n".join(p for p in out if p)
 
         prompt = _flatten(messages)
@@ -189,7 +234,11 @@ class GeminiProvider:
                 # Generator-style: gen.generate_text(...) yields partials
                 if hasattr(gen, "generate_text"):
                     try:
-                        for e in gen.generate_text(model=self.model or "gemini-1.0", prompt=prompt, **(settings or {})):
+                        for e in gen.generate_text(
+                            model=self.model or "gemini-1.0",
+                            prompt=prompt,
+                            **(settings or {}),
+                        ):
                             txt = _extract_delta_text(e)
                             if txt:
                                 yield txt
@@ -201,7 +250,11 @@ class GeminiProvider:
                 # client.generate_text streaming shape
                 if hasattr(gen, "client") and hasattr(gen.client, "generate_text"):
                     try:
-                        for e in gen.client.generate_text(model=self.model or "gemini-1.0", prompt=prompt, **(settings or {})):
+                        for e in gen.client.generate_text(
+                            model=self.model or "gemini-1.0",
+                            prompt=prompt,
+                            **(settings or {}),
+                        ):
                             txt = _extract_delta_text(e)
                             if txt:
                                 yield txt
@@ -222,7 +275,7 @@ class GeminiProvider:
         except Exception:
             pass
         for i in range(0, len(text), chunk_size):
-            yield text[i: i + chunk_size]
+            yield text[i : i + chunk_size]
 
     def embed(self, texts: Iterable[str], **kwargs: Any) -> List[List[float]]:
         """Embedding surface for tests: delegate to the embeddings helper."""

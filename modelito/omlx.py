@@ -5,6 +5,7 @@ oMLX runtimes.  It delegates all HTTP, streaming, and error logic to
 :class:`~modelito.openai_compat.OpenAICompatibleHTTPProvider` and only sets
 oMLX-specific defaults.
 """
+
 from __future__ import annotations
 
 from typing import Optional

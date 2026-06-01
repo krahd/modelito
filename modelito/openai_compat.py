@@ -8,6 +8,7 @@ Subclass ``OpenAICompatibleHTTPProvider`` and set default ``base_url`` and
 ``model`` in your ``__init__`` to create a new provider profile without
 duplicating request logic.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -90,7 +91,7 @@ def _fallback_chat_response(payload: Dict[str, Any]) -> Dict[str, Any]:
         "id": f"chatcmpl-modelito-{uuid.uuid4().hex}",
         "object": "chat.completion",
         "created": created,
-        "model": None,
+        "model": payload.get("model"),
         "choices": [
             {
                 "index": 0,
@@ -101,7 +102,8 @@ def _fallback_chat_response(payload: Dict[str, Any]) -> Dict[str, Any]:
         "usage": {
             "prompt_tokens": payload.get("prompt_tokens", 0) or 0,
             "completion_tokens": payload.get("completion_tokens", 0) or 0,
-            "total_tokens": (payload.get("prompt_tokens", 0) or 0) + (payload.get("completion_tokens", 0) or 0),
+            "total_tokens": (payload.get("prompt_tokens", 0) or 0)
+            + (payload.get("completion_tokens", 0) or 0),
         },
     }
 
@@ -179,7 +181,9 @@ class OpenAICompatibleHTTPProvider:
             body = resp.read().decode("utf-8")
         return json.loads(body)
 
-    def _fallback_stream_events(self, payload: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
+    def _fallback_stream_events(
+        self, payload: Dict[str, Any]
+    ) -> Iterable[Dict[str, Any]]:
         response = _fallback_chat_response(payload)
         created = response.get("created") or int(time.time())
         model = response.get("model") or self.model
@@ -359,7 +363,11 @@ class OpenAICompatibleHTTPProvider:
         In ``strict=True`` mode, raises a typed Modelito exception on failure.
         """
         flat = self._flatten_messages(messages)
-        payload: Dict[str, Any] = {"model": self.model, "messages": flat, "stream": False}
+        payload: Dict[str, Any] = {
+            "model": self.model,
+            "messages": flat,
+            "stream": False,
+        }
         if isinstance(settings, dict):
             payload.update(settings)
 
@@ -434,7 +442,11 @@ class OpenAICompatibleHTTPProvider:
         exception on connection or protocol failure.
         """
         flat = self._flatten_messages(messages)
-        payload: Dict[str, Any] = {"model": self.model, "messages": flat, "stream": True}
+        payload: Dict[str, Any] = {
+            "model": self.model,
+            "messages": flat,
+            "stream": True,
+        }
         if isinstance(settings, dict):
             payload.update(settings)
 

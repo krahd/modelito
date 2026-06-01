@@ -17,7 +17,8 @@ def test_openai_modern_client(monkeypatch):
         chat=SimpleNamespace(
             completions=SimpleNamespace(
                 create=lambda model, messages, **kwargs: {
-                    "choices": [{"message": {"content": "sdk reply"}}]}
+                    "choices": [{"message": {"content": "sdk reply"}}]
+                }
             )
         )
     )
@@ -30,12 +31,17 @@ def test_openai_modern_client(monkeypatch):
 
 def test_openai_legacy_chatcompletion(monkeypatch):
     # Simulate legacy ChatCompletion surface on the `openai` module
-    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(
-        ChatCompletion=SimpleNamespace(
-            create=lambda model, messages, **kwargs: {
-                "choices": [{"message": {"content": "legacy reply"}}]}
-        )
-    ))
+    monkeypatch.setitem(
+        sys.modules,
+        "openai",
+        SimpleNamespace(
+            ChatCompletion=SimpleNamespace(
+                create=lambda model, messages, **kwargs: {
+                    "choices": [{"message": {"content": "legacy reply"}}]
+                }
+            )
+        ),
+    )
 
     p = OpenAIProvider()
     out = p.summarize([Message(role="user", content="hello")], settings={})
@@ -62,7 +68,9 @@ def test_claude_legacy_create_completion(monkeypatch):
     monkeypatch.setitem(sys.modules, "anthropic", SimpleNamespace())
 
     client = SimpleNamespace(
-        create_completion=lambda model, prompt, **kwargs: {"completion": "legacy anthropic"}
+        create_completion=lambda model, prompt, **kwargs: {
+            "completion": "legacy anthropic"
+        }
     )
 
     p = ClaudeProvider(client=client)
@@ -73,7 +81,9 @@ def test_claude_legacy_create_completion(monkeypatch):
 def test_gemini_generate_text(monkeypatch):
     # Install a fake google.generativeai module with generate_text
     fake = SimpleNamespace(
-        generate_text=lambda model, prompt, **kwargs: {"candidates": [{"content": "gen reply"}]}
+        generate_text=lambda model, prompt, **kwargs: {
+            "candidates": [{"content": "gen reply"}]
+        }
     )
     monkeypatch.setitem(sys.modules, "google.generativeai", fake)
 
@@ -86,8 +96,10 @@ def test_gemini_generate_text(monkeypatch):
 def test_ollama_server_response(monkeypatch):
     # Force the ollama helpers imported into the `modelito.ollama` module
     monkeypatch.setattr("modelito.ollama.server_is_up", lambda host, port: True)
-    monkeypatch.setattr("modelito.ollama.json_post", lambda url,
-                        payload, timeout=None: {"text": "ollama reply"})
+    monkeypatch.setattr(
+        "modelito.ollama.json_post",
+        lambda url, payload, timeout=None: {"text": "ollama reply"},
+    )
 
     p = ollama_mod.OllamaProvider()
     out = p.summarize([Message(role="user", content="hello")], settings={})

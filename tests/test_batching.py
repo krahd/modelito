@@ -1,5 +1,6 @@
 from modelito.batching import batch_iterable
 
+
 def test_batch_iterable():
     items = list(range(10))
     batches = list(batch_iterable(items, 3))

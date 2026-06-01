@@ -1,25 +1,46 @@
-"""Compatibility shim for Ollama provider.
+"""Ollama provider and local runtime helpers.
 
-Provides a lightweight `OllamaProvider` compatible with older imports
-(`from modelito import OllamaProvider` and `import modelito.ollama`).
-
-This implementation is intentionally minimal: it exposes `list_models()`
-and `summarize()` with safe defaults so downstream projects that expect
-the provider API during tests or local runs continue to work.
+The provider exposes the standard modelito provider surface for listing models,
+summarising messages, streaming text, and embeddings. It also implements raw
+OpenAI-compatible chat passthrough through Ollama's `/v1/chat/completions`
+endpoint so `modelito-serve` can preserve tool-call metadata and other raw
+OpenAI-compatible fields.
 """
+
 from __future__ import annotations
 
+import json as _json
+import time
+import uuid
 from typing import Any, Iterable, List, Optional
+from urllib.request import Request, urlopen
+
+from .exceptions import (
+    ModelitoBadResponseError,
+    ModelitoConnectionError,
+    ModelitoProviderError,
+    ModelitoTimeoutError,
+)
 from .messages import flatten_message_inputs
 from .provider import MessageInput
-from .ollama_service import endpoint_url, server_is_up, json_post, list_local_models, list_remote_models, ollama_installed, run_ollama_command, running_model_names
+from .ollama_service import (
+    endpoint_url,
+    server_is_up,
+    json_post,
+    list_local_models,
+    list_remote_models,
+    ollama_installed,
+    run_ollama_command,
+    running_model_names,
+)
 
 
 class OllamaProvider:
-    """Minimal compatibility shim for Ollama-style providers.
+    """Provider for local Ollama runtimes.
 
-    Provides `list_models()` and `summarize()` with safe defaults for local
-    testing and compatibility with older imports.
+    `OllamaProvider` supports the standard modelito provider methods, local Ollama
+    HTTP/CLI fallbacks, embeddings, and raw OpenAI-compatible chat passthrough via
+    Ollama's `/v1/chat/completions` endpoint.
     """
 
     def __init__(
@@ -63,8 +84,9 @@ class OllamaProvider:
                     return models
                 # if nothing local, try running names reported by `ollama ps`
                 try:
-                    running = running_model_names(self.host.replace(
-                        "http://", "").replace("https://", ""))
+                    running = running_model_names(
+                        self.host.replace("http://", "").replace("https://", "")
+                    )
                     if running:
                         return running
                 except Exception:
@@ -86,7 +108,11 @@ class OllamaProvider:
 
         return []
 
-    def summarize(self, messages: Iterable[MessageInput], settings: Optional[dict[str, Any]] = None) -> str:
+    def summarize(
+        self,
+        messages: Iterable[MessageInput],
+        settings: Optional[dict[str, Any]] = None,
+    ) -> str:
         """Produce a deterministic summary by concatenating message contents.
 
         This minimal implementation is intended for local testing and
@@ -105,7 +131,9 @@ class OllamaProvider:
 
         flattened = flatten_message_inputs(messages)
         prompt = "\n".join(
-            str(item.get("content") or "") for item in flattened if isinstance(item, dict)
+            str(item.get("content") or "")
+            for item in flattened
+            if isinstance(item, dict)
         )
 
         # If an Ollama HTTP API is available try to call it and return the
@@ -136,7 +164,11 @@ class OllamaProvider:
                 # Extract response based on which endpoint was used
                 if isinstance(res, dict):
                     # /api/chat returns message.content
-                    if has_messages and "message" in res and isinstance(res["message"], dict):
+                    if (
+                        has_messages
+                        and "message" in res
+                        and isinstance(res["message"], dict)
+                    ):
                         content = res["message"].get("content")
                         if content:
                             return str(content)
@@ -150,7 +182,11 @@ class OllamaProvider:
                         return str(res.get("output") or "")
                     if "result" in res:
                         return str(res.get("result") or "")
-                    choices = res.get("choices") if isinstance(res.get("choices"), list) else None
+                    choices = (
+                        res.get("choices")
+                        if isinstance(res.get("choices"), list)
+                        else None
+                    )
                     if choices:
                         first = choices[0]
                         if isinstance(first, dict) and "text" in first:
@@ -167,11 +203,19 @@ class OllamaProvider:
             if ollama_installed():
                 cmd_variants = []
                 if self.model:
-                    cmd_variants = [["run", self.model, "--prompt", prompt], ["generate", self.model,
-                                                                              "--prompt", prompt], ["run", self.model, prompt], ["generate", self.model, prompt]]
+                    cmd_variants = [
+                        ["run", self.model, "--prompt", prompt],
+                        ["generate", self.model, "--prompt", prompt],
+                        ["run", self.model, prompt],
+                        ["generate", self.model, prompt],
+                    ]
                 else:
-                    cmd_variants = [["run", "--prompt", prompt], ["generate",
-                                                                  "--prompt", prompt], ["run", prompt], ["generate", prompt]]
+                    cmd_variants = [
+                        ["run", "--prompt", prompt],
+                        ["generate", "--prompt", prompt],
+                        ["run", prompt],
+                        ["generate", prompt],
+                    ]
 
                 for cmd in cmd_variants:
                     try:
@@ -197,7 +241,11 @@ class OllamaProvider:
                                 if "choices" in parsed and parsed["choices"]:
                                     first = parsed["choices"][0]
                                     if isinstance(first, dict):
-                                        return str(first.get("text") or first.get("content") or "")
+                                        return str(
+                                            first.get("text")
+                                            or first.get("content")
+                                            or ""
+                                        )
                                     return str(first)
                             return str(parsed)
                         except Exception:
@@ -208,7 +256,11 @@ class OllamaProvider:
         # deterministic fallback
         return prompt
 
-    def stream(self, messages: Iterable[MessageInput], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
+    def stream(
+        self,
+        messages: Iterable[MessageInput],
+        settings: Optional[dict[str, Any]] = None,
+    ) -> Iterable[str]:
         """Streaming implementation for Ollama via the local HTTP API.
 
         Attempts to call the Ollama `/api/chat` endpoint for structured messages
@@ -241,14 +293,20 @@ class OllamaProvider:
         else:
             # flatten
             payload["prompt"] = "\n".join(
-                str(item.get("content") or "") for item in flattened if isinstance(item, dict)
+                str(item.get("content") or "")
+                for item in flattened
+                if isinstance(item, dict)
             )
             endpoint = "/api/generate"
 
         url = endpoint_url(self.host, self.port, endpoint)
 
-        req = Request(url, data=json.dumps(payload).encode("utf-8"),
-                      headers={"Content-Type": "application/json"}, method="POST")
+        req = Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
         try:
             with urlopen(req, timeout=60) as resp:
                 # iterate lines as they arrive
@@ -279,7 +337,11 @@ class OllamaProvider:
                     # Extract plausible text fields based on endpoint
                     if isinstance(obj, dict):
                         # /api/chat returns message.content in streaming mode
-                        if has_messages and "message" in obj and isinstance(obj["message"], dict):
+                        if (
+                            has_messages
+                            and "message" in obj
+                            and isinstance(obj["message"], dict)
+                        ):
                             content = obj["message"].get("content")
                             if content:
                                 yield str(content)
@@ -299,7 +361,9 @@ class OllamaProvider:
                             if isinstance(out, list) and out:
                                 first = out[0]
                                 if isinstance(first, dict):
-                                    yield str(first.get("content") or first.get("text") or "")
+                                    yield str(
+                                        first.get("content") or first.get("text") or ""
+                                    )
                                     continue
                                 yield str(first)
                                 continue
@@ -336,3 +400,302 @@ class OllamaProvider:
         texts_list = [str(t) for t in (texts or [])]
         dim = int(kwargs.get("dim", 8))
         return embed_texts(texts_list, dim=dim)
+
+    def _fallback_raw_response(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Generate a deterministic OpenAI-compatible fallback completion."""
+        created = int(time.time())
+        model = payload.get("model", self.model or "unknown")
+        messages = payload.get("messages", [])
+        parts: List[str] = []
+        if isinstance(messages, list):
+            for item in messages:
+                if isinstance(item, dict):
+                    content = item.get("content")
+                    if isinstance(content, str) and content:
+                        parts.append(content)
+                elif isinstance(item, str):
+                    parts.append(item)
+        text = "\n".join(parts) or "fallback"
+        return {
+            "id": f"chatcmpl-modelito-{uuid.uuid4().hex}",
+            "object": "chat.completion",
+            "created": created,
+            "model": model,
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": text},
+                    "finish_reason": "stop",
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0,
+            },
+        }
+
+    def raw_complete(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Send raw OpenAI-compatible chat completion payload to Ollama's /v1/chat/completions.
+
+        Args:
+            payload: OpenAI-compatible chat completion request payload.
+
+        Returns:
+            The parsed JSON response as a dict, preserving all fields.
+            In non-strict mode, returns a deterministic fallback on errors.
+
+        Raises:
+            ModelitoBadResponseError: In strict mode, if response parsing fails.
+            ModelitoConnectionError: In strict mode, if the endpoint is unreachable.
+            ModelitoTimeoutError: In strict mode, if the request times out.
+            ModelitoProviderError: In strict mode, for other provider errors.
+        """
+        # Shallow copy only: raw_complete only adds/overrides top-level transport
+        # keys ("model").  Nested OpenAI-compatible structures such as messages,
+        # tools, tool_choice, and response_format are intentionally not deep-copied
+        # so callers can pass large payloads without unnecessary allocation.
+        request_payload = dict(payload or {})
+
+        # Set model if absent, but don't overwrite an explicit model.
+        if "model" not in request_payload and self.model:
+            request_payload["model"] = self.model
+
+        try:
+            url = endpoint_url(self.host, self.port, "/v1/chat/completions")
+            data = json_post(url, request_payload, timeout=self.timeout)
+
+            if isinstance(data, dict):
+                if self.strict and "choices" not in data:
+                    raise ModelitoBadResponseError(
+                        "raw_complete: server returned valid JSON but no choices"
+                    )
+                return data
+
+            # Non-dict response in strict mode is an error.
+            if self.strict:
+                raise ModelitoBadResponseError(
+                    "raw_complete: server returned a non-dict JSON response"
+                )
+        except ModelitoBadResponseError:
+            if self.strict:
+                raise
+        except ModelitoConnectionError:
+            if self.strict:
+                raise
+        except ModelitoTimeoutError:
+            if self.strict:
+                raise
+        except ModelitoProviderError:
+            if self.strict:
+                raise
+        except Exception as exc:
+            # Classify unknown exceptions.
+            if self.strict:
+                import socket
+                import urllib.error
+
+                if isinstance(exc, urllib.error.HTTPError):
+                    raise ModelitoProviderError(f"HTTP {exc.code}: {exc}") from exc
+                if isinstance(exc, urllib.error.URLError):
+                    reason = str(getattr(exc, "reason", exc)).lower()
+                    if "timed out" in reason or "timeout" in reason:
+                        raise ModelitoTimeoutError(str(exc)) from exc
+                    raise ModelitoConnectionError(str(exc)) from exc
+                if isinstance(exc, (TimeoutError, socket.timeout)):
+                    raise ModelitoTimeoutError(str(exc)) from exc
+                if isinstance(exc, _json.JSONDecodeError):
+                    raise ModelitoBadResponseError(str(exc)) from exc
+                raise ModelitoProviderError(str(exc)) from exc
+
+        # Non-strict fallback.
+        return self._fallback_raw_response(request_payload)
+
+    def raw_stream(self, payload: dict[str, Any]) -> Iterable[dict[str, Any]]:
+        """Stream raw OpenAI-compatible chat completion events from Ollama's /v1/chat/completions.
+
+        Args:
+            payload: OpenAI-compatible chat completion request payload.
+
+        Yields:
+            Parsed JSON dictionaries from Server-Sent Events, one per event.
+            Does not yield the [DONE] marker.
+
+        Raises:
+            ModelitoBadResponseError: In strict mode, if event parsing fails.
+            ModelitoConnectionError: In strict mode, if the endpoint is unreachable.
+            ModelitoTimeoutError: In strict mode, if the request times out.
+            ModelitoProviderError: In strict mode, for other provider errors.
+        """
+        # Shallow copy only: raw_stream only adds/overrides top-level transport
+        # keys ("model", "stream").  Nested OpenAI-compatible structures such as
+        # messages, tools, tool_choice, and response_format are intentionally not
+        # deep-copied so callers can pass large payloads without unnecessary
+        # allocation.
+        request_payload = dict(payload or {})
+
+        # Set model if absent, but don't overwrite an explicit model.
+        if "model" not in request_payload and self.model:
+            request_payload["model"] = self.model
+
+        # Force streaming.
+        request_payload["stream"] = True
+
+        # raw_stream uses urlopen directly instead of json_post because it needs
+        # access to the response iterator to parse SSE data: frames incrementally.
+        # json_post reads the full response body before returning, which is
+        # incompatible with a streaming response.
+        try:
+            url = endpoint_url(self.host, self.port, "/v1/chat/completions")
+            req = Request(
+                url,
+                data=_json.dumps(request_payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+
+            with urlopen(req, timeout=self.timeout) as resp:
+                while True:
+                    raw_line = resp.readline()
+                    if not raw_line:
+                        break
+
+                    line = raw_line.decode("utf-8", errors="ignore").strip()
+                    if not line:
+                        continue
+
+                    # Strip SSE "data: " prefix if present.
+                    if line.startswith("data:"):
+                        line = line[5:].lstrip()
+
+                    # Stop on [DONE] marker.
+                    if line == "[DONE]":
+                        break
+
+                    # Parse the event JSON.
+                    try:
+                        event = _json.loads(line)
+                    except _json.JSONDecodeError as exc:
+                        if self.strict:
+                            raise ModelitoBadResponseError(
+                                f"raw_stream: unable to parse stream event: {line!r}"
+                            ) from exc
+                        continue
+
+                    if not isinstance(event, dict):
+                        if self.strict:
+                            raise ModelitoBadResponseError(
+                                "raw_stream: expected JSON object event, "
+                                f"got {type(event).__name__}"
+                            )
+                        continue
+
+                    # Yield the parsed event dict.
+                    yield event
+
+            return
+
+        except ModelitoBadResponseError:
+            if self.strict:
+                raise
+        except ModelitoConnectionError:
+            if self.strict:
+                raise
+        except ModelitoTimeoutError:
+            if self.strict:
+                raise
+        except ModelitoProviderError:
+            if self.strict:
+                raise
+        except Exception as exc:
+            # Classify unknown exceptions.
+            if self.strict:
+                import socket
+                import urllib.error
+
+                if isinstance(exc, urllib.error.HTTPError):
+                    raise ModelitoProviderError(f"HTTP {exc.code}: {exc}") from exc
+                if isinstance(exc, urllib.error.URLError):
+                    reason = str(getattr(exc, "reason", exc)).lower()
+                    if "timed out" in reason or "timeout" in reason:
+                        raise ModelitoTimeoutError(str(exc)) from exc
+                    raise ModelitoConnectionError(str(exc)) from exc
+                if isinstance(exc, (TimeoutError, socket.timeout)):
+                    raise ModelitoTimeoutError(str(exc)) from exc
+                raise ModelitoProviderError(str(exc)) from exc
+
+        # Non-strict fallback: yield deterministic stream events.
+        created = int(time.time())
+        model = request_payload.get("model", self.model or "unknown")
+        event_id = f"chatcmpl-modelito-{uuid.uuid4().hex}"
+
+        # Initial role chunk
+        yield {
+            "id": event_id,
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model,
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {"role": "assistant"},
+                    "finish_reason": None,
+                }
+            ],
+        }
+
+        # Content chunk(s)
+        messages = request_payload.get("messages", [])
+        parts: List[str] = []
+        if isinstance(messages, list):
+            for item in messages:
+                if isinstance(item, dict):
+                    content = item.get("content")
+                    if isinstance(content, str) and content:
+                        parts.append(content)
+                elif isinstance(item, str):
+                    parts.append(item)
+
+        text = "\n".join(parts) or "fallback"
+        chunk_size = 64
+        if isinstance(request_payload, dict) and "chunk_size" in request_payload:
+            try:
+                chunk_size = max(
+                    1, int(request_payload.get("chunk_size") or chunk_size)
+                )
+            except Exception:
+                chunk_size = 64
+
+        for start in range(0, len(text), chunk_size):
+            chunk = text[start: start + chunk_size]
+            if not chunk:
+                continue
+
+            yield {
+                "id": event_id,
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"content": chunk},
+                        "finish_reason": None,
+                    }
+                ],
+            }
+
+        # Final stop chunk
+        yield {
+            "id": event_id,
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model,
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {},
+                    "finish_reason": "stop",
+                }
+            ],
+        }

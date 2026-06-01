@@ -4,7 +4,9 @@ from modelito.connector import OllamaConnector
 class DummyProvider:
     def summarize(self, messages, settings=None):
         # return a simple joined message as a fake summary
-        return "|".join(m.content for m in messages if getattr(m, "role", None) != "system")
+        return "|".join(
+            m.content for m in messages if getattr(m, "role", None) != "system"
+        )
 
 
 def test_connector_history_and_trim():
@@ -25,5 +27,8 @@ def test_connector_history_and_trim():
 
     # test send_sync uses provider and returns string
     from modelito.messages import Message
-    resp = conn.send_sync(conv, [Message(role="user", content="please summarize")], settings={})
+
+    resp = conn.send_sync(
+        conv, [Message(role="user", content="please summarize")], settings={}
+    )
     assert isinstance(resp, str)

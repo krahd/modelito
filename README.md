@@ -132,7 +132,8 @@ The client layer recognises the same provider stack through `ChatProvider`,
 `MessageInput`, and structured response helpers such as `Client.chat()` and
 `Client.chat_json()`.
 
-`OpenAICompatibleHTTPProvider`, `OMLXProvider`, and `OpenAIProvider` also
+`OpenAICompatibleHTTPProvider`, `OMLXProvider`, `OpenAIProvider`, and
+`OllamaProvider` also
 expose `raw_complete()` and `raw_stream()` for OpenAI-compatible passthrough.
 `Client.chat_parsed()` remains the structured JSON convenience path for Python
 applications.
@@ -206,10 +207,9 @@ Example `~/.pi/agent/models.json` provider entry:
 ```
 
 Tool-calling workflows require raw passthrough support. Modelito currently
-implements that on `OpenAICompatibleHTTPProvider` and the hosted
-`OpenAIProvider`; `OMLXProvider` inherits it automatically. `OllamaProvider`
-raw passthrough is deferred. For tool-calling integrations today, prefer
-oMLX/OpenAI-compatible raw providers or hosted OpenAI.
+implements that on `OpenAICompatibleHTTPProvider`, `OMLXProvider`,
+`OpenAIProvider`, and `OllamaProvider` via Ollama's
+`/v1/chat/completions` endpoint.
 
 The package also exposes a small Ollama administration layer for local model
 operations, including install backend detection, remote catalog metadata,
