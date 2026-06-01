@@ -216,6 +216,17 @@ class TestRecordingProviderSummarize:
         p = RecordingProvider(wrapped=MockProvider(), cassette=tmp_path / "t.jsonl")
         assert isinstance(p.summarize(msgs("hello")), str)
 
+    def test_settings_json_safe_nested_object(self, tmp_path):
+        class Obj:
+            pass
+
+        cassette = tmp_path / "t.jsonl"
+        p = RecordingProvider(wrapped=MockProvider(), cassette=cassette)
+        p.summarize(msgs("hello"), settings={"nested": {"obj": Obj()}})
+
+        records = read_cassette(cassette)
+        assert isinstance(records[0]["request"]["settings"]["nested"]["obj"], str)
+
     def test_result_matches_wrapped_provider(self, tmp_path):
         mock = MockProvider()
         p = RecordingProvider(wrapped=mock, cassette=tmp_path / "t.jsonl")
@@ -246,7 +257,8 @@ class TestRecordingProviderSummarize:
 
     def test_record_stores_message_content(self, tmp_path):
         cassette = tmp_path / "t.jsonl"
-        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(msgs("distinct-content"))
+        RecordingProvider(wrapped=MockProvider(), cassette=cassette).summarize(
+            msgs("distinct-content"))
         record = read_cassette(cassette)[0]
         assert record["request"]["messages"][0]["content"] == "distinct-content"
 

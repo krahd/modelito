@@ -28,7 +28,8 @@ Design constraints
   Pass model="..." explicitly to require an exact model match.
 - Strict replay by default: ReplayMissError is raised if no record matches.
 - Strict cassette parsing by default: CassetteFormatError on malformed JSON.
-- RecordingProvider is a pure passthrough with side-effect persistence only.
+- RecordingProvider is behaviour-preserving for Message-style inputs and
+    normalises supported str/dict inputs into Message objects before delegation.
 
 Wrappers are composable::
 
