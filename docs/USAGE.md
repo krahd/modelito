@@ -186,3 +186,63 @@ python -m modelito.timeout_cli --model llama-2-13b --input-tokens 2048
 python -m modelito.timeout_calibrate --model llama-2-13b --outdir ./calib
 python -m modelito.timeout_calibrate --model llama-2-13b --execute
 ```
+
+Recording and replay
+--------------------
+
+`RecordingProvider` and `ReplayProvider` in `modelito.recording` let you
+capture real provider calls to a JSONL cassette file and replay them offline
+with no network or API key.  They are stdlib-only and require no additional
+dependencies.
+
+**Record once, replay many times:**
+
+```py
+from modelito import Message
+from modelito.mock_provider import MockProvider   # replace with any real provider
+from modelito.recording import RecordingProvider, ReplayProvider
+
+# Wrap any provider to record calls
+provider = RecordingProvider(
+    wrapped=MockProvider(),
+    cassette="tests/cassettes/demo.jsonl",
+)
+result = provider.summarize([Message(role="user", content="hello")])
+
+# Later (or in CI): replay without any network access
+replay = ReplayProvider(cassette="tests/cassettes/demo.jsonl")
+print(replay.summarize([Message(role="user", content="hello")]))</p>
+```
+
+**Supported input forms** — all of the following are accepted by both
+`RecordingProvider` and `ReplayProvider`:
+
+```py
+provider.summarize("hello")                                      # bare string
+provider.summarize(["hello", "world"])                           # list of strings
+provider.summarize({"role": "user", "content": "hello"})        # single dict
+provider.summarize([{"role": "user", "content": "hello"}])      # list of dicts
+provider.summarize([Message(role="user", content="hello")])     # Message objects
+provider.summarize(iter([Message(role="user", content="hi")]))  # generator
+```
+
+**V1 scope:** `list_models()`, `summarize()`, and `chat()` only.
+`stream()` and `embed()` raise `NotImplementedError`.
+
+**Error handling:**
+
+- `CassetteFormatError` — raised on malformed JSONL lines (pass
+  `strict_cassette=False` to skip them instead).
+- `ReplayMissError` — raised when no cassette record matches a request
+  (pass `strict=False` to return an empty response instead).
+
+**Composability** — wrappers stack freely:
+
+```py
+from modelito.recording import RecordingProvider, ReplayProvider
+
+outer = RecordingProvider(
+    wrapped=ReplayProvider(cassette="base.jsonl"),
+    cassette="outer.jsonl",
+)
+```

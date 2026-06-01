@@ -27,6 +27,7 @@ The package provides:
 - comprehensive docs under `docs/` including architecture, usage, API reference, install guide, and local server integration
 - concise release checklist documentation in `docs/RELEASE.md`
 - pytest, ruff, mypy, build, twine, CI, and publishing workflows
+- composable `RecordingProvider` / `ReplayProvider` wrappers in `modelito/recording.py` that persist request/response pairs to a JSONL cassette for offline replay; stdlib-only, zero extra dependencies
 
 Release `v1.4.3` was tagged in git and published to PyPI after the local OpenAI-compatible server support landed in `v1.4.2`.
 
@@ -138,6 +139,7 @@ python -m twine check dist/*
 ## Important files and directories
 
 - `modelito/`: package source.
+- `modelito/recording.py`: `RecordingProvider`, `ReplayProvider`, `CassetteFormatError`, `ReplayMissError`.
 - `tests/`: test suite.
 - `docs/`: user and API documentation.
 - `docs/assets/`: standalone SVG diagram assets reused by the README.
@@ -149,6 +151,7 @@ python -m twine check dist/*
 
 ## Recent changes
 
+- Added `modelito/recording.py`: composable `RecordingProvider` and `ReplayProvider` wrappers. `RecordingProvider` wraps any modelito provider, delegates calls to it, and appends request/response pairs as JSONL records to a cassette file. `ReplayProvider` reads the cassette and returns stored responses without touching the network. Both support `list_models()`, `summarize()`, and `chat()`; `stream()` and `embed()` raise `NotImplementedError` in v1. Message normalisation (str, dict, `Message`, iterables, generators) is handled consistently; generator exhaustion is avoided by materialising once. Replay is model-agnostic by default; `CassetteFormatError` and `ReplayMissError` are raised on malformed cassettes and cache misses respectively. 73 tests in `tests/test_recording_provider.py`; full suite: 329 passed, 3 skipped.
 - Latest cleanup pass fixed fallback streaming laziness, provider warning header scope, shared probe reuse, and `flatten_message_inputs` / `modelito-doctor` export surface.
 - Added a concise release checklist document and linked it from the README docs index.
 - Install-helper Unix test now accepts apt-based Linux install commands as well as script install commands.
@@ -198,6 +201,8 @@ python -m twine check dist/*
 - Cloud-provider integrations should remain lightweight shims by default.
 - The core value of the package is provider-agnostic normalisation, optional local tooling, and dependency-light embeddability.
 - Consider persistent lifecycle-storage support if downstream tooling needs cross-process tracking.
+
+Last updated: 2026-05-31 12:00
 - Consider optional pluggable key-provider interfaces only if secret-storage demand grows.
 - Deeper cloud-provider features should remain optional unless they map cleanly across providers.
 - CI intentionally excludes integration tests by path/flags to keep default hosted CI fast and safe.
@@ -205,4 +210,4 @@ python -m twine check dist/*
 
 ---
 
-Last updated: 2026-05-19 01:44
+Last updated: 2026-05-31 12:00

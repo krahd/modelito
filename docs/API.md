@@ -38,6 +38,7 @@ surface. The primary exports (also visible via `from modelito import *`) are:
   JSON/YAML parsing.
 - `parse_host_port(host_url: str) -> Tuple[str, int]` — parse `host:port` or URL into `(host, port)`.
 - `LLMProviderError` — base exception used by connector/provider helpers.
+- Recording and replay: `RecordingProvider`, `ReplayProvider`, `CassetteFormatError`, `ReplayMissError` from `modelito.recording` — zero-dependency JSONL cassette wrappers for offline testing and debugging.
 - Ollama helpers: `server_is_up`, `endpoint_url`, `ensure_ollama_running`, `get_ollama_binary`, `install_ollama`, `start_ollama`, `stop_ollama`, `update_ollama`, `list_local_models`, `list_remote_models`, `download_model`, `delete_model`, `serve_model`, `change_ollama_config`, `run_ollama_command`, etc.
 
 Key classes and functions
@@ -237,6 +238,49 @@ conn = OllamaConnector(provider=provider)
 resp = conn.send_sync(conv_id="example", new_messages=[Message(role="user", content="Summarize: Hello world")])
 print(resp)
 ```
+
+Recording and replay
+--------------------
+
+`RecordingProvider(wrapped, cassette: str | Path)`
+: Wraps any modelito provider and persists each call to a JSONL cassette file.
+  Returns the wrapped provider's result unchanged, so it is a pure passthrough
+  with side-effect persistence only.  Normalises `str`, `dict`, and `Message`
+  inputs — and exhausts generators exactly once — before delegating to the
+  wrapped provider.
+
+`ReplayProvider(cassette: str | Path, *, strict: bool = True, model: str | None = None, strict_cassette: bool = True)`
+: Reads a JSONL cassette written by `RecordingProvider` and returns stored
+  responses without touching the network or any model runtime.  By default
+  replay is model-agnostic (``model=None``): records are matched by
+  kind + messages + settings, ignoring the recorded provider's model name.
+  Pass ``model="..."`` for exact model-aware lookup.
+
+`CassetteFormatError(path, line_number, line)`
+: Raised when a cassette file contains malformed JSON.  Attributes: `path`,
+  `line_number`, `line`.
+
+`ReplayMissError(kind, request_hash)`
+: Raised by `ReplayProvider` (in strict mode) when no cassette record matches
+  the request.  Attributes: `kind`, `request_hash`.
+
+V1 scope: supports `list_models()`, `summarize()`, and `chat()` only.
+`stream()` and `embed()` raise `NotImplementedError`.  All inputs are
+stdlib-only; no additional package is required.
+
+Example::
+
+    from modelito import Message
+    from modelito.mock_provider import MockProvider
+    from modelito.recording import RecordingProvider, ReplayProvider
+
+    # Record
+    p = RecordingProvider(wrapped=MockProvider(), cassette="/tmp/demo.jsonl")
+    p.summarize([Message(role="user", content="hello")])
+
+    # Replay offline
+    r = ReplayProvider(cassette="/tmp/demo.jsonl")
+    print(r.summarize([Message(role="user", content="hello")]))
 
 Notes
 -----
