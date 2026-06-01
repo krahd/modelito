@@ -2,12 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.4.6
+## 1.4.6 - 2026-05-19
 
-- Added strict non-dict JSON event handling to `OllamaProvider.raw_stream()` in strict mode for validation of Server-Sent Events.
-- Updated `OpenAICompatibleHTTPProvider` fallback chat response to preserve requested model instead of returning `None`.
-- Added comprehensive tests for Ollama raw passthrough: strict non-dict JSON rejection, `/v1/chat/completions` endpoint routing, input payload immutability, and preservation of OpenAI-compatible generation fields (`response_format`, `temperature`, `top_p`, `max_tokens`, `stop`).
-- Updated documentation examples to use `llama3.2` instead of `llama2-uncensored:7b`.
+- Added OpenAI-compatible raw passthrough support to `OllamaProvider` via Ollama's `/v1/chat/completions` endpoint.
+- Added `OllamaProvider.raw_complete()` and `OllamaProvider.raw_stream()` for preserving raw OpenAI-compatible chat payloads, including tool-call metadata.
+- Added tests for Ollama raw passthrough, including endpoint selection, stream parsing, payload immutability, strict malformed-event handling, fallback behaviour, and preservation of OpenAI-compatible generation fields.
+- Updated raw fallback responses in `OpenAICompatibleHTTPProvider` to preserve the requested model.
+- Updated documentation for Ollama raw passthrough, namespaced recording/replay helpers, and LiteLLM as a future optional adapter rather than a core dependency.
 
 ## 1.4.5 - 2026-05-19
 

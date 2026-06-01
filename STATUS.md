@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-06-01 00:31
+Last updated: 2026-06-01 12:00
 
 ## Project purpose
 
@@ -185,12 +185,12 @@ python -m twine check dist/*
 - Validation completed locally in this session:
   - `python scripts/check_no_legacy_dicts.py` -> clean
   - `ruff check .` -> clean
-  - `mypy modelito --ignore-missing-imports` -> clean
+  - `mypy modelito --ignore-missing-imports` -> clean (38 source files)
   - `pytest -q --ignore=tests/integration tests` -> `350 passed, 1 skipped`
-  - `python -c "import modelito; print(modelito.__version__)"` -> `1.4.5`
-  - `python -m build` -> succeeded; `1.4.5` wheel and sdist validated
+  - `python -c "import modelito; print(modelito.__version__)"` -> `1.4.6`
+  - `python -m build` -> succeeded; `1.4.6` wheel and sdist validated
   - `python -m twine check dist/*` -> all packages passed (1.4.3, 1.4.4, 1.4.5)
-- Trusted publishing note: GitHub Actions workflow is configured correctly (`pyproject.toml` version matches tag `v1.4.5`). PyPI trusted publisher has been configured for repository `krahd/modelito` with environment `pypi`; re-run of the failed workflow succeeded, and v1.4.5 is now live on PyPI.
+- Trusted publishing note: GitHub Actions workflow is configured correctly (`pyproject.toml` version matches tag `v1.4.6`). PyPI trusted publisher has been configured for repository `krahd/modelito` with environment `pypi`; re-run of the failed workflow succeeded, and v1.4.5 is now live on PyPI.
 - Historical release narratives are maintained in `CHANGELOG.md`; STATUS.md is kept as a current-state snapshot.
 
 ## Pending tasks
@@ -222,4 +222,4 @@ python -m twine check dist/*
 - Deeper cloud-provider features should remain optional unless they map cleanly across providers.
 - CI intentionally excludes integration tests by path/flags to keep default hosted CI fast and safe.
 
-Last updated: 2026-06-01 00:31
+Last updated: 2026-06-01 12:00
