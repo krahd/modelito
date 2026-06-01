@@ -5,6 +5,7 @@ strings, dictionaries, wrapper objects with ``data`` or ``models`` members,
 and SDK objects with attributes.  These helpers keep downstream adapters from
 having to duplicate that shape handling.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
@@ -146,8 +147,10 @@ def _iter_model_mapping(data: Mapping[str, Any]) -> Iterable[dict[str, Any]]:
             items.append({"id": key_str, "value": value})
             continue
 
-        normalized = {str(payload_key): payload_value for payload_key,
-                      payload_value in payload.items()}
+        normalized = {
+            str(payload_key): payload_value
+            for payload_key, payload_value in payload.items()
+        }
         normalized.setdefault("id", key_str)
         items.append(normalized)
     return items

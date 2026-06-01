@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-19 01:44
+Last updated: 2026-05-19 10:15
 
 ## Project purpose
 
@@ -151,6 +151,21 @@ python -m twine check dist/*
 
 ## Recent changes
 
+- **OllamaProvider raw passthrough (raw_complete/raw_stream)**: Implemented `raw_complete(payload)` and `raw_stream(payload)` methods on `OllamaProvider` to enable OpenAI-compatible passthrough via `/v1/chat/completions` endpoint. Both methods preserve all OpenAI request fields (tools, tool_choice, response_format, etc.) and work with `modelito-serve` for tool-calling workflows with local Ollama models. Comprehensive test suite added: 13 test functions in `tests/test_ollama_raw_provider.py` covering protocol conformance, default model injection, explicit model preservation, tool preservation, endpoint routing, response handling, error modes (strict/non-strict), and SSE streaming. Integration test added to `tests/test_serve.py` verifying tool-calling through modelito-serve.
+- **recording.py audit**: Audited 4 type:ignore comments. Removed 3 unnecessary `type:ignore[attr-defined]` comments on imports of `Response`, `Message`, `flatten_message_inputs` (all properly exported from messages.py). Kept 1 necessary `type:ignore[return-value]` at return statement due to mypy type-narrowing limitation with tuple unpacking in conditional assignment.
+- **Namespaced public helpers documentation (Option A)**: Added new "Namespaced public helpers" section to docs/API.md explaining the pattern and providing example code for `RecordingProvider` and `ReplayProvider` from `modelito.recording`. Documentation already used correct `from modelito.recording import ...` imports consistently.
+- **LiteLLM documentation note**: Added "Future adapters: LiteLLM" section to docs/USAGE.md explaining LiteLLM as planned optional adapter (`modelito[litellm]`), noting core maintains `dependencies = []`, and positioning as future extra alongside other provider-specific integrations.
+- **OpenAI-compatible raw passthrough documentation**: Added "OpenAI-compatible raw passthrough" section to docs/API.md with detailed signature documentation, availability list (OpenAIProvider, OMLXProvider, OpenAICompatibleHTTPProvider, OllamaProvider), tool preservation explanation, and Python example showing Ollama with function calling. Added "OpenAI-compatible raw passthrough (tool calling)" section to docs/USAGE.md with practical example showing tool definitions, payload construction, and response handling.
+- **Code quality fixes**: Removed legacy dict-shaped message literals from new docs/API.md examples (used `Message(...)` syntax instead). Fixed 9 linting issues in test file (removed unused imports json/patch/BytesIO/Message, removed unused result variables, removed late import). All 84 files reformatted by ruff for consistency.
+- **Validation completed this session**:
+  - `python scripts/check_no_legacy_dicts.py` → clean
+  - `ruff check .` → clean
+  - `ruff format .` → formatted 84 files
+  - `mypy modelito --ignore-missing-imports` → clean (38 source files)
+  - `pytest -q` → 344 passed, 3 skipped
+  - `from modelito import OllamaProvider; from modelito.provider import RawChatProvider; print(isinstance(OllamaProvider(model='test'), RawChatProvider))` → True
+- Dependencies unchanged: `dependencies = []` confirmed in `pyproject.toml` (core remains zero-dependency)
+
 - Added `modelito/recording.py`: composable `RecordingProvider` and `ReplayProvider` wrappers. `RecordingProvider` wraps any modelito provider, delegates calls to it, and appends request/response pairs as JSONL records to a cassette file. `ReplayProvider` reads the cassette and returns stored responses without touching the network. Both support `list_models()`, `summarize()`, and `chat()`; `stream()` and `embed()` raise `NotImplementedError` in v1. Message normalisation (str, dict, `Message`, iterables, generators) is handled consistently; generator exhaustion is avoided by materialising once. Replay is model-agnostic by default; `CassetteFormatError` and `ReplayMissError` are raised on malformed cassettes and cache misses respectively. 73 tests in `tests/test_recording_provider.py`; full suite: 329 passed, 3 skipped.
 - Latest cleanup pass fixed fallback streaming laziness, provider warning header scope, shared probe reuse, and `flatten_message_inputs` / `modelito-doctor` export surface.
 - Added a concise release checklist document and linked it from the README docs index.
@@ -210,4 +225,4 @@ Last updated: 2026-05-31 12:00
 
 ---
 
-Last updated: 2026-05-31 12:00
+Last updated: 2026-05-19 10:15

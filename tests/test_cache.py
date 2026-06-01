@@ -1,5 +1,6 @@
 from modelito.cache import ResponseCache
 
+
 def test_cache_set_get():
     cache = ResponseCache(max_size=2)
     key1 = ("prompt1",)
@@ -9,6 +10,7 @@ def test_cache_set_get():
     cache.set(key2, "result2")
     assert cache.get(key2) == "result2"
 
+
 def test_cache_eviction():
     cache = ResponseCache(max_size=2)
     cache.set(("a",), 1)
@@ -17,6 +19,7 @@ def test_cache_eviction():
     # Oldest should be evicted
     assert cache.get(("a",)) is None
     assert cache.get(("b",)) == 2 or cache.get(("c",)) == 3
+
 
 def test_cache_clear():
     cache = ResponseCache()

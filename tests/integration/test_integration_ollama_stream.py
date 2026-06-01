@@ -18,6 +18,7 @@ def test_ollama_integration_streaming():
     prov = OllamaProvider(host=host, port=port, model=os.environ.get("OLLAMA_MODEL"))
 
     from modelito.messages import Message
+
     out = prov.summarize([Message(role="user", content="Hello world")], settings={})
     assert isinstance(out, str) and out
 

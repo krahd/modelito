@@ -6,6 +6,7 @@ when the HTTP service is not available. It intentionally avoids adding a
 hard dependency on `httpx` and will use it only when present for streaming
 reads.
 """
+
 from __future__ import annotations
 
 import json
@@ -40,14 +41,21 @@ class OllamaHTTPClient:
 
     def version(self) -> str:
         try:
-            from .ollama_service import endpoint_url, json_get, ollama_version_text, server_is_up
+            from .ollama_service import (
+                endpoint_url,
+                json_get,
+                ollama_version_text,
+                server_is_up,
+            )
 
             if server_is_up(self.host, self.port):
                 url = endpoint_url(self.host, self.port, "/api/version")
                 try:
                     data = json_get(url, timeout=3.0)
                     if isinstance(data, dict):
-                        return str(data.get("version") or data.get("ollama_version") or "")
+                        return str(
+                            data.get("version") or data.get("ollama_version") or ""
+                        )
                 except Exception:
                     logger.debug("version: json_get failed", exc_info=True)
             return ollama_version_text(host=self._host_env())
@@ -56,7 +64,12 @@ class OllamaHTTPClient:
 
     def ps(self) -> List[str]:
         try:
-            from .ollama_service import endpoint_url, json_get, running_model_names, server_is_up
+            from .ollama_service import (
+                endpoint_url,
+                json_get,
+                running_model_names,
+                server_is_up,
+            )
 
             if server_is_up(self.host, self.port):
                 url = endpoint_url(self.host, self.port, "/api/ps")
@@ -90,7 +103,12 @@ class OllamaHTTPClient:
     def list_local(self) -> List[str]:
         """Return locally installed models (CLI or HTTP-aware)."""
         try:
-            from .ollama_service import list_local_models, endpoint_url, json_get, server_is_up
+            from .ollama_service import (
+                list_local_models,
+                endpoint_url,
+                json_get,
+                server_is_up,
+            )
 
             if server_is_up(self.host, self.port):
                 try:
@@ -108,7 +126,12 @@ class OllamaHTTPClient:
     def list_remote(self) -> List[str]:
         """Return remote models available to download (best-effort)."""
         try:
-            from .ollama_service import list_remote_models, endpoint_url, json_get, server_is_up
+            from .ollama_service import (
+                list_remote_models,
+                endpoint_url,
+                json_get,
+                server_is_up,
+            )
 
             if server_is_up(self.host, self.port):
                 try:
@@ -134,8 +157,14 @@ class OllamaHTTPClient:
         except Exception:
             # as a fallback, try CLI directly
             try:
-                proc = subprocess.run(["ollama", "rm", model], stdout=subprocess.PIPE,
-                                      stderr=subprocess.PIPE, text=True, timeout=60, check=False)
+                proc = subprocess.run(
+                    ["ollama", "rm", model],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=60,
+                    check=False,
+                )
                 return proc.returncode == 0
             except Exception:
                 return False
@@ -158,8 +187,13 @@ class OllamaHTTPClient:
             except Exception:
                 env = None
 
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT, text=True, env=env)
+            p = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                env=env,
+            )
             assert p.stdout is not None
             for line in p.stdout:
                 yield line.rstrip("\n")
@@ -178,7 +212,13 @@ class OllamaHTTPClient:
             except Exception:
                 return
 
-    def generate(self, messages: Iterable[Message | str] | str, model: Optional[str] = None, stream: bool = False, timeout: float = 60.0) -> Generator[str, None, None]:
+    def generate(
+        self,
+        messages: Iterable[Message | str] | str,
+        model: Optional[str] = None,
+        stream: bool = False,
+        timeout: float = 60.0,
+    ) -> Generator[str, None, None]:
         """Generate text from messages.
 
         When `stream` is True attempt an HTTP streaming read (SSE-like) and
@@ -194,8 +234,9 @@ class OllamaHTTPClient:
         if isinstance(messages, (list, tuple)) and messages:
             first = next(iter(messages))
             if isinstance(first, Message):
-                payload["messages"] = [{"role": m.role, "content": m.content}
-                                       for m in messages]  # type: ignore[arg-type]
+                payload["messages"] = [
+                    {"role": m.role, "content": m.content} for m in messages
+                ]  # type: ignore[arg-type]
             else:
                 parts: List[str] = [str(m) for m in messages]  # type: ignore[arg-type]
                 payload["prompt"] = "\n".join(p for p in parts if p)
@@ -222,7 +263,11 @@ class OllamaHTTPClient:
                         if k in res:
                             yield str(res.get(k) or "")
                             return
-                    choices = res.get("choices") if isinstance(res.get("choices"), list) else None
+                    choices = (
+                        res.get("choices")
+                        if isinstance(res.get("choices"), list)
+                        else None
+                    )
                     if choices:
                         first = choices[0]
                         if isinstance(first, dict) and "text" in first:
@@ -248,8 +293,11 @@ class OllamaHTTPClient:
                             for raw in r.iter_lines():
                                 if not raw:
                                     continue
-                                s = raw.decode("utf-8") if isinstance(raw,
-                                                                      (bytes, bytearray)) else str(raw)
+                                s = (
+                                    raw.decode("utf-8")
+                                    if isinstance(raw, (bytes, bytearray))
+                                    else str(raw)
+                                )
                                 s = s.strip()
                                 if not s:
                                     continue
@@ -264,10 +312,14 @@ class OllamaHTTPClient:
                                     continue
                                 # common shapes
                                 if isinstance(obj, dict):
-                                    if "token" in obj and isinstance(obj.get("token"), str):
+                                    if "token" in obj and isinstance(
+                                        obj.get("token"), str
+                                    ):
                                         yield str(obj.get("token") or "")
                                         continue
-                                    if "text" in obj and isinstance(obj.get("text"), str):
+                                    if "text" in obj and isinstance(
+                                        obj.get("text"), str
+                                    ):
                                         yield str(obj.get("text") or "")
                                         continue
                                 yield s2
@@ -279,8 +331,12 @@ class OllamaHTTPClient:
             try:
                 from urllib.request import Request, urlopen
 
-                req = Request(url, data=json.dumps(payload).encode("utf-8"),
-                              headers={"Content-Type": "application/json"}, method="POST")
+                req = Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
                 with urlopen(req, timeout=timeout) as resp:
                     while True:
                         chunk = resp.readline()
@@ -341,4 +397,4 @@ class OllamaHTTPClient:
 
         chunk_size = 64
         for i in range(0, len(prompt), chunk_size):
-            yield prompt[i: i + chunk_size]
+            yield prompt[i : i + chunk_size]

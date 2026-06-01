@@ -3,6 +3,7 @@
 These helpers are used by both the client auto-selection path and the doctor
 diagnostics so the readiness behaviour stays aligned.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

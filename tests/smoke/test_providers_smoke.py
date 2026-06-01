@@ -11,11 +11,10 @@ if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
 
-
-
 def test_openai_provider_summarize_fallback():
     p = OpenAIProvider()
     from modelito.messages import Message
+
     res = p.summarize([Message(role="user", content="hello")])
     assert isinstance(res, str)
 
@@ -23,6 +22,7 @@ def test_openai_provider_summarize_fallback():
 def test_ollama_provider_summarize_fallback():
     p = OllamaProvider()
     from modelito.messages import Message
+
     res = p.summarize([Message(role="user", content="hey")])
     assert isinstance(res, str)
 

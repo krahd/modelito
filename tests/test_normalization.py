@@ -29,9 +29,9 @@ def test_normalize_models_accepts_wrapped_and_object_responses():
     response = SimpleNamespace(data=[ModelInfo(id="gpt-4o-mini", owned_by="openai")])
 
     assert normalize_models(response) == [{"id": "gpt-4o-mini", "owned_by": "openai"}]
-    assert normalize_models({"models": [{"name": "mistral", "details": {"family": "llama"}}]}) == [
-        {"name": "mistral", "details": {"family": "llama"}, "id": "mistral"}
-    ]
+    assert normalize_models(
+        {"models": [{"name": "mistral", "details": {"family": "llama"}}]}
+    ) == [{"name": "mistral", "details": {"family": "llama"}, "id": "mistral"}]
 
 
 def test_normalize_models_accepts_mapping_by_model_id():

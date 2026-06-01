@@ -1,4 +1,5 @@
 """`python -m modelito` entrypoint."""
+
 from __future__ import annotations
 
 from .doctor import main

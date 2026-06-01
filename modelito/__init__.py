@@ -3,6 +3,7 @@
 This package is intentionally small and focused on provider/connectors
 utilities used by downstream projects.
 """
+
 try:
     from importlib.metadata import version, PackageNotFoundError
 except Exception:
@@ -84,7 +85,14 @@ from .grok import GrokProvider
 from .openai import OpenAIProvider
 from .claude import ClaudeProvider
 from .omlx import OMLXProvider
-from .provider import Provider, EmbeddingProvider, ChatProvider, RawChatProvider, MessageInput, OpenAIMessageDict
+from .provider import (
+    Provider,
+    EmbeddingProvider,
+    ChatProvider,
+    RawChatProvider,
+    MessageInput,
+    OpenAIMessageDict,
+)
 from .client import Client
 from .doctor import ProviderStatus, check_provider_ready, format_provider_status
 from .embeddings import Embedder, StubEmbeddingProvider, embed_texts

@@ -11,7 +11,9 @@ def test_stream_with_chat_completions_stream():
             yield {"choices": [{"delta": {"content": " "}}]}
             yield {"choices": [{"delta": {"content": "world"}}]}
 
-    fake_client = types.SimpleNamespace(chat=types.SimpleNamespace(completions=FakeCompletions()))
+    fake_client = types.SimpleNamespace(
+        chat=types.SimpleNamespace(completions=FakeCompletions())
+    )
     prov = OpenAIProvider(client=fake_client)
     out = "".join(list(prov.stream([Message(role="user", content="hi")])))
     assert out == "Hello world"
@@ -25,7 +27,9 @@ def test_stream_with_chat_completions_create_stream():
                 yield {"choices": [{"delta": {"content": "B"}}]}
             return {"choices": [{"message": {"content": "AB"}}]}
 
-    fake_client = types.SimpleNamespace(chat=types.SimpleNamespace(completions=FakeCompletions()))
+    fake_client = types.SimpleNamespace(
+        chat=types.SimpleNamespace(completions=FakeCompletions())
+    )
     prov = OpenAIProvider(client=fake_client)
     out = "".join(list(prov.stream([Message(role="user", content="hi")])))
     assert out == "AB"

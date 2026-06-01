@@ -4,6 +4,7 @@
 Demonstrates typing with the `Provider` Protocol and how to swap providers
 without changing client code.
 """
+
 from __future__ import annotations
 
 from typing import List

@@ -49,7 +49,8 @@ def _to_messages(messages: Optional[Iterable[Message]]) -> List[Message]:
             msgs.append(m)
         else:
             raise TypeError(
-                "Connector APIs require modelito.messages.Message instances; dicts are no longer supported")
+                "Connector APIs require modelito.messages.Message instances; dicts are no longer supported"
+            )
     return msgs
 
 
@@ -73,8 +74,9 @@ class OllamaConnector:
         self.provider: Provider = provider
         self.shared_history = shared_history
         self.max_history_messages = int(max_history_messages or 20)
-        self.max_history_tokens = int(
-            max_history_tokens) if max_history_tokens is not None else None
+        self.max_history_tokens = (
+            int(max_history_tokens) if max_history_tokens is not None else None
+        )
         self._histories: Dict[str, List[Message]] = {}
         self._system_message: Optional[str] = None
         if system_message_file:
@@ -135,14 +137,19 @@ class OllamaConnector:
         # `Message` dataclass rather than dicts.
         return list(self._histories.get(self._conv_key(conv_id), []))
 
-    def trim_history_by_tokens(self, messages: List[Message], max_tokens: int) -> List[Message]:
+    def trim_history_by_tokens(
+        self, messages: List[Message], max_tokens: int
+    ) -> List[Message]:
         if max_tokens is None or max_tokens <= 0:
             return messages
         msgs = list(messages)
         system: Optional[Message] = None
         if msgs and msgs[0].role == "system":
             system = msgs.pop(0)
-        while self._total_tokens(([system] if system else []) + msgs) > max_tokens and msgs:
+        while (
+            self._total_tokens(([system] if system else []) + msgs) > max_tokens
+            and msgs
+        ):
             del msgs[0]
         if system:
             result = [system] + msgs
@@ -163,35 +170,60 @@ class OllamaConnector:
         if new_messages:
             hist_msgs = hist_msgs + _to_messages(new_messages)
         if len(hist_msgs) > self.max_history_messages:
-            hist_msgs = hist_msgs[-self.max_history_messages:]
+            hist_msgs = hist_msgs[-self.max_history_messages :]
         if max_prompt_tokens is not None:
             trimmed = self.trim_history_by_tokens(hist_msgs, max_prompt_tokens)
             hist_msgs = trimmed
         hist_msgs = self._ensure_system(hist_msgs)
         return hist_msgs
 
-    def send_sync(self, conv_id: Optional[str], new_messages: List[Message], settings: Optional[Dict[str, Any]] = None) -> str:
-        messages = self.build_prompt(conv_id, new_messages=new_messages, include_history=True, max_prompt_tokens=(
-            settings or {}).get("max_prompt_tokens"))
+    def send_sync(
+        self,
+        conv_id: Optional[str],
+        new_messages: List[Message],
+        settings: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        messages = self.build_prompt(
+            conv_id,
+            new_messages=new_messages,
+            include_history=True,
+            max_prompt_tokens=(settings or {}).get("max_prompt_tokens"),
+        )
         try:
             resp = self.provider.summarize(messages, settings=settings)
         except Exception as exc:
             raise LLMProviderError(f"Provider call failed: {exc}") from exc
-        for m in (new_messages or []):
+        for m in new_messages or []:
             if not isinstance(m, Message):
-                raise TypeError("new_messages must be modelito.messages.Message instances")
+                raise TypeError(
+                    "new_messages must be modelito.messages.Message instances"
+                )
             self.add_to_history(conv_id, m.role, m.content)
         self.add_to_history(conv_id, "assistant", resp)
         return resp
 
-    def complete(self, conv_id: Optional[str], new_messages: Optional[Iterable[Message]] = None, settings: Optional[Dict[str, Any]] = None) -> Response:
+    def complete(
+        self,
+        conv_id: Optional[str],
+        new_messages: Optional[Iterable[Message]] = None,
+        settings: Optional[Dict[str, Any]] = None,
+    ) -> Response:
         """Return a `Response` dataclass. `new_messages` must be `Message` instances."""
         resp_text = self.send_sync(conv_id, list(new_messages or []), settings=settings)
         return Response(text=resp_text, raw=None)
 
-    async def acomplete(self, conv_id: Optional[str], new_messages: Optional[Iterable[Message]] = None, settings: Optional[Dict[str, Any]] = None) -> Response:
-        msgs = self.build_prompt(conv_id, new_messages=new_messages, include_history=True,
-                                 max_prompt_tokens=(settings or {}).get("max_prompt_tokens"))
+    async def acomplete(
+        self,
+        conv_id: Optional[str],
+        new_messages: Optional[Iterable[Message]] = None,
+        settings: Optional[Dict[str, Any]] = None,
+    ) -> Response:
+        msgs = self.build_prompt(
+            conv_id,
+            new_messages=new_messages,
+            include_history=True,
+            max_prompt_tokens=(settings or {}).get("max_prompt_tokens"),
+        )
         # If provider supplies an async API, prefer that.
         provider = self.provider
         try:
@@ -200,13 +232,17 @@ class OllamaConnector:
                 raw = await acomplete(msgs, settings=settings)
             else:
                 loop = asyncio.get_running_loop()
-                raw = await loop.run_in_executor(None, lambda: provider.summarize(msgs, settings=settings))
+                raw = await loop.run_in_executor(
+                    None, lambda: provider.summarize(msgs, settings=settings)
+                )
         except Exception as exc:
             raise LLMProviderError(f"Provider call failed: {exc}") from exc
         # update history with original new_messages
-        for m in (new_messages or []):
+        for m in new_messages or []:
             if not isinstance(m, Message):
-                raise TypeError("new_messages must be modelito.messages.Message instances")
+                raise TypeError(
+                    "new_messages must be modelito.messages.Message instances"
+                )
             self.add_to_history(conv_id, m.role, m.content)
         self.add_to_history(conv_id, "assistant", raw)
         return Response(text=raw if isinstance(raw, str) else str(raw), raw=raw)

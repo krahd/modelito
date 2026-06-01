@@ -6,6 +6,7 @@ Usage examples:
   python examples/ollama_manage.py --action pull --model your-model
   python examples/ollama_manage.py --action gen --prompt "hello world"
 """
+
 from __future__ import annotations
 
 import argparse
@@ -42,12 +43,15 @@ def main() -> None:
     if args.action == "gen":
         prompt = args.prompt or "hello"
         if args.stream:
-            for chunk in api_generate(prompt, host=args.host, port=args.port, model=args.model, stream=True):
+            for chunk in api_generate(
+                prompt, host=args.host, port=args.port, model=args.model, stream=True
+            ):
                 print(chunk, end="", flush=True)
             print()
         else:
-            text = api_generate(prompt, host=args.host, port=args.port,
-                                model=args.model, stream=False)
+            text = api_generate(
+                prompt, host=args.host, port=args.port, model=args.model, stream=False
+            )
             print(text)
 
 

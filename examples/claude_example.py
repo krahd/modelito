@@ -4,6 +4,7 @@
 Falls back to an offline deterministic response if the `anthropic` SDK
 is not available.
 """
+
 from __future__ import annotations
 
 from modelito import ClaudeProvider, Provider, Message

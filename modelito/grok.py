@@ -3,6 +3,7 @@
 Minimal `GrokProvider` implementation with safe defaults for local testing
 and import compatibility.
 """
+
 from __future__ import annotations
 
 from typing import Any, Iterable, List, Optional
@@ -33,7 +34,9 @@ class GrokProvider:
         except Exception:
             return []
 
-    def summarize(self, messages: Iterable[Message], settings: Optional[dict[str, Any]] = None) -> str:
+    def summarize(
+        self, messages: Iterable[Message], settings: Optional[dict[str, Any]] = None
+    ) -> str:
         """Return a deterministic join of message contents for tests.
 
         Args:
@@ -45,19 +48,22 @@ class GrokProvider:
         """
         try:
             parts = []
-            for m in (messages or []):
+            for m in messages or []:
                 if isinstance(m, Message):
                     parts.append(m.content)
                 elif isinstance(m, str):
                     parts.append(m)
                 else:
                     raise TypeError(
-                        "GrokProvider.summarize requires modelito.messages.Message instances; dicts are not supported")
+                        "GrokProvider.summarize requires modelito.messages.Message instances; dicts are not supported"
+                    )
             return "\n".join(p for p in parts if p)
         except Exception:
             return ""
 
-    def stream(self, messages: Iterable[Message], settings: Optional[dict[str, Any]] = None) -> Iterable[str]:
+    def stream(
+        self, messages: Iterable[Message], settings: Optional[dict[str, Any]] = None
+    ) -> Iterable[str]:
         """Streaming fallback for Grok provider.
 
         Yields the joined message text in sequential chunks.
@@ -72,7 +78,7 @@ class GrokProvider:
         except Exception:
             pass
         for i in range(0, len(text), chunk_size):
-            yield text[i: i + chunk_size]
+            yield text[i : i + chunk_size]
 
     def embed(self, texts: Iterable[str], **kwargs: Any) -> List[List[float]]:
         """Embedding surface for tests: delegate to the embeddings helper."""

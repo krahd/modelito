@@ -2,8 +2,10 @@
 Simple in-memory response cache for Modelito
 - Optionally caches responses for repeated prompts
 """
+
 from typing import Any, Dict, Tuple
 import threading
+
 
 class ResponseCache:
     def __init__(self, max_size: int = 128):

@@ -2,8 +2,10 @@
 Mock Provider for Modelito
 - Simulates completions, streaming, and embeddings for testing/CI/offline
 """
+
 from typing import Iterable, List, Optional, Dict, Any
 from .messages import Message, Response
+
 
 class MockProvider:
     def __init__(self, model: Optional[str] = None):
@@ -12,15 +14,21 @@ class MockProvider:
     def list_models(self) -> List[str]:
         return ["mock-model"]
 
-    def summarize(self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None) -> str:
+    def summarize(
+        self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None
+    ) -> str:
         return "[MOCK] " + " ".join(m.content for m in messages)
 
-    def stream(self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None) -> Iterable[str]:
+    def stream(
+        self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None
+    ) -> Iterable[str]:
         text = self.summarize(messages, settings)
         for i in range(0, len(text), 8):
-            yield text[i:i + 8]
+            yield text[i : i + 8]
 
-    def chat(self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None) -> Response:
+    def chat(
+        self, messages: Iterable[Message], settings: Optional[Dict[str, Any]] = None
+    ) -> Response:
         text = self.summarize(messages, settings)
         return Response(text=text, model=self.model, finish_reason="stop")
 

@@ -4,6 +4,7 @@ The readiness API is intentionally read-only: it diagnoses whether a provider
 looks usable, reports the endpoint and discovered models when applicable, and
 returns actionable setup hints without installing or modifying anything.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -52,7 +53,11 @@ def _probe_openai(
         provider = OpenAIProvider(api_key=api_key, model=model, base_url=base_url)
         models = provider.list_models()
         ready = probes.model_is_available(model, models)
-        endpoint = base_url or getattr(provider, "base_url", None) or "https://api.openai.com/v1"
+        endpoint = (
+            base_url
+            or getattr(provider, "base_url", None)
+            or "https://api.openai.com/v1"
+        )
         return probes.build_status(
             "openai",
             ready,
@@ -96,7 +101,9 @@ def _probe_generic_provider(provider: str, model: Optional[str]) -> ProviderStat
                 details={"error": str(exc)},
             )
         ready = probes.model_is_available(model, models)
-        endpoint = getattr(resolved, "base_url", None) or getattr(resolved, "host", None)
+        endpoint = getattr(resolved, "base_url", None) or getattr(
+            resolved, "host", None
+        )
         return probes.build_status(
             provider,
             ready,
@@ -132,8 +139,9 @@ def check_provider_ready(
     """
     normalized = _normalize_provider_name(provider)
     if normalized == "auto":
-        default_prefer: List[str] = list(prefer or (
-            ["omlx", "ollama"] if _is_macos_apple_silicon() else ["ollama"]))
+        default_prefer: List[str] = list(
+            prefer or (["omlx", "ollama"] if _is_macos_apple_silicon() else ["ollama"])
+        )
         for candidate in default_prefer:
             candidate_name = _normalize_provider_name(candidate)
             if candidate_name == "omlx":
@@ -191,27 +199,43 @@ def format_provider_status(status: ProviderStatus) -> str:
 
 def _is_macos_apple_silicon() -> bool:
     try:
-        return platform.system() == "Darwin" and platform.machine().lower() in {"arm64", "aarch64"}
+        return platform.system() == "Darwin" and platform.machine().lower() in {
+            "arm64",
+            "aarch64",
+        }
     except Exception:
         return False
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="modelito", description="Provider readiness diagnostics")
+    parser = argparse.ArgumentParser(
+        prog="modelito", description="Provider readiness diagnostics"
+    )
     subparsers = parser.add_subparsers(dest="cmd")
 
-    doctor = subparsers.add_parser("doctor", help="Check whether a provider looks ready")
-    doctor.add_argument("--provider", default="auto", help="Provider name to probe (default: auto)")
+    doctor = subparsers.add_parser(
+        "doctor", help="Check whether a provider looks ready"
+    )
+    doctor.add_argument(
+        "--provider", default="auto", help="Provider name to probe (default: auto)"
+    )
     doctor.add_argument("--model", default=None, help="Requested model name")
     doctor.add_argument("--host", default=None, help="Provider host override")
     doctor.add_argument("--port", type=int, default=None, help="Provider port override")
-    doctor.add_argument("--base-url", default=None, help="OpenAI/oMLX-compatible base URL override")
+    doctor.add_argument(
+        "--base-url", default=None, help="OpenAI/oMLX-compatible base URL override"
+    )
     doctor.add_argument("--api-key", default=None, help="Optional API key override")
-    doctor.add_argument("--probe-timeout", type=float, default=1.5,
-                        help="Short probe timeout in seconds")
+    doctor.add_argument(
+        "--probe-timeout",
+        type=float,
+        default=1.5,
+        help="Short probe timeout in seconds",
+    )
     doctor.add_argument("--json", action="store_true", help="Print JSON output")
-    doctor.add_argument("--prefer", nargs="*", default=None,
-                        help="Preferred providers for auto mode")
+    doctor.add_argument(
+        "--prefer", nargs="*", default=None, help="Preferred providers for auto mode"
+    )
 
     return parser
 
@@ -241,5 +265,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     return 0 if status.ready else 1
 
 
-__all__ = ["ProviderStatus", "check_provider_ready",
-           "format_provider_status", "build_parser", "main"]
+__all__ = [
+    "ProviderStatus",
+    "check_provider_ready",
+    "format_provider_status",
+    "build_parser",
+    "main",
+]

@@ -2,6 +2,7 @@
 
 This is intentionally minimal and uses `sphinx_rtd_theme` for ReadTheDocs.
 """
+
 import os
 import sys
 

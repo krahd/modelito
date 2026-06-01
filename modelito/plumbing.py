@@ -86,7 +86,15 @@ def normalize_network_error(
             details=details,
         )
 
-    if isinstance(exc, (URLError, ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError)):
+    if isinstance(
+        exc,
+        (
+            URLError,
+            ConnectionRefusedError,
+            ConnectionResetError,
+            ConnectionAbortedError,
+        ),
+    ):
         details["reason"] = "connection"
         return ErrorEnvelope(
             code="connection_error",
@@ -151,7 +159,13 @@ def retry_with_backoff(
     raise RuntimeError("retry_with_backoff exhausted without returning or raising")
 
 
-def envelope_ok(provider: str, operation: str, data: Any, *, metadata: Optional[Dict[str, Any]] = None) -> ResponseEnvelope:
+def envelope_ok(
+    provider: str,
+    operation: str,
+    data: Any,
+    *,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> ResponseEnvelope:
     """Build a successful response envelope."""
     return ResponseEnvelope(
         ok=True,

@@ -4,6 +4,7 @@
 This example uses the provider shim and will fall back to a deterministic
 response if the official `openai` SDK is not installed.
 """
+
 from __future__ import annotations
 
 from modelito import OpenAIProvider, Provider, Message

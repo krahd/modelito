@@ -47,7 +47,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
-from .messages import Response as _Response  # type: ignore[attr-defined]
+from .messages import Response as _Response
 
 __all__ = [
     "CassetteFormatError",
@@ -60,6 +60,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 # Errors
 # ---------------------------------------------------------------------------
+
 
 class CassetteFormatError(ValueError):
     """Raised when a cassette file contains malformed JSON.
@@ -76,8 +77,7 @@ class CassetteFormatError(ValueError):
         self.line_number = line_number
         self.line = line
         super().__init__(
-            f"Malformed JSON in cassette {path!s} at line {line_number}: "
-            f"{line[:80]!r}"
+            f"Malformed JSON in cassette {path!s} at line {line_number}: {line[:80]!r}"
         )
 
 
@@ -103,6 +103,7 @@ class ReplayMissError(KeyError):
 # ---------------------------------------------------------------------------
 # Message normalisation
 # ---------------------------------------------------------------------------
+
 
 def _message_to_dict(msg: Any) -> dict[str, str]:
     """Convert a single message value to a plain JSON-serialisable dict.
@@ -131,7 +132,7 @@ def _to_message(item: Any) -> Any:
     objects.  Unknown objects with ``.role``/``.content`` are passed through
     unchanged so that custom provider types are not broken.
     """
-    from .messages import Message as _Message  # type: ignore[attr-defined]
+    from .messages import Message as _Message
 
     if isinstance(item, _Message):
         return item
@@ -182,7 +183,8 @@ def _normalise_messages(messages: Any) -> tuple[list[Any], list[dict[str, str]]]
 
     # --- 3. Serialise for the cassette via flatten_message_inputs -----------
     try:
-        from .messages import flatten_message_inputs as _flatten  # type: ignore[attr-defined]
+        from .messages import flatten_message_inputs as _flatten
+
         cassette_dicts: list[dict[str, str]] = _flatten(provider_items)
     except (ImportError, AttributeError):
         cassette_dicts = [_message_to_dict(m) for m in provider_items]
@@ -193,6 +195,7 @@ def _normalise_messages(messages: Any) -> tuple[list[Any], list[dict[str, str]]]
 # ---------------------------------------------------------------------------
 # Serialisation helpers
 # ---------------------------------------------------------------------------
+
 
 def _json_safe(value: Any) -> Any:
     """Recursively convert a value to a JSON-serialisable primitive.
@@ -253,6 +256,7 @@ def _response_from_dict(data: dict[str, Any]) -> Any:
 # Stable hash
 # ---------------------------------------------------------------------------
 
+
 def _stable_request_hash(
     kind: str,
     messages: list[dict[str, str]],
@@ -286,6 +290,7 @@ def _stable_request_hash(
 # ---------------------------------------------------------------------------
 # Cassette I/O
 # ---------------------------------------------------------------------------
+
 
 def _load_cassette(
     path: Path,
@@ -328,6 +333,7 @@ def _append_record(path: Path, record: dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 # RecordingProvider
 # ---------------------------------------------------------------------------
+
 
 class RecordingProvider:
     """Wraps any modelito provider and persists calls to a JSONL cassette.
@@ -473,6 +479,7 @@ class RecordingProvider:
 # ---------------------------------------------------------------------------
 # ReplayProvider
 # ---------------------------------------------------------------------------
+
 
 class ReplayProvider:
     """Reads a JSONL cassette and returns stored responses offline.
@@ -622,11 +629,7 @@ class ReplayProvider:
         return _response_from_dict(record.get("response", {}))
 
     def stream(self, *args: Any, **kwargs: Any) -> Iterator[str]:
-        raise NotImplementedError(
-            "ReplayProvider does not support stream() in v1."
-        )
+        raise NotImplementedError("ReplayProvider does not support stream() in v1.")
 
     def embed(self, *args: Any, **kwargs: Any) -> Any:
-        raise NotImplementedError(
-            "ReplayProvider does not support embed() in v1."
-        )
+        raise NotImplementedError("ReplayProvider does not support embed() in v1.")

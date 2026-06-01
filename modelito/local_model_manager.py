@@ -5,8 +5,10 @@ Local Model Manager for Modelito
 - Reports errors and status
 - Supports dynamic model selection
 """
+
 from typing import List, Dict, Any, Optional
 from .ollama_service import list_local_models, server_is_up, ensure_ollama_running
+
 
 class LocalModelManager:
     def __init__(self, host: str = "http://127.0.0.1", port: int = 11434):

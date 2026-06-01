@@ -10,6 +10,7 @@ def test_anthropic_integration_basic():
         pytest.skip("ANTHROPIC_API_KEY not set")
 
     import importlib
+
     if importlib.util.find_spec("anthropic") is None:
         pytest.skip("anthropic package not installed")
 
@@ -18,5 +19,7 @@ def test_anthropic_integration_basic():
 
     prov = ClaudeProvider(api_key=api_key)
 
-    txt = prov.summarize([Message(role="user", content="Say hello in one word.")], settings={})
+    txt = prov.summarize(
+        [Message(role="user", content="Say hello in one word.")], settings={}
+    )
     assert isinstance(txt, str) and txt

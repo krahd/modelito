@@ -3,6 +3,7 @@
 
 Falls back to a deterministic response if a Gemini-like SDK is not present.
 """
+
 from __future__ import annotations
 
 from modelito import GeminiProvider, Provider, Message

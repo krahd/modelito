@@ -27,12 +27,14 @@ def test_pull_uses_cli(monkeypatch):
     called = {}
 
     def fake_run(*args, **kwargs):
-        called['args'] = args
+        called["args"] = args
         # emulate subprocess.CompletedProcess
-        return subprocess.CompletedProcess(args=args, returncode=0, stdout="ok", stderr="")
+        return subprocess.CompletedProcess(
+            args=args, returncode=0, stdout="ok", stderr=""
+        )
 
     monkeypatch.setattr("modelito.ollama_service.run_ollama_command", fake_run)
 
     c = get_client()
     assert c.pull("some-model") is True
-    assert 'args' in called
+    assert "args" in called

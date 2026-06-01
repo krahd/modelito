@@ -3,6 +3,7 @@
 These helpers wrap the `adapter` client and provide a small stable
 surface for common actions like version, ps, tags, pull and generate.
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable, Generator, Iterable, List, Optional, Union
@@ -58,7 +59,9 @@ def api_tags(host: Optional[str] = None, port: int = 11434) -> List[str]:
     return []
 
 
-def api_pull(model: str, host: Optional[str] = None, port: int = 11434, timeout: float = 600.0) -> bool:
+def api_pull(
+    model: str, host: Optional[str] = None, port: int = 11434, timeout: float = 600.0
+) -> bool:
     """Pull a remote model into the local cache (CLI-backed)."""
     client = get_client(host, port)
     return client.pull(model, timeout=timeout)
@@ -88,6 +91,7 @@ def api_generate(
 
 __all__ = ["api_version", "api_ps", "api_tags", "api_pull", "api_generate"]
 
+
 def api_list_local(host: Optional[str] = None, port: int = 11434) -> List[str]:
     client = get_client(host, port)
     try:
@@ -112,7 +116,9 @@ def api_delete_model(model: str, host: Optional[str] = None, port: int = 11434) 
         return False
 
 
-def api_pull_stream(model: str, host: Optional[str] = None, port: int = 11434, timeout: float = 600.0) -> Generator[str, None, None]:
+def api_pull_stream(
+    model: str, host: Optional[str] = None, port: int = 11434, timeout: float = 600.0
+) -> Generator[str, None, None]:
     client = get_client(host, port)
     try:
         for line in client.download_stream(model, timeout=timeout):
@@ -147,7 +153,9 @@ def api_health(
 ):
     from .ollama_service import DEFAULT_URL, ollama_health_check
 
-    return ollama_health_check(host=host or DEFAULT_URL, port=port, timeout=timeout, policy=policy)
+    return ollama_health_check(
+        host=host or DEFAULT_URL, port=port, timeout=timeout, policy=policy
+    )
 
 
 def api_readiness(
@@ -158,7 +166,9 @@ def api_readiness(
 ) -> bool:
     from .ollama_service import DEFAULT_URL, ollama_readiness_probe
 
-    return ollama_readiness_probe(host=host or DEFAULT_URL, port=port, timeout=timeout, policy=policy)
+    return ollama_readiness_probe(
+        host=host or DEFAULT_URL, port=port, timeout=timeout, policy=policy
+    )
 
 
 def api_ensure_model_loaded(
@@ -186,7 +196,9 @@ def _enveloped(operation: str, fn: Callable[[], Any]) -> ResponseEnvelope:
         data = fn()
         return envelope_ok("ollama", operation, data)
     except Exception as exc:
-        error: ErrorEnvelope = normalize_network_error(exc, provider="ollama", operation=operation)
+        error: ErrorEnvelope = normalize_network_error(
+            exc, provider="ollama", operation=operation
+        )
         return envelope_error("ollama", operation, error)
 
 
@@ -196,7 +208,10 @@ def api_health_envelope(
     timeout: float = 2.0,
     policy: Optional[TransportPolicy] = None,
 ) -> ResponseEnvelope:
-    return _enveloped("health", lambda: api_health(host=host, port=port, timeout=timeout, policy=policy))
+    return _enveloped(
+        "health",
+        lambda: api_health(host=host, port=port, timeout=timeout, policy=policy),
+    )
 
 
 def api_readiness_envelope(
@@ -205,27 +220,44 @@ def api_readiness_envelope(
     timeout: float = 2.0,
     policy: Optional[TransportPolicy] = None,
 ) -> ResponseEnvelope:
-    return _enveloped("readiness", lambda: api_readiness(host=host, port=port, timeout=timeout, policy=policy))
+    return _enveloped(
+        "readiness",
+        lambda: api_readiness(host=host, port=port, timeout=timeout, policy=policy),
+    )
 
 
-def api_list_local_envelope(host: Optional[str] = None, port: int = 11434) -> ResponseEnvelope:
+def api_list_local_envelope(
+    host: Optional[str] = None, port: int = 11434
+) -> ResponseEnvelope:
     return _enveloped("list_local", lambda: api_list_local(host=host, port=port))
 
 
-def api_list_remote_envelope(host: Optional[str] = None, port: int = 11434) -> ResponseEnvelope:
+def api_list_remote_envelope(
+    host: Optional[str] = None, port: int = 11434
+) -> ResponseEnvelope:
     return _enveloped("list_remote", lambda: api_list_remote(host=host, port=port))
 
 
-def api_running_models_envelope(host: Optional[str] = None, port: int = 11434) -> ResponseEnvelope:
+def api_running_models_envelope(
+    host: Optional[str] = None, port: int = 11434
+) -> ResponseEnvelope:
     return _enveloped("running_models", lambda: api_ps(host=host, port=port))
 
 
-def api_pull_envelope(model: str, host: Optional[str] = None, port: int = 11434, timeout: float = 600.0) -> ResponseEnvelope:
-    return _enveloped("pull", lambda: api_pull(model=model, host=host, port=port, timeout=timeout))
+def api_pull_envelope(
+    model: str, host: Optional[str] = None, port: int = 11434, timeout: float = 600.0
+) -> ResponseEnvelope:
+    return _enveloped(
+        "pull", lambda: api_pull(model=model, host=host, port=port, timeout=timeout)
+    )
 
 
-def api_delete_model_envelope(model: str, host: Optional[str] = None, port: int = 11434) -> ResponseEnvelope:
-    return _enveloped("delete_model", lambda: api_delete_model(model=model, host=host, port=port))
+def api_delete_model_envelope(
+    model: str, host: Optional[str] = None, port: int = 11434
+) -> ResponseEnvelope:
+    return _enveloped(
+        "delete_model", lambda: api_delete_model(model=model, host=host, port=port)
+    )
 
 
 def api_ensure_model_loaded_envelope(
@@ -248,23 +280,26 @@ def api_ensure_model_loaded_envelope(
         ),
     )
 
-__all__.extend([
-    "api_list_local",
-    "api_list_remote",
-    "api_delete_model",
-    "api_pull_stream",
-    "api_pull_progress",
-    "api_remote_catalog",
-    "api_model_state",
-    "api_health",
-    "api_readiness",
-    "api_ensure_model_loaded",
-    "api_health_envelope",
-    "api_readiness_envelope",
-    "api_list_local_envelope",
-    "api_list_remote_envelope",
-    "api_running_models_envelope",
-    "api_pull_envelope",
-    "api_delete_model_envelope",
-    "api_ensure_model_loaded_envelope",
-])
+
+__all__.extend(
+    [
+        "api_list_local",
+        "api_list_remote",
+        "api_delete_model",
+        "api_pull_stream",
+        "api_pull_progress",
+        "api_remote_catalog",
+        "api_model_state",
+        "api_health",
+        "api_readiness",
+        "api_ensure_model_loaded",
+        "api_health_envelope",
+        "api_readiness_envelope",
+        "api_list_local_envelope",
+        "api_list_remote_envelope",
+        "api_running_models_envelope",
+        "api_pull_envelope",
+        "api_delete_model_envelope",
+        "api_ensure_model_loaded_envelope",
+    ]
+)

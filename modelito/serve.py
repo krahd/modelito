@@ -4,6 +4,7 @@ The server is intentionally optional: importing :mod:`modelito` does not pull
 in FastAPI or Uvicorn.  Those dependencies are only required when running the
 server entrypoint.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -78,7 +79,7 @@ def _require_server_dependencies():
         import uvicorn
     except Exception as exc:  # pragma: no cover - exercised via tests
         raise RuntimeError(
-            'modelito-serve requires optional dependencies. Install them with '
+            "modelito-serve requires optional dependencies. Install them with "
             'pip install "modelito[serve]"'
         ) from exc
     return FastAPI, HTTPException, Request, JSONResponse, StreamingResponse, uvicorn
@@ -91,22 +92,45 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--provider", default="auto", help="Provider name to use")
     parser.add_argument("--model", default=None, help="Requested model name")
-    parser.add_argument("--host", default="127.0.0.1", help="Bind host for the HTTP server")
-    parser.add_argument("--port", type=int, default=11436, help="Bind port for the HTTP server")
-    parser.add_argument("--base-url", default=None, help="OpenAI-compatible provider base URL")
+    parser.add_argument(
+        "--host", default="127.0.0.1", help="Bind host for the HTTP server"
+    )
+    parser.add_argument(
+        "--port", type=int, default=11436, help="Bind port for the HTTP server"
+    )
+    parser.add_argument(
+        "--base-url", default=None, help="OpenAI-compatible provider base URL"
+    )
     parser.add_argument("--api-key", default=None, help="Provider API key")
-    parser.add_argument("--profile", default=None, help="Profile file for provider selection")
-    parser.add_argument("--profile-path", default=None, help="Explicit provider profile path")
-    parser.add_argument("--timeout", type=float, default=20.0,
-                        help="Provider request timeout in seconds")
+    parser.add_argument(
+        "--profile", default=None, help="Profile file for provider selection"
+    )
+    parser.add_argument(
+        "--profile-path", default=None, help="Explicit provider profile path"
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=20.0,
+        help="Provider request timeout in seconds",
+    )
     parser.add_argument("--log-level", default="info", help="Python logging level")
-    parser.add_argument("--prefer", nargs="*", default=None,
-                        help="Preferred providers for auto mode")
+    parser.add_argument(
+        "--prefer", nargs="*", default=None, help="Preferred providers for auto mode"
+    )
     strict_group = parser.add_mutually_exclusive_group()
-    strict_group.add_argument("--strict", dest="strict", action="store_true",
-                              help="Fail on tool requests without raw passthrough")
-    strict_group.add_argument("--no-strict", dest="strict", action="store_false",
-                              help="Allow text-only fallback when raw passthrough is unavailable")
+    strict_group.add_argument(
+        "--strict",
+        dest="strict",
+        action="store_true",
+        help="Fail on tool requests without raw passthrough",
+    )
+    strict_group.add_argument(
+        "--no-strict",
+        dest="strict",
+        action="store_false",
+        help="Allow text-only fallback when raw passthrough is unavailable",
+    )
     parser.set_defaults(strict=True)
     return parser
 
@@ -146,7 +170,9 @@ def build_runtime(config: ServeConfig) -> ServeRuntime:
     )
     provider = client.provider
     raw_provider = provider if isinstance(provider, RawChatProvider) else None
-    return ServeRuntime(config=config, client=client, provider=provider, raw_provider=raw_provider)
+    return ServeRuntime(
+        config=config, client=client, provider=provider, raw_provider=raw_provider
+    )
 
 
 def _payload_model(runtime: ServeRuntime, payload: Dict[str, Any]) -> str:
@@ -171,7 +197,9 @@ def _fallback_warning(reason: str) -> Dict[str, str]:
     return {"X-Modelito-Warning": reason}
 
 
-def _fallback_headers_for_payload(payload: Dict[str, Any], message: str) -> Dict[str, str]:
+def _fallback_headers_for_payload(
+    payload: Dict[str, Any], message: str
+) -> Dict[str, str]:
     if _requires_raw_tool_support(payload):
         return _fallback_warning(message)
     return {}
@@ -222,7 +250,9 @@ def _error_payload(exc: Exception) -> Dict[str, Any]:
 
 
 def _json_error_response(exc: Exception, JSONResponse: Any) -> Any:
-    return JSONResponse(_error_payload(exc), status_code=_http_status_for_exception(exc))
+    return JSONResponse(
+        _error_payload(exc), status_code=_http_status_for_exception(exc)
+    )
 
 
 async def _read_json_payload(request: Any) -> Dict[str, Any]:
@@ -246,7 +276,9 @@ def _messages_from_payload(payload: Dict[str, Any]) -> List[Any]:
     raise ValueError("messages must be a list or string")
 
 
-def _chat_completion_response(runtime: ServeRuntime, payload: Dict[str, Any]) -> ChatCompletionResult:
+def _chat_completion_response(
+    runtime: ServeRuntime, payload: Dict[str, Any]
+) -> ChatCompletionResult:
     request_payload = dict(payload or {})
     model = _payload_model(runtime, request_payload)
     request_payload.setdefault("model", model)
@@ -259,10 +291,13 @@ def _chat_completion_response(runtime: ServeRuntime, payload: Dict[str, Any]) ->
 
     if _requires_raw_tool_support(request_payload) and runtime.config.strict:
         raise ValueError(
-            "tools require raw passthrough support; run with --no-strict to allow text-only fallback")
+            "tools require raw passthrough support; run with --no-strict to allow text-only fallback"
+        )
 
     settings = _chat_settings(request_payload)
-    response = runtime.client.chat(_messages_from_payload(request_payload), settings=settings)
+    response = runtime.client.chat(
+        _messages_from_payload(request_payload), settings=settings
+    )
     if not isinstance(response, Response):
         raise ValueError("client.chat() did not return a Response")
 
@@ -300,7 +335,9 @@ def _stream_delta_text(delta: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def _stream_completion_events(runtime: ServeRuntime, payload: Dict[str, Any]) -> StreamResult:
+def _stream_completion_events(
+    runtime: ServeRuntime, payload: Dict[str, Any]
+) -> StreamResult:
     request_payload = dict(payload or {})
     model = _payload_model(runtime, request_payload)
     request_payload.setdefault("model", model)
@@ -311,7 +348,8 @@ def _stream_completion_events(runtime: ServeRuntime, payload: Dict[str, Any]) ->
 
     if _requires_raw_tool_support(request_payload) and runtime.config.strict:
         raise ValueError(
-            "tools require raw passthrough support; run with --no-strict to allow text-only fallback")
+            "tools require raw passthrough support; run with --no-strict to allow text-only fallback"
+        )
 
     settings = _chat_settings(request_payload)
     created = int(time.time())
@@ -327,7 +365,9 @@ def _stream_completion_events(runtime: ServeRuntime, payload: Dict[str, Any]) ->
                 {"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}
             ],
         }
-        for chunk in runtime.client.stream(_messages_from_payload(request_payload), settings=settings):
+        for chunk in runtime.client.stream(
+            _messages_from_payload(request_payload), settings=settings
+        ):
             if not chunk:
                 continue
             yield {
@@ -344,9 +384,7 @@ def _stream_completion_events(runtime: ServeRuntime, payload: Dict[str, Any]) ->
             "object": "chat.completion.chunk",
             "created": created,
             "model": model,
-            "choices": [
-                {"index": 0, "delta": {}, "finish_reason": "stop"}
-            ],
+            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
         }
 
     return StreamResult(
@@ -357,31 +395,43 @@ def _stream_completion_events(runtime: ServeRuntime, payload: Dict[str, Any]) ->
     )
 
 
-def _embedding_response(runtime: ServeRuntime, payload: Dict[str, Any]) -> EmbeddingResult:
+def _embedding_response(
+    runtime: ServeRuntime, payload: Dict[str, Any]
+) -> EmbeddingResult:
     request_payload = dict(payload or {})
     model = _payload_model(runtime, request_payload)
     raw_input = request_payload.get("input")
     if isinstance(raw_input, str):
         inputs = [raw_input]
-    elif isinstance(raw_input, list) and all(isinstance(item, str) for item in raw_input):
+    elif isinstance(raw_input, list) and all(
+        isinstance(item, str) for item in raw_input
+    ):
         inputs = list(raw_input)
     else:
         raise ValueError("embeddings input must be a string or list of strings")
 
     vectors = runtime.client.embed(inputs, model=model)
     if not isinstance(vectors, list):
-        raise ModelitoBadResponseError("embeddings provider returned a non-list response")
+        raise ModelitoBadResponseError(
+            "embeddings provider returned a non-list response"
+        )
     if len(vectors) != len(inputs):
-        raise ModelitoBadResponseError("embeddings provider returned the wrong number of vectors")
+        raise ModelitoBadResponseError(
+            "embeddings provider returned the wrong number of vectors"
+        )
 
     normalized_vectors: List[List[float]] = []
     for vector in vectors:
         if not isinstance(vector, (list, tuple)) or isinstance(vector, (str, bytes)):
-            raise ModelitoBadResponseError("embedding vector must be a list or tuple of numbers")
+            raise ModelitoBadResponseError(
+                "embedding vector must be a list or tuple of numbers"
+            )
         normalized: List[float] = []
         for value in vector:
             if isinstance(value, bool) or not isinstance(value, (int, float)):
-                raise ModelitoBadResponseError("embedding vector contains a non-numeric value")
+                raise ModelitoBadResponseError(
+                    "embedding vector contains a non-numeric value"
+                )
             normalized.append(float(value))
         normalized_vectors.append(normalized)
 
@@ -424,7 +474,9 @@ def _stream_response_body(events: Iterable[Dict[str, Any]]) -> Iterator[str]:
 
 
 def create_app(runtime: ServeRuntime):
-    FastAPI, _HTTPException, _Request, JSONResponse, StreamingResponse, _uvicorn = _require_server_dependencies()
+    FastAPI, _HTTPException, _Request, JSONResponse, StreamingResponse, _uvicorn = (
+        _require_server_dependencies()
+    )
     app = FastAPI(title="Modelito", version="1.4.4")
 
     @app.get("/v1/models")
@@ -475,18 +527,29 @@ def create_app(runtime: ServeRuntime):
 def main(argv: Optional[List[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    logging.basicConfig(level=getattr(logging, str(args.log_level).upper(), logging.INFO))
+    logging.basicConfig(
+        level=getattr(logging, str(args.log_level).upper(), logging.INFO)
+    )
     config = build_config(args)
     runtime = build_runtime(config)
 
     try:
-        _FastAPI, _HTTPException, _Request, _JSONResponse, _StreamingResponse, uvicorn = _require_server_dependencies()
+        (
+            _FastAPI,
+            _HTTPException,
+            _Request,
+            _JSONResponse,
+            _StreamingResponse,
+            uvicorn,
+        ) = _require_server_dependencies()
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
     app = create_app(runtime)
-    uvicorn.run(app, host=config.host, port=config.port, log_level=str(config.log_level).lower())
+    uvicorn.run(
+        app, host=config.host, port=config.port, log_level=str(config.log_level).lower()
+    )
     return 0
 
 

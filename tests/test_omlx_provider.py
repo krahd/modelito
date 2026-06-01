@@ -18,7 +18,9 @@ from modelito.provider_registry import get_provider, list_providers
 
 class _FakeResponse:
     def __init__(self, lines):
-        self._lines = [item if isinstance(item, bytes) else item.encode("utf-8") for item in lines]
+        self._lines = [
+            item if isinstance(item, bytes) else item.encode("utf-8") for item in lines
+        ]
         self._idx = 0
 
     def read(self):
@@ -39,8 +41,10 @@ class _FakeResponse:
 
 
 def test_omlx_summarize_fallback_contains_input_when_http_unavailable(monkeypatch):
-    monkeypatch.setattr("modelito.openai_compat.urlopen", lambda *_args, **
-                        _kwargs: (_ for _ in ()).throw(RuntimeError("down")))
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("down")),
+    )
 
     p = OMLXProvider()
     out = p.summarize([Message(role="user", content="hello omlx")])
@@ -50,8 +54,10 @@ def test_omlx_summarize_fallback_contains_input_when_http_unavailable(monkeypatc
 
 def test_omlx_summarize_http_chat_shape(monkeypatch):
     payload = {"choices": [{"message": {"content": "omlx reply"}}]}
-    monkeypatch.setattr("modelito.openai_compat.urlopen", lambda *_args, **
-                        _kwargs: _FakeResponse([json.dumps(payload)]))
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_args, **_kwargs: _FakeResponse([json.dumps(payload)]),
+    )
 
     p = OMLXProvider(base_url="http://localhost:7777/v1", model="omlx-chat")
     out = p.summarize([Message(role="user", content="ping")])
@@ -61,12 +67,13 @@ def test_omlx_summarize_http_chat_shape(monkeypatch):
 
 def test_omlx_stream_parses_sse_delta_events(monkeypatch):
     lines = [
-        "data: {\"choices\":[{\"delta\":{\"content\":\"hello\"}}]}\n",
-        "data: {\"choices\":[{\"delta\":{\"content\":\" world\"}}]}\n",
+        'data: {"choices":[{"delta":{"content":"hello"}}]}\n',
+        'data: {"choices":[{"delta":{"content":" world"}}]}\n',
         "data: [DONE]\n",
     ]
-    monkeypatch.setattr("modelito.openai_compat.urlopen",
-                        lambda *_args, **_kwargs: _FakeResponse(lines))
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen", lambda *_args, **_kwargs: _FakeResponse(lines)
+    )
 
     p = OMLXProvider()
     chunks = list(p.stream([Message(role="user", content="go")]))
@@ -76,8 +83,10 @@ def test_omlx_stream_parses_sse_delta_events(monkeypatch):
 
 def test_omlx_list_models_parses_openai_compatible_models(monkeypatch):
     payload = {"data": [{"id": "omlx-1"}, {"id": "omlx-2"}]}
-    monkeypatch.setattr("modelito.openai_compat.urlopen", lambda *_args, **
-                        _kwargs: _FakeResponse([json.dumps(payload)]))
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_args, **_kwargs: _FakeResponse([json.dumps(payload)]),
+    )
 
     p = OMLXProvider()
 
@@ -99,8 +108,10 @@ def test_package_root_exports_omlx_provider():
 
 
 def test_omlx_stream_fallback_when_http_unavailable(monkeypatch):
-    monkeypatch.setattr("modelito.openai_compat.urlopen", lambda *_args, **
-                        _kwargs: (_ for _ in ()).throw(RuntimeError("down")))
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("down")),
+    )
 
     p = OMLXProvider()
     chunks = list(p.stream([Message(role="user", content="fallback content")]))
@@ -109,19 +120,25 @@ def test_omlx_stream_fallback_when_http_unavailable(monkeypatch):
 
 
 def test_omlx_stream_fallback_chunk_size(monkeypatch):
-    monkeypatch.setattr("modelito.openai_compat.urlopen", lambda *_args, **
-                        _kwargs: (_ for _ in ()).throw(RuntimeError("down")))
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("down")),
+    )
 
     p = OMLXProvider()
-    chunks = list(p.stream([Message(role="user", content="abcdefgh")], settings={"chunk_size": 3}))
+    chunks = list(
+        p.stream([Message(role="user", content="abcdefgh")], settings={"chunk_size": 3})
+    )
 
     assert chunks == ["abc", "def", "gh"]
 
 
 def test_omlx_embed_http_path(monkeypatch):
     payload = {"data": [{"embedding": [0.1, 0.2]}, {"embedding": [0.3, 0.4]}]}
-    monkeypatch.setattr("modelito.openai_compat.urlopen", lambda *_args,
-                        **_kwargs: _FakeResponse([json.dumps(payload)]))
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_args, **_kwargs: _FakeResponse([json.dumps(payload)]),
+    )
 
     p = OMLXProvider()
     result = p.embed(["hello", "world"])
@@ -130,8 +147,10 @@ def test_omlx_embed_http_path(monkeypatch):
 
 
 def test_omlx_embed_fallback_when_http_unavailable(monkeypatch):
-    monkeypatch.setattr("modelito.openai_compat.urlopen", lambda *_args, **
-                        _kwargs: (_ for _ in ()).throw(RuntimeError("down")))
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("down")),
+    )
 
     p = OMLXProvider()
     result = p.embed(["hello"])
@@ -144,8 +163,10 @@ def test_omlx_embed_fallback_when_http_unavailable(monkeypatch):
 
 def test_omlx_acomplete_returns_text(monkeypatch):
     payload = {"choices": [{"message": {"content": "async reply"}}]}
-    monkeypatch.setattr("modelito.openai_compat.urlopen", lambda *_args,
-                        **_kwargs: _FakeResponse([json.dumps(payload)]))
+    monkeypatch.setattr(
+        "modelito.openai_compat.urlopen",
+        lambda *_args, **_kwargs: _FakeResponse([json.dumps(payload)]),
+    )
 
     p = OMLXProvider()
     out = asyncio.run(p.acomplete([Message(role="user", content="hello async")]))
@@ -210,9 +231,7 @@ def test_omlx_strict_stream_raises(monkeypatch):
 def test_omlx_chat_returns_response_with_metadata(monkeypatch):
     payload = {
         "model": "omlx-7b",
-        "choices": [
-            {"message": {"content": "hello back"}, "finish_reason": "stop"}
-        ],
+        "choices": [{"message": {"content": "hello back"}, "finish_reason": "stop"}],
         "usage": {"prompt_tokens": 5, "completion_tokens": 3},
     }
     monkeypatch.setattr(
@@ -358,13 +377,7 @@ def test_client_chat_parsed_returns_dataclass(monkeypatch):
         source: str
 
     payload = {
-        "choices": [
-            {
-                "message": {
-                    "content": '{"action": "move", "source": "a.pdf"}'
-                }
-            }
-        ]
+        "choices": [{"message": {"content": '{"action": "move", "source": "a.pdf"}'}}]
     }
     monkeypatch.setattr(
         "modelito.openai_compat.urlopen",
@@ -383,21 +396,15 @@ def test_client_chat_parsed_returns_model_validate_result(monkeypatch):
         def model_validate(cls, data):
             return {"parsed": data["action"]}
 
-    payload = {
-        "choices": [
-            {
-                "message": {
-                    "content": '{"action": "move"}'
-                }
-            }
-        ]
-    }
+    payload = {"choices": [{"message": {"content": '{"action": "move"}'}}]}
     monkeypatch.setattr(
         "modelito.openai_compat.urlopen",
         lambda *_a, **_kw: _FakeResponse([json.dumps(payload)]),
     )
     client = Client(provider="omlx")
-    result = client.chat_parsed([Message(role="user", content="plan")], schema=FakeModel)
+    result = client.chat_parsed(
+        [Message(role="user", content="plan")], schema=FakeModel
+    )
 
     assert result == {"parsed": "move"}
 

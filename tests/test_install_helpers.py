@@ -9,11 +9,7 @@ def test_install_command_for_current_platform_unix():
     cmd, display = ms.install_command_for_current_platform(platform_name="linux")
     assert isinstance(cmd, list)
     assert "/bin/sh" in cmd or cmd[0].endswith("sh")
-    assert (
-        "curl" in display
-        or "install.sh" in display
-        or "apt-get install" in display
-    )
+    assert "curl" in display or "install.sh" in display or "apt-get install" in display
     assert "ollama" in display
 
 
@@ -54,7 +50,9 @@ def test_install_ollama_script_fallback(monkeypatch):
 
     def fake_run(cmd, *a, **kw):
         installed["ok"] = True
-        return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="script ran", stderr="")
+        return subprocess.CompletedProcess(
+            args=cmd, returncode=0, stdout="script ran", stderr=""
+        )
 
     monkeypatch.setattr(ms, "get_ollama_binary", fake_get_ollama_binary)
     monkeypatch.setattr(ms.subprocess, "run", fake_run)
@@ -66,7 +64,9 @@ def test_install_ollama_script_fallback(monkeypatch):
 
 def test_install_service_returns_combined_output(monkeypatch):
     def fake_run(cmd, *a, **kw):
-        return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="installed", stderr="")
+        return subprocess.CompletedProcess(
+            args=cmd, returncode=0, stdout="installed", stderr=""
+        )
 
     monkeypatch.setattr(ms.subprocess, "run", fake_run)
     rc, out = ms.install_service(reinstall=False)

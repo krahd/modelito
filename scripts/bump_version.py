@@ -4,6 +4,7 @@ placeholder changelog entry.
 
 Usage: ./scripts/bump_version.py 1.0.5
 """
+
 import sys
 from pathlib import Path
 from datetime import date
@@ -24,8 +25,9 @@ def bump_version(pyproject_path: Path, new_version: str) -> bool:
     # naive replace for the version field
     import re
 
-    new_txt = re.sub(r"version\s*=\s*\"[0-9a-zA-Z.\-]+\"",
-                     f"version = \"{new_version}\"", txt, count=1)
+    new_txt = re.sub(
+        r"version\s*=\s*\"[0-9a-zA-Z.\-]+\"", f'version = "{new_version}"', txt, count=1
+    )
     if new_txt == txt:
         return False
     write_pyproject(pyproject_path, new_txt)

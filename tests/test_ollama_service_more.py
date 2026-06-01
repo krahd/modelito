@@ -4,7 +4,6 @@ import pytest
 pytestmark = pytest.mark.integration
 
 
-
 def test_load_and_inspect_config_smoke():
     conf = osvc.load_llm_config()
     assert isinstance(conf, dict)

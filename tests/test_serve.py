@@ -105,7 +105,14 @@ class _FakeClient:
         return self.list_models_result
 
     def chat(self, messages, settings=None):
-        return Response(text="fallback text", raw={"choices": [{"message": {"content": "fallback text"}}]}, model="omlx", finish_reason="stop", tokens_in=3, tokens_out=4)
+        return Response(
+            text="fallback text",
+            raw={"choices": [{"message": {"content": "fallback text"}}]},
+            model="omlx",
+            finish_reason="stop",
+            tokens_in=3,
+            tokens_out=4,
+        )
 
     def stream(self, messages, settings=None):
         yield "fallback"
@@ -118,7 +125,12 @@ class _FakeClient:
 def _build_runtime(strict=True, raw_provider=None):
     client = _FakeClient()
     config = ServeConfig(strict=strict)
-    return ServeRuntime(config=config, client=client, provider=raw_provider or client, raw_provider=raw_provider)
+    return ServeRuntime(
+        config=config,
+        client=client,
+        provider=raw_provider or client,
+        raw_provider=raw_provider,
+    )
 
 
 def _patch_server_deps(monkeypatch):
@@ -147,18 +159,29 @@ def _assert_openai_error(resp, status_code):
 
 def test_serve_parser_and_config_parsing():
     parser = build_parser()
-    args = parser.parse_args([
-        "--provider", "omlx",
-        "--model", "llama3",
-        "--host", "127.0.0.1",
-        "--port", "11436",
-        "--base-url", "http://localhost:8000/v1",
-        "--strict",
-        "--profile", "profile.json",
-        "--profile-path", "override.json",
-        "--timeout", "3.5",
-        "--log-level", "debug",
-    ])
+    args = parser.parse_args(
+        [
+            "--provider",
+            "omlx",
+            "--model",
+            "llama3",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "11436",
+            "--base-url",
+            "http://localhost:8000/v1",
+            "--strict",
+            "--profile",
+            "profile.json",
+            "--profile-path",
+            "override.json",
+            "--timeout",
+            "3.5",
+            "--log-level",
+            "debug",
+        ]
+    )
     config = build_config(args)
 
     assert config.provider == "omlx"
@@ -188,9 +211,9 @@ def test_messages_from_payload_validation():
     else:
         raise AssertionError("dict messages should fail")
 
-    assert _messages_from_payload({"messages": [{"role": "user", "content": "hello"}]}) == [
-        {"role": "user", "content": "hello"}
-    ]
+    assert _messages_from_payload(
+        {"messages": [{"role": "user", "content": "hello"}]}
+    ) == [{"role": "user", "content": "hello"}]
     assert _messages_from_payload({"messages": "hello"}) == ["hello"]
 
 
@@ -216,15 +239,29 @@ def test_http_status_mapping_for_exceptions():
 def test_error_kind_mapping_for_exceptions():
     assert _error_kind_for_exception(ValueError("bad")) == "modelito_bad_request"
     assert _error_kind_for_exception(TypeError("bad")) == "modelito_bad_request"
-    assert _error_kind_for_exception(ModelitoBadResponseError(
-        "bad upstream")) == "modelito_bad_response"
-    assert _error_kind_for_exception(ModelitoModelNotFoundError(
-        "missing")) == "modelito_model_not_found"
-    assert _error_kind_for_exception(ModelitoTimeoutError("timeout")) == "modelito_timeout_error"
-    assert _error_kind_for_exception(TimeoutError("timeout")) == "modelito_timeout_error"
-    assert _error_kind_for_exception(ModelitoConnectionError(
-        "offline")) == "modelito_connection_error"
-    assert _error_kind_for_exception(ModelitoProviderError("provider")) == "modelito_provider_error"
+    assert (
+        _error_kind_for_exception(ModelitoBadResponseError("bad upstream"))
+        == "modelito_bad_response"
+    )
+    assert (
+        _error_kind_for_exception(ModelitoModelNotFoundError("missing"))
+        == "modelito_model_not_found"
+    )
+    assert (
+        _error_kind_for_exception(ModelitoTimeoutError("timeout"))
+        == "modelito_timeout_error"
+    )
+    assert (
+        _error_kind_for_exception(TimeoutError("timeout")) == "modelito_timeout_error"
+    )
+    assert (
+        _error_kind_for_exception(ModelitoConnectionError("offline"))
+        == "modelito_connection_error"
+    )
+    assert (
+        _error_kind_for_exception(ModelitoProviderError("provider"))
+        == "modelito_provider_error"
+    )
     assert _error_kind_for_exception(RuntimeError("boom")) == "modelito_internal_error"
 
 
@@ -273,7 +310,8 @@ def test_models_route_success(monkeypatch):
 def test_models_route_provider_failure_returns_openai_error(monkeypatch):
     runtime = _build_runtime()
     runtime.client.list_models = lambda: (_ for _ in ()).throw(
-        ModelitoProviderError("upstream failure"))
+        ModelitoProviderError("upstream failure")
+    )
     _patch_server_deps(monkeypatch)
     app = create_app(runtime)
 
@@ -294,8 +332,11 @@ def test_raw_chat_completion_route_preserves_tool_calls(monkeypatch):
                     "role": "assistant",
                     "content": None,
                     "tool_calls": [
-                        {"id": "call_1", "type": "function", "function": {
-                            "name": "lookup", "arguments": "{}"}},
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {"name": "lookup", "arguments": "{}"},
+                        },
                     ],
                 },
                 "finish_reason": "tool_calls",
@@ -327,12 +368,39 @@ def test_raw_chat_completion_route_preserves_tool_calls(monkeypatch):
 
 def test_raw_chat_completion_stream_route_emits_sse(monkeypatch):
     raw_events = [
-        {"id": "chunk-1", "object": "chat.completion.chunk",
-            "choices": [{"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}]},
-        {"id": "chunk-1", "object": "chat.completion.chunk", "choices": [{"index": 0, "delta": {"tool_calls": [
-            {"id": "call_1", "type": "function", "function": {"name": "lookup", "arguments": "{}"}}]}, "finish_reason": None}]},
-        {"id": "chunk-1", "object": "chat.completion.chunk",
-            "choices": [{"index": 0, "delta": {"content": "done"}, "finish_reason": None}]},
+        {
+            "id": "chunk-1",
+            "object": "chat.completion.chunk",
+            "choices": [
+                {"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}
+            ],
+        },
+        {
+            "id": "chunk-1",
+            "object": "chat.completion.chunk",
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {
+                        "tool_calls": [
+                            {
+                                "id": "call_1",
+                                "type": "function",
+                                "function": {"name": "lookup", "arguments": "{}"},
+                            }
+                        ]
+                    },
+                    "finish_reason": None,
+                }
+            ],
+        },
+        {
+            "id": "chunk-1",
+            "object": "chat.completion.chunk",
+            "choices": [
+                {"index": 0, "delta": {"content": "done"}, "finish_reason": None}
+            ],
+        },
     ]
     raw_provider = _FakeRawProvider({}, raw_events)
     runtime = _build_runtime(raw_provider=raw_provider)
@@ -368,7 +436,9 @@ def test_fallback_text_only_completion_and_embeddings(monkeypatch):
     assert completion.payload["choices"][0]["message"]["content"] == "fallback text"
     assert completion.headers == {}
 
-    embedding = _embedding_response(runtime, {"model": "omlx", "input": ["alpha", "beta"]})
+    embedding = _embedding_response(
+        runtime, {"model": "omlx", "input": ["alpha", "beta"]}
+    )
     assert embedding.payload["object"] == "list"
     assert len(embedding.payload["data"]) == 2
     assert embedding.payload["data"][0]["object"] == "embedding"
@@ -407,7 +477,9 @@ def test_tool_choice_without_raw_provider_fails_in_strict_mode():
     except ValueError as exc:
         assert "raw passthrough" in str(exc).lower()
     else:
-        raise AssertionError("expected tool_choice request without raw provider to fail")
+        raise AssertionError(
+            "expected tool_choice request without raw provider to fail"
+        )
 
 
 def test_non_strict_tools_fallback_sets_warning_header():
@@ -481,8 +553,13 @@ def test_chat_invalid_messages_type_returns_openai_error(monkeypatch):
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest(
-        {"model": "omlx", "messages": {"role": "user", "content": "hello"}})))
+    response = asyncio.run(
+        handler(
+            _FakeRequest(
+                {"model": "omlx", "messages": {"role": "user", "content": "hello"}}
+            )
+        )
+    )
     _assert_openai_error(response, 400)
 
 
@@ -512,8 +589,13 @@ def test_chat_messages_list_works(monkeypatch):
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest(
-        {"model": "omlx", "messages": [{"role": "user", "content": "hello"}]})))
+    response = asyncio.run(
+        handler(
+            _FakeRequest(
+                {"model": "omlx", "messages": [{"role": "user", "content": "hello"}]}
+            )
+        )
+    )
     assert response.status_code == 200
     assert response.payload["choices"][0]["message"]["content"] == "fallback text"
 
@@ -524,47 +606,67 @@ def test_chat_messages_string_works_for_backwards_compatibility(monkeypatch):
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest({"model": "omlx", "messages": "hello"})))
+    response = asyncio.run(
+        handler(_FakeRequest({"model": "omlx", "messages": "hello"}))
+    )
     assert response.status_code == 200
     assert response.payload["choices"][0]["message"]["content"] == "fallback text"
 
 
 def test_chat_timeout_returns_openai_style_504(monkeypatch):
     runtime = _build_runtime()
-    runtime.client.chat = lambda *_args, **_kwargs: (_ for _ in ()
-                                                     ).throw(ModelitoTimeoutError("timed out"))
+    runtime.client.chat = lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        ModelitoTimeoutError("timed out")
+    )
     _patch_server_deps(monkeypatch)
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest(
-        {"model": "omlx", "messages": [{"role": "user", "content": "hello"}]})))
+    response = asyncio.run(
+        handler(
+            _FakeRequest(
+                {"model": "omlx", "messages": [{"role": "user", "content": "hello"}]}
+            )
+        )
+    )
     _assert_openai_error(response, 504)
 
 
 def test_chat_connection_returns_openai_style_503(monkeypatch):
     runtime = _build_runtime()
-    runtime.client.chat = lambda *_args, **_kwargs: (_ for _ in ()
-                                                     ).throw(ModelitoConnectionError("offline"))
+    runtime.client.chat = lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        ModelitoConnectionError("offline")
+    )
     _patch_server_deps(monkeypatch)
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest(
-        {"model": "omlx", "messages": [{"role": "user", "content": "hello"}]})))
+    response = asyncio.run(
+        handler(
+            _FakeRequest(
+                {"model": "omlx", "messages": [{"role": "user", "content": "hello"}]}
+            )
+        )
+    )
     _assert_openai_error(response, 503)
 
 
 def test_chat_model_not_found_returns_openai_style_404(monkeypatch):
     runtime = _build_runtime()
-    runtime.client.chat = lambda *_args, **_kwargs: (_ for _ in ()
-                                                     ).throw(ModelitoModelNotFoundError("missing model"))
+    runtime.client.chat = lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        ModelitoModelNotFoundError("missing model")
+    )
     _patch_server_deps(monkeypatch)
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest(
-        {"model": "omlx", "messages": [{"role": "user", "content": "hello"}]})))
+    response = asyncio.run(
+        handler(
+            _FakeRequest(
+                {"model": "omlx", "messages": [{"role": "user", "content": "hello"}]}
+            )
+        )
+    )
     _assert_openai_error(response, 404)
 
 
@@ -607,7 +709,9 @@ def test_embeddings_bad_request_returns_openai_error(monkeypatch):
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/embeddings")]
 
-    response = asyncio.run(handler(_FakeRequest({"model": "omlx", "input": {"bad": "shape"}})))
+    response = asyncio.run(
+        handler(_FakeRequest({"model": "omlx", "input": {"bad": "shape"}}))
+    )
     _assert_openai_error(response, 400)
 
 
@@ -701,12 +805,15 @@ def test_stream_completion_events_raw_provider_is_lazy():
             yield {
                 "id": "chunk-1",
                 "object": "chat.completion.chunk",
-                "choices": [{"index": 0, "delta": {"content": "hi"}, "finish_reason": None}],
+                "choices": [
+                    {"index": 0, "delta": {"content": "hi"}, "finish_reason": None}
+                ],
             }
 
     runtime = _build_runtime(raw_provider=LazyRawProvider())
     stream_result = _stream_completion_events(
-        runtime, {"messages": [{"role": "user", "content": "hello"}], "stream": True})
+        runtime, {"messages": [{"role": "user", "content": "hello"}], "stream": True}
+    )
 
     assert side_effects == []
     iterator = iter(stream_result.events)
@@ -786,8 +893,9 @@ def test_raw_provider_non_dict_response_maps_to_502(monkeypatch):
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest(
-        {"messages": [{"role": "user", "content": "hello"}]})))
+    response = asyncio.run(
+        handler(_FakeRequest({"messages": [{"role": "user", "content": "hello"}]}))
+    )
     _assert_openai_error(response, 502)
     assert response.payload["error"]["type"] == "modelito_bad_response"
 
@@ -804,12 +912,24 @@ def test_raw_provider_bad_request_payload_is_not_over_validated(monkeypatch):
                 "object": "chat.completion",
                 "created": 0,
                 "model": payload.get("model", "omlx"),
-                "choices": [{"index": 0, "message": {"role": "assistant", "content": "ok"}, "finish_reason": "stop"}],
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": "ok"},
+                        "finish_reason": "stop",
+                    }
+                ],
             }
 
         def raw_stream(self, payload):
             self.last_payload = dict(payload)
-            yield {"id": "chunk-1", "object": "chat.completion.chunk", "choices": [{"index": 0, "delta": {"content": "ok"}, "finish_reason": None}]}
+            yield {
+                "id": "chunk-1",
+                "object": "chat.completion.chunk",
+                "choices": [
+                    {"index": 0, "delta": {"content": "ok"}, "finish_reason": None}
+                ],
+            }
 
     raw_provider = EchoRawProvider()
     runtime = _build_runtime(raw_provider=raw_provider)
@@ -817,8 +937,9 @@ def test_raw_provider_bad_request_payload_is_not_over_validated(monkeypatch):
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest(
-        {"model": "omlx", "messages": "hello", "extra": {"x": 1}})))
+    response = asyncio.run(
+        handler(_FakeRequest({"model": "omlx", "messages": "hello", "extra": {"x": 1}}))
+    )
     assert response.status_code == 200
     assert raw_provider.last_payload["messages"] == "hello"
     assert raw_provider.last_payload["extra"] == {"x": 1}
@@ -837,7 +958,83 @@ def test_raw_provider_backend_error_maps_to_openai_error(monkeypatch):
     app = create_app(runtime)
     handler = app.routes[("POST", "/v1/chat/completions")]
 
-    response = asyncio.run(handler(_FakeRequest(
-        {"messages": [{"role": "user", "content": "hello"}]})))
+    response = asyncio.run(
+        handler(_FakeRequest({"messages": [{"role": "user", "content": "hello"}]}))
+    )
     _assert_openai_error(response, 502)
     assert response.payload["error"]["type"] == "modelito_provider_error"
+
+
+def test_ollama_provider_raw_routing_with_tools(monkeypatch):
+    """Test that OllamaProvider raw methods work through modelito-serve."""
+    from modelito.ollama import OllamaProvider
+    from modelito.provider import RawChatProvider
+
+    # Create an OllamaProvider instance.
+    provider = OllamaProvider(model="llama3.2", strict=False)
+
+    # Verify it satisfies RawChatProvider protocol.
+    assert isinstance(provider, RawChatProvider)
+
+    # Create a mock runtime with the OllamaProvider as raw provider.
+    runtime = _build_runtime(raw_provider=provider, strict=True)
+
+    # Mock the endpoint and JSON post to avoid network calls.
+    monkeypatch.setattr(
+        "modelito.ollama.endpoint_url",
+        lambda h, p, e: "http://localhost/v1/chat/completions",
+    )
+
+    captured_payload = {}
+
+    def mock_json_post(url, payload, timeout):
+        captured_payload.update(payload)
+        # Return a completion with tool_calls to verify metadata is preserved.
+        return {
+            "id": "chatcmpl-test",
+            "object": "chat.completion",
+            "model": "llama3.2",
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "tool_calls": [
+                            {
+                                "id": "call_1",
+                                "type": "function",
+                                "function": {"name": "test_func", "arguments": "{}"},
+                            }
+                        ],
+                    },
+                    "finish_reason": "tool_calls",
+                }
+            ],
+        }
+
+    monkeypatch.setattr("modelito.ollama.json_post", mock_json_post)
+
+    # Create server app and test that tool-call payload works.
+    _patch_server_deps(monkeypatch)
+    app = create_app(runtime)
+    handler = app.routes[("POST", "/v1/chat/completions")]
+
+    # Send a request with tools to verify raw passthrough.
+    request = _FakeRequest(
+        {
+            "model": "llama3.2",
+            "messages": [{"role": "user", "content": "call a function"}],
+            "tools": [{"type": "function", "function": {"name": "test_func"}}],
+            "tool_choice": "auto",
+            "stream": False,
+        }
+    )
+    response = asyncio.run(handler(request))
+
+    # Verify the response contains the tool_calls without error.
+    assert response.status_code == 200
+    assert "tool_calls" in response.payload["choices"][0]["message"]
+    # Verify the payload was forwarded correctly.
+    assert captured_payload.get("tool_choice") == "auto"
+    assert captured_payload.get("tools")[0]["function"]["name"] == "test_func"
+    assert captured_payload.get("model") == "llama3.2"

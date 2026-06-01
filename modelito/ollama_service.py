@@ -137,7 +137,9 @@ def clear_model_lifecycle_state(model_name: str) -> bool:
         return _MODEL_LIFECYCLE_STATES.pop(model_name, None) is not None
 
 
-def _parse_progress_from_line(line: str) -> tuple[Optional[float], Optional[int], Optional[int]]:
+def _parse_progress_from_line(
+    line: str,
+) -> tuple[Optional[float], Optional[int], Optional[int]]:
     progress: Optional[float] = None
     completed: Optional[int] = None
     total: Optional[int] = None
@@ -212,16 +214,22 @@ def _install_command_for_method(method: str) -> tuple[List[str], str]:
     if method == "apt":
         shell_command = "sudo apt-get update && sudo apt-get install -y ollama"
         return ["/bin/sh", "-lc", shell_command], shell_command
-    install_command = f"export OLLAMA_NO_START=1; curl -fsSL {shlex.quote(UNIX_INSTALL_URL)} | sh"
+    install_command = (
+        f"export OLLAMA_NO_START=1; curl -fsSL {shlex.quote(UNIX_INSTALL_URL)} | sh"
+    )
     return ["/bin/sh", "-lc", install_command], install_command
 
 
 def _extract_model_name(raw_item: str) -> str:
-    token = str(raw_item or "").strip().split()[0] if str(raw_item or "").strip() else ""
+    token = (
+        str(raw_item or "").strip().split()[0] if str(raw_item or "").strip() else ""
+    )
     return token.strip()
 
 
-def _catalog_entry(raw_item: str, installed_models: set[str]) -> Optional[RemoteModelCatalogEntry]:
+def _catalog_entry(
+    raw_item: str, installed_models: set[str]
+) -> Optional[RemoteModelCatalogEntry]:
     name = _extract_model_name(raw_item)
     if not name:
         return None
@@ -307,7 +315,13 @@ def server_is_up(host: str, port: int) -> bool:
             return False
 
 
-def ensure_ollama_running(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, auto_start: bool = False, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> bool:
+def ensure_ollama_running(
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
+    auto_start: bool = False,
+    start_args: Optional[List[str]] = None,
+    timeout: float = 10.0,
+) -> bool:
     """Ensure an Ollama server is reachable at `host:port`.
 
     If `auto_start` is True and the `ollama` binary is available on PATH,
@@ -318,11 +332,22 @@ def ensure_ollama_running(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, aut
     """
     # Delegate to the verbose variant and return only the boolean result.
     ok, _msg = ensure_ollama_running_verbose(
-        host=host, port=port, auto_start=auto_start, start_args=start_args, timeout=timeout)
+        host=host,
+        port=port,
+        auto_start=auto_start,
+        start_args=start_args,
+        timeout=timeout,
+    )
     return bool(ok)
 
 
-def ensure_ollama_running_verbose(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, auto_start: bool = False, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> tuple[bool, str]:
+def ensure_ollama_running_verbose(
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
+    auto_start: bool = False,
+    start_args: Optional[List[str]] = None,
+    timeout: float = 10.0,
+) -> tuple[bool, str]:
     """Ensure an Ollama server is reachable and return (success, message).
 
     The verbose variant returns a human-readable message describing the
@@ -377,7 +402,9 @@ def get_ollama_binary() -> Optional[str]:
     return shutil.which("ollama")
 
 
-def install_ollama(allow_install: bool = False, method: Optional[str] = None, timeout: float = 600.0) -> bool:
+def install_ollama(
+    allow_install: bool = False, method: Optional[str] = None, timeout: float = 600.0
+) -> bool:
     """Attempt to install the ``ollama`` CLI using a supported installer.
 
     This helper only performs an installation when ``allow_install`` is
@@ -399,16 +426,27 @@ def install_ollama(allow_install: bool = False, method: Optional[str] = None, ti
     try:
         selected = method or detect_install_method()
         attempted_methods: List[str] = [selected]
-        fallback_method = "script" if selected in (
-            "brew", "apt") else "powershell" if selected == "choco" else None
+        fallback_method = (
+            "script"
+            if selected in ("brew", "apt")
+            else "powershell"
+            if selected == "choco"
+            else None
+        )
         if fallback_method and fallback_method not in attempted_methods:
             attempted_methods.append(fallback_method)
 
         for candidate_method in attempted_methods:
             cmd, _ = _install_command_for_method(candidate_method)
             try:
-                subprocess.run(cmd, cwd=str(ROOT), text=True,
-                               capture_output=True, check=False, timeout=timeout)
+                subprocess.run(
+                    cmd,
+                    cwd=str(ROOT),
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                    timeout=timeout,
+                )
             except Exception:
                 continue
             if get_ollama_binary() is not None:
@@ -418,9 +456,16 @@ def install_ollama(allow_install: bool = False, method: Optional[str] = None, ti
         return False
 
 
-def start_ollama(host: str = DEFAULT_URL, port: int = DEFAULT_PORT, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> bool:
+def start_ollama(
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
+    start_args: Optional[List[str]] = None,
+    timeout: float = 10.0,
+) -> bool:
     """Start `ollama serve` and wait for it to become available."""
-    return ensure_ollama_running(host=host, port=port, auto_start=True, start_args=start_args, timeout=timeout)
+    return ensure_ollama_running(
+        host=host, port=port, auto_start=True, start_args=start_args, timeout=timeout
+    )
 
 
 def stop_ollama(force: bool = False) -> bool:
@@ -439,6 +484,7 @@ def stop_ollama(force: bool = False) -> bool:
     """
     try:
         import importlib
+
         psutil = importlib.import_module("psutil")
     except Exception:
         psutil = None
@@ -490,16 +536,27 @@ def update_ollama(allow_upgrade: bool = False, timeout: float = 120.0) -> bool:
     if not binp:
         return False
     try:
-        res = subprocess.run([binp, "update"], stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE, text=True, timeout=timeout, check=False)
+        res = subprocess.run(
+            [binp, "update"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
         if res.returncode == 0:
             return True
     except Exception:
         pass
     if allow_upgrade and shutil.which("brew"):
         try:
-            subprocess.run(["brew", "upgrade", "ollama"], check=False,
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=timeout)
+            subprocess.run(
+                ["brew", "upgrade", "ollama"],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=timeout,
+            )
             return True
         except Exception:
             return False
@@ -514,12 +571,22 @@ def list_local_models() -> List[str]:
     ``ollama`` binary is not present or the calls fail, an empty list is
     returned.
     """
+
     def _looks_like_error_or_header(line: str) -> bool:
         if not line:
             return True
         low = line.strip().lower()
-        error_indicators = ("error", "failed", "unable", "not found", "no such",
-                            "denied", "unauthorized", "forbidden", "exception")
+        error_indicators = (
+            "error",
+            "failed",
+            "unable",
+            "not found",
+            "no such",
+            "denied",
+            "unauthorized",
+            "forbidden",
+            "exception",
+        )
         for tok in error_indicators:
             if tok in low:
                 return True
@@ -576,12 +643,24 @@ def list_local_models() -> List[str]:
         return []
 
     # Try JSON-capable invocations first, falling back to plain text parsing.
-    cmds = [[binp, "list", "--json"], [binp, "ls", "--json"], [binp, "models", "--json"],
-            [binp, "list"], [binp, "ls"], [binp, "models"]]
+    cmds = [
+        [binp, "list", "--json"],
+        [binp, "ls", "--json"],
+        [binp, "models", "--json"],
+        [binp, "list"],
+        [binp, "ls"],
+        [binp, "models"],
+    ]
     for cmd in cmds:
         try:
-            res = subprocess.run(cmd, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, text=True, timeout=15, check=False)
+            res = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=15,
+                check=False,
+            )
             out = (res.stdout or "").strip() or (res.stderr or "").strip()
             if not out:
                 continue
@@ -593,7 +672,10 @@ def list_local_models() -> List[str]:
                     return parsed
                 else:
                     logger.debug(
-                        "Failed to parse JSON output from %s; stdout/stderr: %s", cmd, out[:1000])
+                        "Failed to parse JSON output from %s; stdout/stderr: %s",
+                        cmd,
+                        out[:1000],
+                    )
                     continue
 
             # Plain text fallback: filter out obvious error/header lines
@@ -614,12 +696,22 @@ def list_remote_models() -> List[str]:
     variants of the CLI (``--remote``). Returns an empty list if the CLI is
     not available or the calls fail.
     """
+
     def _looks_like_error_or_header(line: str) -> bool:
         if not line:
             return True
         low = line.strip().lower()
-        error_indicators = ("error", "failed", "unable", "not found", "no such",
-                            "denied", "unauthorized", "forbidden", "exception")
+        error_indicators = (
+            "error",
+            "failed",
+            "unable",
+            "not found",
+            "no such",
+            "denied",
+            "unauthorized",
+            "forbidden",
+            "exception",
+        )
         for tok in error_indicators:
             if tok in low:
                 return True
@@ -666,25 +758,42 @@ def list_remote_models() -> List[str]:
     if not binp:
         return []
 
-    cmds = [[binp, "list", "--remote", "--json"], [binp, "ls", "--remote", "--json"],
-            [binp, "models", "--remote", "--json"], [binp, "llms", "--remote", "--json"],
-            [binp, "list", "--remote"], [binp, "ls", "--remote"],
-            [binp, "models", "--remote"], [binp, "llms", "--remote"]]
+    cmds = [
+        [binp, "list", "--remote", "--json"],
+        [binp, "ls", "--remote", "--json"],
+        [binp, "models", "--remote", "--json"],
+        [binp, "llms", "--remote", "--json"],
+        [binp, "list", "--remote"],
+        [binp, "ls", "--remote"],
+        [binp, "models", "--remote"],
+        [binp, "llms", "--remote"],
+    ]
     for cmd in cmds:
         try:
-            res = subprocess.run(cmd, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, text=True, timeout=20, check=False)
+            res = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=20,
+                check=False,
+            )
             out = (res.stdout or "").strip() or (res.stderr or "").strip()
             if not out:
                 continue
             if "--json" in cmd:
                 parsed = _try_parse_json_models(out)
                 if parsed:
-                    logger.debug("Parsed JSON remote model list from %s: %s", cmd, parsed)
+                    logger.debug(
+                        "Parsed JSON remote model list from %s: %s", cmd, parsed
+                    )
                     return parsed
                 else:
                     logger.debug(
-                        "Failed to parse JSON remote output from %s; stdout/stderr: %s", cmd, out[:1000])
+                        "Failed to parse JSON remote output from %s; stdout/stderr: %s",
+                        cmd,
+                        out[:1000],
+                    )
                     continue
 
             lines = [line.strip() for line in out.splitlines() if line.strip()]
@@ -697,7 +806,9 @@ def list_remote_models() -> List[str]:
     return []
 
 
-def list_remote_model_catalog(query: Optional[str] = None) -> List[RemoteModelCatalogEntry]:
+def list_remote_model_catalog(
+    query: Optional[str] = None,
+) -> List[RemoteModelCatalogEntry]:
     """Return a structured remote model catalog with light metadata.
 
     The helper builds on `list_remote_models()` and adds a stable object shape
@@ -724,7 +835,9 @@ def list_remote_model_catalog(query: Optional[str] = None) -> List[RemoteModelCa
     return sorted(entries, key=lambda item: item.name)
 
 
-def download_model_progress(model_name: str, timeout: float = 600.0) -> Iterable[ModelLifecycleState]:
+def download_model_progress(
+    model_name: str, timeout: float = 600.0
+) -> Iterable[ModelLifecycleState]:
     """Yield structured lifecycle updates while downloading a model.
 
     The function tracks the latest state in the in-memory lifecycle registry so
@@ -732,10 +845,20 @@ def download_model_progress(model_name: str, timeout: float = 600.0) -> Iterable
     """
     binp = get_ollama_binary()
     if not binp:
-        yield _record_model_state(model_name, "error", error="ollama binary not found", message="ollama binary not found")
+        yield _record_model_state(
+            model_name,
+            "error",
+            error="ollama binary not found",
+            message="ollama binary not found",
+        )
         return
 
-    yield _record_model_state(model_name, "downloading", message=f"Starting download for {model_name}", progress=0.0)
+    yield _record_model_state(
+        model_name,
+        "downloading",
+        message=f"Starting download for {model_name}",
+        progress=0.0,
+    )
 
     commands = [[binp, "pull", model_name], [binp, "download", model_name]]
     for index, cmd in enumerate(commands):
@@ -766,7 +889,12 @@ def download_model_progress(model_name: str, timeout: float = 600.0) -> Iterable
                 )
             returncode = process.wait(timeout=timeout)
             if returncode == 0:
-                yield _record_model_state(model_name, "downloaded", message=last_line or f"Downloaded {model_name}", progress=100.0)
+                yield _record_model_state(
+                    model_name,
+                    "downloaded",
+                    message=last_line or f"Downloaded {model_name}",
+                    progress=100.0,
+                )
                 return
             if index == len(commands) - 1:
                 yield _record_model_state(
@@ -776,9 +904,18 @@ def download_model_progress(model_name: str, timeout: float = 600.0) -> Iterable
                     error=f"download command exited with status {returncode}",
                 )
                 return
-            yield _record_model_state(model_name, "retrying", message=f"Retrying download for {model_name} with fallback command")
+            yield _record_model_state(
+                model_name,
+                "retrying",
+                message=f"Retrying download for {model_name} with fallback command",
+            )
         except FileNotFoundError:
-            yield _record_model_state(model_name, "error", error="ollama binary not found", message="ollama binary not found")
+            yield _record_model_state(
+                model_name,
+                "error",
+                error="ollama binary not found",
+                message="ollama binary not found",
+            )
             return
         except subprocess.TimeoutExpired:
             if process is not None:
@@ -786,13 +923,24 @@ def download_model_progress(model_name: str, timeout: float = 600.0) -> Iterable
                     process.kill()
                 except Exception:
                     pass
-            yield _record_model_state(model_name, "error", error=f"download timed out after {timeout} seconds", message=f"download timed out after {timeout} seconds")
+            yield _record_model_state(
+                model_name,
+                "error",
+                error=f"download timed out after {timeout} seconds",
+                message=f"download timed out after {timeout} seconds",
+            )
             return
         except Exception as exc:
             if index == len(commands) - 1:
-                yield _record_model_state(model_name, "error", error=str(exc), message=str(exc))
+                yield _record_model_state(
+                    model_name, "error", error=str(exc), message=str(exc)
+                )
                 return
-            yield _record_model_state(model_name, "retrying", message=f"Retrying download for {model_name}: {exc}")
+            yield _record_model_state(
+                model_name,
+                "retrying",
+                message=f"Retrying download for {model_name}: {exc}",
+            )
 
 
 def download_model(model_name: str, timeout: float = 600.0) -> bool:
@@ -816,8 +964,11 @@ def download_model(model_name: str, timeout: float = 600.0) -> bool:
         return False
     ok = final_state.phase == "downloaded"
     if not ok:
-        logger.warning("download_model failed for %s: %s", model_name,
-                       final_state.error or final_state.message)
+        logger.warning(
+            "download_model failed for %s: %s",
+            model_name,
+            final_state.error or final_state.message,
+        )
     return ok
 
 
@@ -831,24 +982,46 @@ def delete_model(model_name: str) -> bool:
     if not binp:
         logger.debug("delete_model: ollama binary not found")
         return False
-    cmds = [[binp, "rm", model_name], [binp, "remove", model_name], [binp, "delete", model_name]]
+    cmds = [
+        [binp, "rm", model_name],
+        [binp, "remove", model_name],
+        [binp, "delete", model_name],
+    ]
     for cmd in cmds:
         try:
-            res = subprocess.run(cmd, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, text=True, timeout=60, check=False)
+            res = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=60,
+                check=False,
+            )
             if res.returncode == 0:
                 logger.debug("delete_model succeeded for %s via %s", model_name, cmd)
                 return True
             else:
-                logger.debug("delete_model attempt for %s via %s returned %s; stdout=%s stderr=%s",
-                             model_name, cmd, res.returncode, (res.stdout or '')[:1000], (res.stderr or '')[:1000])
+                logger.debug(
+                    "delete_model attempt for %s via %s returned %s; stdout=%s stderr=%s",
+                    model_name,
+                    cmd,
+                    res.returncode,
+                    (res.stdout or "")[:1000],
+                    (res.stderr or "")[:1000],
+                )
         except Exception as exc:
-            logger.debug("Exception running delete command %s for %s: %s", cmd, model_name, exc)
+            logger.debug(
+                "Exception running delete command %s for %s: %s", cmd, model_name, exc
+            )
             continue
     return False
 
 
-def serve_model(model_name: Optional[str] = None, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> bool:
+def serve_model(
+    model_name: Optional[str] = None,
+    start_args: Optional[List[str]] = None,
+    timeout: float = 10.0,
+) -> bool:
     """Start ``ollama serve`` and wait until a server is reachable.
 
     Uses :func:`start_detached_ollama_serve` so environment and detachment
@@ -857,7 +1030,9 @@ def serve_model(model_name: Optional[str] = None, start_args: Optional[List[str]
     if not ollama_installed():
         return False
 
-    host_env = f"{DEFAULT_URL.replace('http://', '').replace('https://', '')}:{DEFAULT_PORT}"
+    host_env = (
+        f"{DEFAULT_URL.replace('http://', '').replace('https://', '')}:{DEFAULT_PORT}"
+    )
     args: List[str] = []
     if model_name:
         args.extend(["--model", model_name])
@@ -877,7 +1052,9 @@ def serve_model(model_name: Optional[str] = None, start_args: Optional[List[str]
     return False
 
 
-def ensure_model_available(model_name: str, allow_download: bool = False, timeout: float = 600.0) -> bool:
+def ensure_model_available(
+    model_name: str, allow_download: bool = False, timeout: float = 600.0
+) -> bool:
     """Ensure a model is available locally, optionally attempting to download it.
 
     Args:
@@ -940,10 +1117,13 @@ def ensure_model_ready_detailed(
     """
     start_time = time.time()
     deadline = start_time + float(timeout)
-    _record_model_state(model_name, "preparing", message=f"Preparing model {model_name}")
+    _record_model_state(
+        model_name, "preparing", message=f"Preparing model {model_name}"
+    )
 
     ok, message = ensure_ollama_running_verbose(
-        host=host, port=port, auto_start=auto_start, timeout=min(timeout, 30.0))
+        host=host, port=port, auto_start=auto_start, timeout=min(timeout, 30.0)
+    )
     if not ok:
         _record_model_state(model_name, "error", message=message, error=message)
         elapsed = time.time() - start_time
@@ -957,7 +1137,9 @@ def ensure_model_ready_detailed(
         )
 
     remaining = max(1.0, deadline - time.time())
-    if not ensure_model_available(model_name, allow_download=allow_download, timeout=remaining):
+    if not ensure_model_available(
+        model_name, allow_download=allow_download, timeout=remaining
+    ):
         error = f"Model {model_name} is not available locally"
         _record_model_state(model_name, "error", message=error, error=error)
         elapsed = time.time() - start_time
@@ -974,7 +1156,9 @@ def ensure_model_ready_detailed(
     try:
         preload_model(host, port, model_name, timeout=min(remaining, 60.0))
     except Exception as exc:
-        _record_model_state(model_name, "error", message=str(exc), error=str(exc), source="http")
+        _record_model_state(
+            model_name, "error", message=str(exc), error=str(exc), source="http"
+        )
         elapsed = time.time() - start_time
         return ReadinessResult(
             success=False,
@@ -990,7 +1174,8 @@ def ensure_model_ready_detailed(
     if model_name in running:
         msg = f"Model {model_name} is warmed and running"
         _record_model_state(
-            model_name, "ready", message=msg, progress=100.0, source="http")
+            model_name, "ready", message=msg, progress=100.0, source="http"
+        )
         elapsed = time.time() - start_time
         return ReadinessResult(
             success=True,
@@ -1003,11 +1188,18 @@ def ensure_model_ready_detailed(
     try:
         json_post(
             endpoint_url(host, port, "/api/generate"),
-            {"model": model_name, "prompt": "ping", "stream": False, "keep_alive": "30m"},
+            {
+                "model": model_name,
+                "prompt": "ping",
+                "stream": False,
+                "keep_alive": "30m",
+            },
             timeout=min(max(1.0, deadline - time.time()), 30.0),
         )
     except Exception as exc:
-        _record_model_state(model_name, "error", message=str(exc), error=str(exc), source="http")
+        _record_model_state(
+            model_name, "error", message=str(exc), error=str(exc), source="http"
+        )
         elapsed = time.time() - start_time
         return ReadinessResult(
             success=False,
@@ -1019,8 +1211,7 @@ def ensure_model_ready_detailed(
         )
 
     msg = f"Model {model_name} responded to readiness probe"
-    _record_model_state(
-        model_name, "ready", message=msg, progress=100.0, source="http")
+    _record_model_state(model_name, "ready", message=msg, progress=100.0, source="http")
     elapsed = time.time() - start_time
     return ReadinessResult(
         success=True,
@@ -1054,9 +1245,13 @@ def ensure_model_loaded(
     )
 
 
-async def async_ensure_model_available(model_name: str, allow_download: bool = False, timeout: float = 600.0) -> bool:
+async def async_ensure_model_available(
+    model_name: str, allow_download: bool = False, timeout: float = 600.0
+) -> bool:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, ensure_model_available, model_name, allow_download, timeout)
+    return await loop.run_in_executor(
+        None, ensure_model_available, model_name, allow_download, timeout
+    )
 
 
 async def async_ensure_model_ready(
@@ -1068,7 +1263,16 @@ async def async_ensure_model_ready(
     timeout: float = 120.0,
 ) -> bool:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, ensure_model_ready, model_name, host, port, auto_start, allow_download, timeout)
+    return await loop.run_in_executor(
+        None,
+        ensure_model_ready,
+        model_name,
+        host,
+        port,
+        auto_start,
+        allow_download,
+        timeout,
+    )
 
 
 async def async_ensure_model_ready_detailed(
@@ -1080,10 +1284,21 @@ async def async_ensure_model_ready_detailed(
     timeout: float = 120.0,
 ) -> ReadinessResult:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, ensure_model_ready_detailed, model_name, host, port, auto_start, allow_download, timeout)
+    return await loop.run_in_executor(
+        None,
+        ensure_model_ready_detailed,
+        model_name,
+        host,
+        port,
+        auto_start,
+        allow_download,
+        timeout,
+    )
 
 
-def change_ollama_config(config: Dict[str, Any], config_path: Optional[str] = None) -> bool:
+def change_ollama_config(
+    config: Dict[str, Any], config_path: Optional[str] = None
+) -> bool:
     """Write the provided configuration dictionary to the Ollama config file.
 
     The function writes JSON to the supplied ``config_path`` or falls back to
@@ -1116,8 +1331,12 @@ def ollama_binary_candidates() -> List[Path]:
     if os.name == "nt":
         local_appdata = os.environ.get("LOCALAPPDATA")
         if local_appdata:
-            candidates.append(Path(local_appdata) / "Programs" / "Ollama" / "ollama.exe")
-        candidates.append(Path.home() / "AppData" / "Local" / "Programs" / "Ollama" / "ollama.exe")
+            candidates.append(
+                Path(local_appdata) / "Programs" / "Ollama" / "ollama.exe"
+            )
+        candidates.append(
+            Path.home() / "AppData" / "Local" / "Programs" / "Ollama" / "ollama.exe"
+        )
     elif sys.platform == "darwin":
         candidates.extend(
             [
@@ -1170,7 +1389,9 @@ def ollama_installed() -> bool:
     return True
 
 
-def run_ollama_command(*args: str, host: Optional[str] = None, env: Optional[Dict[str, str]] = None) -> subprocess.CompletedProcess[str]:
+def run_ollama_command(
+    *args: str, host: Optional[str] = None, env: Optional[Dict[str, str]] = None
+) -> subprocess.CompletedProcess[str]:
     """Run an Ollama CLI command and capture the Result.
 
     Args:
@@ -1194,10 +1415,21 @@ def run_ollama_command(*args: str, host: Optional[str] = None, env: Optional[Dic
         base_env["OLLAMA_HOST"] = host
     _ensure_pythonpath_env(base_env)
     command = resolve_ollama_command()
-    return subprocess.run([command, *args], cwd=str(ROOT), text=True, capture_output=True, check=False, env=base_env)
+    return subprocess.run(
+        [command, *args],
+        cwd=str(ROOT),
+        text=True,
+        capture_output=True,
+        check=False,
+        env=base_env,
+    )
 
 
-def start_detached_ollama_serve(host: str, start_args: Optional[List[str]] = None, env: Optional[Dict[str, str]] = None) -> subprocess.Popen[Any]:
+def start_detached_ollama_serve(
+    host: str,
+    start_args: Optional[List[str]] = None,
+    env: Optional[Dict[str, str]] = None,
+) -> subprocess.Popen[Any]:
     """Start `ollama serve` in the background for the current platform.
 
     `start_args` are appended to the serve command and can include options
@@ -1253,7 +1485,9 @@ def start_detached_ollama_serve(host: str, start_args: Optional[List[str]] = Non
 
 def _raise_normalized_network_error(exc: Exception, operation: str) -> NoReturn:
     err = normalize_network_error(exc, provider="ollama", operation=operation)
-    raise ProviderError(err.message, provider="ollama", code=err.code, details=err.details) from exc
+    raise ProviderError(
+        err.message, provider="ollama", code=err.code, details=err.details
+    ) from exc
 
 
 def json_post(
@@ -1334,8 +1568,11 @@ def ollama_health_check(
             )
             http_ok = True
             if isinstance(version_payload, dict):
-                version = str(version_payload.get("version")
-                              or version_payload.get("ollama_version") or "")
+                version = str(
+                    version_payload.get("version")
+                    or version_payload.get("ollama_version")
+                    or ""
+                )
         except Exception as exc:
             error = str(exc)
 
@@ -1366,13 +1603,17 @@ def ollama_readiness_probe(
     """Probe whether the local Ollama service is ready for request handling."""
     merged_policy = policy or TransportPolicy(timeout=timeout)
     try:
-        json_get(endpoint_url(host, port, "/api/tags"), timeout=timeout, policy=merged_policy)
+        json_get(
+            endpoint_url(host, port, "/api/tags"), timeout=timeout, policy=merged_policy
+        )
         return True
     except Exception:
         return False
 
 
-async def async_preload_model(url: str, port: int, model: str, timeout: float = 120.0) -> None:
+async def async_preload_model(
+    url: str, port: int, model: str, timeout: float = 120.0
+) -> None:
     """Async wrapper around :func:`preload_model` using an executor."""
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, preload_model, url, port, model, timeout)
@@ -1399,9 +1640,15 @@ async def async_delete_model(model_name: str) -> bool:
     return await loop.run_in_executor(None, delete_model, model_name)
 
 
-async def async_serve_model(model_name: Optional[str] = None, start_args: Optional[List[str]] = None, timeout: float = 10.0) -> bool:
+async def async_serve_model(
+    model_name: Optional[str] = None,
+    start_args: Optional[List[str]] = None,
+    timeout: float = 10.0,
+) -> bool:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, serve_model, model_name, start_args, timeout)
+    return await loop.run_in_executor(
+        None, serve_model, model_name, start_args, timeout
+    )
 
 
 def wait_until_ready(url: str, port: int, timeout_seconds: float = 60.0) -> None:
@@ -1416,8 +1663,11 @@ def wait_until_ready(url: str, port: int, timeout_seconds: float = 60.0) -> None
 
 def preload_model(url: str, port: int, model: str, timeout: float = 120.0) -> None:
     """Warm the selected model through the local Ollama API."""
-    json_post(endpoint_url(url, port, "/api/generate"),
-              {"model": model, "keep_alive": "30m"}, timeout=timeout)
+    json_post(
+        endpoint_url(url, port, "/api/generate"),
+        {"model": model, "keep_alive": "30m"},
+        timeout=timeout,
+    )
 
 
 def running_model_names(host: str) -> List[str]:
@@ -1540,7 +1790,9 @@ def ollama_version_text(host: Optional[str] = None) -> str:
     return (proc.stdout or proc.stderr or "").strip()
 
 
-def install_command_for_current_platform(platform_name: Optional[str] = None) -> tuple[List[str], str]:
+def install_command_for_current_platform(
+    platform_name: Optional[str] = None,
+) -> tuple[List[str], str]:
     selected_method = detect_install_method(platform_name=platform_name)
     return _install_command_for_method(selected_method)
 
@@ -1549,7 +1801,9 @@ def install_service(reinstall: bool = False) -> tuple[int, str]:
     action = "reinstall" if reinstall else "install"
     command, display = install_command_for_current_platform()
     try:
-        proc = subprocess.run(command, cwd=str(ROOT), text=True, capture_output=True, check=False)
+        proc = subprocess.run(
+            command, cwd=str(ROOT), text=True, capture_output=True, check=False
+        )
         combined = ((proc.stdout or "") + (proc.stderr or "")).strip()
         if proc.returncode == 0:
             return 0, combined or f"Completed the official Ollama {action} workflow."
@@ -1575,7 +1829,9 @@ def inspect_service_state(config_path: Optional[str] = None) -> Dict[str, Any]:
     }
 
 
-def start_service(config_path: Optional[str] = None, warmup_timeout: float = 30.0) -> int:
+def start_service(
+    config_path: Optional[str] = None, warmup_timeout: float = 30.0
+) -> int:
     """Start Ollama service with optional model preload and configurable warmup timeout.
 
     Args:
@@ -1597,7 +1853,9 @@ def start_service(config_path: Optional[str] = None, warmup_timeout: float = 30.
         print("ollama: command not found", file=sys.stderr)
         return 1
 
-    if version_proc.returncode != 0 and not (version_proc.stdout or version_proc.stderr):
+    if version_proc.returncode != 0 and not (
+        version_proc.stdout or version_proc.stderr
+    ):
         print("ollama CLI failed to start", file=sys.stderr)
         return 1
 
@@ -1645,9 +1903,13 @@ def start_service(config_path: Optional[str] = None, warmup_timeout: float = 30.
     save_last_served_model(model, config_path)
 
     if started:
-        print(f"Completed: started ollama at {host}, pulled and warmed model '{model}'.")
+        print(
+            f"Completed: started ollama at {host}, pulled and warmed model '{model}'."
+        )
     else:
-        print(f"Completed: ollama already running at {host}; pulled and warmed model '{model}'.")
+        print(
+            f"Completed: ollama already running at {host}; pulled and warmed model '{model}'."
+        )
     return 0
 
 
@@ -1701,12 +1963,15 @@ def common_model_timeout(model_name: str) -> Optional[float]:
         return None
 
 
-def estimate_remote_model_timeout_details(model_name: str, input_tokens: int = 2048, concurrency: int = 1) -> tuple[int, Dict[str, Any]]:
+def estimate_remote_model_timeout_details(
+    model_name: str, input_tokens: int = 2048, concurrency: int = 1
+) -> tuple[int, Dict[str, Any]]:
     """Return a timeout estimate and diagnostic details from the catalog."""
     from .timeout import estimate_remote_timeout as _estimate
 
-    res = _estimate(model_name, input_tokens=input_tokens,
-                    concurrency=concurrency, with_source=True)
+    res = _estimate(
+        model_name, input_tokens=input_tokens, concurrency=concurrency, with_source=True
+    )
     if isinstance(res, tuple):
         t, src = res
     else:
@@ -1716,14 +1981,19 @@ def estimate_remote_model_timeout_details(model_name: str, input_tokens: int = 2
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="modelito-ollama",
-                                description="Manage Ollama lifecycle and models")
+    p = argparse.ArgumentParser(
+        prog="modelito-ollama", description="Manage Ollama lifecycle and models"
+    )
     subs = p.add_subparsers(dest="cmd")
 
     sp = subs.add_parser("start")
     sp.add_argument("--config", "-c", dest="config", default=None)
-    sp.add_argument("--warmup-timeout", type=float, default=30.0,
-                    help="Server warmup timeout in seconds (default: 30.0)")
+    sp.add_argument(
+        "--warmup-timeout",
+        type=float,
+        default=30.0,
+        help="Server warmup timeout in seconds (default: 30.0)",
+    )
     sp.add_argument("--wait", type=float, default=30.0)
 
     sp = subs.add_parser("stop")
@@ -1802,7 +2072,10 @@ def _listener_pids_from_connections(connections: Iterable[Any], port: int) -> Li
     pids: set[int] = set()
     for conn in connections:
         try:
-            if conn.status != getattr(conn, "status", None) and getattr(conn, "status", None) is None:
+            if (
+                conn.status != getattr(conn, "status", None)
+                and getattr(conn, "status", None) is None
+            ):
                 continue
         except Exception:
             pass
@@ -1821,6 +2094,7 @@ def find_ollama_listener_pids(port: int) -> List[int]:
     """Return process IDs listening on the configured TCP port (best-effort)."""
     try:
         import importlib
+
         psutil = importlib.import_module("psutil")
     except Exception:
         psutil = None
@@ -1829,7 +2103,9 @@ def find_ollama_listener_pids(port: int) -> List[int]:
         return []
 
     try:
-        return _listener_pids_from_connections(psutil.net_connections(kind="inet"), port)
+        return _listener_pids_from_connections(
+            psutil.net_connections(kind="inet"), port
+        )
     except psutil.AccessDenied:
         pass
 
@@ -1857,7 +2133,12 @@ def find_ollama_listener_pids(port: int) -> List[int]:
     return sorted(pids)
 
 
-def stop_service(host: str = "http://127.0.0.1", port: int = 11434, verbose: bool = False, config_path: Optional[str] = None) -> int:
+def stop_service(
+    host: str = "http://127.0.0.1",
+    port: int = 11434,
+    verbose: bool = False,
+    config_path: Optional[str] = None,
+) -> int:
     """Stop running models and terminate server processes (best-effort).
 
     If `config_path` is provided the function will load the configured URL/port
@@ -1896,6 +2177,7 @@ def stop_service(host: str = "http://127.0.0.1", port: int = 11434, verbose: boo
     killed = False
     try:
         import importlib
+
         psutil = importlib.import_module("psutil")
     except Exception:
         psutil = None
@@ -1919,8 +2201,10 @@ def stop_service(host: str = "http://127.0.0.1", port: int = 11434, verbose: boo
 
         # wait and kill survivors
         try:
-            _gone, alive = psutil.wait_procs([psutil.Process(pid)
-                                             for pid in pids if psutil.pid_exists(pid)], timeout=3.0)
+            _gone, alive = psutil.wait_procs(
+                [psutil.Process(pid) for pid in pids if psutil.pid_exists(pid)],
+                timeout=3.0,
+            )
             for proc in alive:
                 try:
                     proc.kill()
