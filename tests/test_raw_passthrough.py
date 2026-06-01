@@ -136,6 +136,22 @@ def test_openai_compatible_raw_stream_preserves_chunks(monkeypatch):
     assert events[2]["choices"][0]["delta"]["content"] == "done"
 
 
+def test_openai_compatible_fallback_uses_requested_model(monkeypatch):
+    def failing_urlopen(req, timeout=0):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("modelito.openai_compat.urlopen", failing_urlopen)
+
+    provider = OpenAICompatibleHTTPProvider(
+        base_url="http://example.test/v1", model="default-model", strict=False
+    )
+    result = provider.raw_complete(
+        {"model": "test-model", "messages": [{"role": "user", "content": "hello"}]}
+    )
+
+    assert result["model"] == "test-model"
+
+
 def test_omlx_inherits_raw_passthrough(monkeypatch):
     assert hasattr(OMLXProvider, "raw_complete")
     assert hasattr(OMLXProvider, "raw_stream")

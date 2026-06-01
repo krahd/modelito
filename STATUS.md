@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-31 23:25
+Last updated: 2026-06-01 00:31
 
 ## Project purpose
 
@@ -151,6 +151,7 @@ python -m twine check dist/*
 
 ## Recent changes
 
+- **Raw passthrough follow-up hardening**: `OllamaProvider.raw_stream()` now treats valid JSON non-object SSE events as malformed responses in strict mode (`ModelitoBadResponseError`) instead of silently ignoring them. Added targeted tests for strict non-dict rejection, explicit `/v1/chat/completions` endpoint usage in raw streaming, raw stream input immutability, and preservation of `response_format` plus common generation fields (`temperature`, `top_p`, `max_tokens`, `stop`) for both `raw_complete()` and `raw_stream()`. Updated `OpenAICompatibleHTTPProvider` fallback chat payload to preserve the requested `model` value and aligned OMLX fallback expectation accordingly.
 - **OllamaProvider raw passthrough (raw_complete/raw_stream)**: Implemented `raw_complete(payload)` and `raw_stream(payload)` methods on `OllamaProvider` to enable OpenAI-compatible passthrough via `/v1/chat/completions` endpoint. Both methods preserve all OpenAI request fields (tools, tool_choice, response_format, etc.) and work with `modelito-serve` for tool-calling workflows with local Ollama models. Comprehensive test suite added: 13 test functions in `tests/test_ollama_raw_provider.py` covering protocol conformance, default model injection, explicit model preservation, tool preservation, endpoint routing, response handling, error modes (strict/non-strict), and SSE streaming. Integration test added to `tests/test_serve.py` verifying tool-calling through modelito-serve.
 - **recording.py audit**: Audited 4 type:ignore comments. Removed 3 unnecessary `type:ignore[attr-defined]` comments on imports of `Response`, `Message`, `flatten_message_inputs` (all properly exported from messages.py). Kept 1 necessary `type:ignore[return-value]` at return statement due to mypy type-narrowing limitation with tuple unpacking in conditional assignment.
 - **Namespaced public helpers documentation (Option A)**: Added new "Namespaced public helpers" section to docs/API.md explaining the pattern and providing example code for `RecordingProvider` and `ReplayProvider` from `modelito.recording`. Documentation already used correct `from modelito.recording import ...` imports consistently.
@@ -162,7 +163,7 @@ python -m twine check dist/*
   - `ruff check .` → clean
   - `ruff format .` → formatted 84 files
   - `mypy modelito --ignore-missing-imports` → clean (38 source files)
-  - `pytest -q` → 344 passed, 3 skipped
+  - `pytest -q` → 351 passed, 3 skipped
   - `from modelito import OllamaProvider; from modelito.provider import RawChatProvider; print(isinstance(OllamaProvider(model='test'), RawChatProvider))` → True
 - Dependencies unchanged: `dependencies = []` confirmed in `pyproject.toml` (core remains zero-dependency)
 
@@ -177,7 +178,7 @@ python -m twine check dist/*
 - Model metadata helpers are now exported from the package root (`ModelMetadata`, `get_model_info`, `get_model_metadata`, `infer_model_metadata`).
 - Release checklist now includes explicit trusted publishing requirements, tag/publish commands, and clean-environment install checks.
 - README now embeds standalone current-state SVG assets from `docs/assets/`, and the architecture/usage docs call out `modelito-serve`, shared probes, and raw-capable providers including Ollama.
-- Current release line is `1.4.5` (tagged and GitHub-released 2026-05-19; PyPI publish pending trusted publisher configuration on PyPI account).
+- Current release line is `1.4.6` (patch bump: strict raw_stream non-dict handling, OpenAI-compatible fallback model propagation, comprehensive field-preservation tests).
 - Current oMLX stack uses `OpenAICompatibleHTTPProvider` with strict-mode typed error handling.
 - Current provider typing includes `ChatProvider`, `MessageInput`, and `OpenAIMessageDict` exports, with `Client` chat-related methods accepting broadened message input types; provider protocols are aligned so `SyncProvider`, `AsyncProvider`, `StreamingProvider`, and `ChatProvider` all accept `Iterable[MessageInput]`.
 - `Client.chat_json()` now supports optional stronger schema validation via `strict_schema=True` using dataclass construction or Pydantic-style `model_validate`/`parse_obj` hooks, while preserving lightweight key-presence checks by default.
@@ -185,7 +186,7 @@ python -m twine check dist/*
   - `python scripts/check_no_legacy_dicts.py` -> clean
   - `ruff check .` -> clean
   - `mypy modelito --ignore-missing-imports` -> clean
-  - `pytest -q --ignore=tests/integration tests` -> `257 passed, 1 skipped`
+  - `pytest -q --ignore=tests/integration tests` -> `350 passed, 1 skipped`
   - `python -c "import modelito; print(modelito.__version__)"` -> `1.4.5`
   - `python -m build` -> succeeded; `1.4.5` wheel and sdist validated
   - `python -m twine check dist/*` -> all packages passed (1.4.3, 1.4.4, 1.4.5)
@@ -221,4 +222,4 @@ python -m twine check dist/*
 - Deeper cloud-provider features should remain optional unless they map cleanly across providers.
 - CI intentionally excludes integration tests by path/flags to keep default hosted CI fast and safe.
 
-Last updated: 2026-05-31 23:25
+Last updated: 2026-06-01 00:31

@@ -201,7 +201,7 @@ Example: Ollama with function calling
 ```python
 from modelito import OllamaProvider
 
-provider = OllamaProvider(model="llama2-uncensored:7b")
+provider = OllamaProvider(model="llama3.2")
 
 # Define a tool (function) that the model can call
 tools = [
@@ -226,7 +226,7 @@ tools = [
 
 # Raw passthrough preserves tools and tool_choice fields
 payload = {
-    "model": "llama2-uncensored:7b",
+    "model": "llama3.2",
     "messages": [
         {"role": "user", "content": "What is the weather in New York?"}
     ],

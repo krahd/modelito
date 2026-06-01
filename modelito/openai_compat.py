@@ -91,7 +91,7 @@ def _fallback_chat_response(payload: Dict[str, Any]) -> Dict[str, Any]:
         "id": f"chatcmpl-modelito-{uuid.uuid4().hex}",
         "object": "chat.completion",
         "created": created,
-        "model": None,
+        "model": payload.get("model"),
         "choices": [
             {
                 "index": 0,
@@ -208,7 +208,7 @@ class OpenAICompatibleHTTPProvider:
         }
         text = _extract_chat_text(response)
         for start in range(0, len(text), chunk_size):
-            chunk = text[start : start + chunk_size]
+            chunk = text[start: start + chunk_size]
             if not chunk:
                 continue
             yield {
@@ -473,7 +473,7 @@ class OpenAICompatibleHTTPProvider:
             except Exception:
                 pass
         for i in range(0, len(text), chunk_size):
-            yield text[i : i + chunk_size]
+            yield text[i: i + chunk_size]
 
     async def acomplete(
         self,

@@ -222,11 +222,11 @@ Example with `OllamaProvider`:
 ```python
 from modelito import OllamaProvider
 
-provider = OllamaProvider(model="llama2-uncensored:7b")
+provider = OllamaProvider(model="llama3.2")
 
 # Raw passthrough preserves tools and tool_choice
 payload = {
-    "model": "llama2-uncensored:7b",
+    "model": "llama3.2",
     "messages": [
         {"role": "user", "content": "What is the weather?"}
     ],

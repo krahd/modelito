@@ -582,9 +582,16 @@ class OllamaProvider:
                             ) from exc
                         continue
 
+                    if not isinstance(event, dict):
+                        if self.strict:
+                            raise ModelitoBadResponseError(
+                                "raw_stream: expected JSON object event, "
+                                f"got {type(event).__name__}"
+                            )
+                        continue
+
                     # Yield the parsed event dict.
-                    if isinstance(event, dict):
-                        yield event
+                    yield event
 
             return
 

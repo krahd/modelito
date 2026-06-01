@@ -9,6 +9,7 @@ import json
 import pytest
 from unittest.mock import Mock, MagicMock
 
+from modelito.exceptions import ModelitoBadResponseError
 from modelito.ollama import OllamaProvider
 from modelito.provider import RawChatProvider
 
@@ -382,10 +383,129 @@ def test_raw_stream_preserves_tool_fields(monkeypatch):
     assert captured_payload.get("tool_choice") == "auto"
 
 
+def test_raw_stream_preserves_response_format_and_generation_fields(monkeypatch):
+    """raw_stream should preserve response_format and common generation fields."""
+    provider = OllamaProvider(model="llama3.2", strict=False)
+
+    monkeypatch.setattr(
+        "modelito.ollama.endpoint_url",
+        lambda h, p, e: "http://test/v1/chat/completions",
+    )
+
+    captured_payload = {}
+
+    mock_response = MagicMock()
+    mock_response.__enter__ = Mock(return_value=mock_response)
+    mock_response.__exit__ = Mock(return_value=None)
+    mock_response.readline = Mock(side_effect=[b"data: [DONE]\n", b""])
+
+    def mock_urlopen(req, timeout):
+        if hasattr(req, "data"):
+            captured_payload.update(json.loads(req.data.decode("utf-8")))
+        return mock_response
+
+    monkeypatch.setattr("modelito.ollama.urlopen", mock_urlopen)
+
+    payload = {
+        "messages": [{"role": "user", "content": "return json"}],
+        "response_format": {"type": "json_object"},
+        "temperature": 0,
+        "top_p": 0.9,
+        "max_tokens": 128,
+        "stop": ["END"],
+    }
+    original = dict(payload)
+
+    list(provider.raw_stream(payload))
+
+    assert captured_payload["model"] == "llama3.2"
+    assert captured_payload["stream"] is True
+    assert captured_payload["response_format"] == {"type": "json_object"}
+    assert captured_payload["temperature"] == 0
+    assert captured_payload["top_p"] == 0.9
+    assert captured_payload["max_tokens"] == 128
+    assert captured_payload["stop"] == ["END"]
+    assert payload == original
+
+
+def test_raw_stream_uses_v1_chat_completions_endpoint(monkeypatch):
+    """raw_stream should use /v1/chat/completions endpoint."""
+    provider = OllamaProvider(model="llama3.2", strict=False)
+
+    captured = {}
+
+    def mock_endpoint_url(host, port, endpoint):
+        captured["endpoint"] = endpoint
+        return "http://test/v1/chat/completions"
+
+    monkeypatch.setattr("modelito.ollama.endpoint_url", mock_endpoint_url)
+
+    mock_response = MagicMock()
+    mock_response.__enter__ = Mock(return_value=mock_response)
+    mock_response.__exit__ = Mock(return_value=None)
+    mock_response.readline = Mock(side_effect=[b"data: [DONE]\n", b""])
+
+    monkeypatch.setattr("modelito.ollama.urlopen", Mock(return_value=mock_response))
+
+    list(provider.raw_stream({"messages": [{"role": "user", "content": "hello"}]}))
+
+    assert captured["endpoint"] == "/v1/chat/completions"
+
+
+def test_raw_stream_does_not_mutate_input_payload(monkeypatch):
+    """raw_stream should not mutate the caller payload."""
+    provider = OllamaProvider(model="llama3.2", strict=False)
+
+    monkeypatch.setattr(
+        "modelito.ollama.endpoint_url",
+        lambda h, p, e: "http://test/v1/chat/completions",
+    )
+
+    mock_response = MagicMock()
+    mock_response.__enter__ = Mock(return_value=mock_response)
+    mock_response.__exit__ = Mock(return_value=None)
+    mock_response.readline = Mock(side_effect=[b"data: [DONE]\n", b""])
+
+    monkeypatch.setattr("modelito.ollama.urlopen", Mock(return_value=mock_response))
+
+    payload = {"messages": [{"role": "user", "content": "hello"}]}
+    original = dict(payload)
+
+    list(provider.raw_stream(payload))
+
+    assert payload == original
+    assert "model" not in payload
+    assert "stream" not in payload
+
+
+def test_raw_stream_strict_rejects_non_dict_json_event(monkeypatch):
+    """In strict mode, raw_stream should reject valid JSON events that are not objects."""
+    provider = OllamaProvider(model="llama3.2", strict=True)
+
+    monkeypatch.setattr(
+        "modelito.ollama.endpoint_url",
+        lambda h, p, e: "http://test/v1/chat/completions",
+    )
+
+    mock_response = MagicMock()
+    mock_response.__enter__ = Mock(return_value=mock_response)
+    mock_response.__exit__ = Mock(return_value=None)
+    mock_response.readline = Mock(
+        side_effect=[
+            b'data: ["not", "an", "object"]\n',
+            b"data: [DONE]\n",
+            b"",
+        ]
+    )
+
+    monkeypatch.setattr("modelito.ollama.urlopen", Mock(return_value=mock_response))
+
+    with pytest.raises(ModelitoBadResponseError):
+        list(provider.raw_stream({"messages": [{"role": "user", "content": "hello"}]}))
+
+
 def test_raw_stream_strict_malformed_event(monkeypatch):
     """In strict mode, raw_stream should raise on malformed events."""
-    from modelito.exceptions import ModelitoBadResponseError
-
     provider = OllamaProvider(model="llama3.2", strict=True)
 
     monkeypatch.setattr(
@@ -439,3 +559,46 @@ def test_raw_stream_non_strict_fallback(monkeypatch):
     # OpenAI-style streams keep a stable completion id across chunks.
     ids = {event["id"] for event in events}
     assert len(ids) == 1
+
+
+def test_raw_complete_preserves_response_format_and_generation_fields(monkeypatch):
+    """raw_complete should preserve response_format and common generation fields."""
+    provider = OllamaProvider(model="llama3.2", strict=False)
+
+    monkeypatch.setattr(
+        "modelito.ollama.endpoint_url",
+        lambda h, p, e: "http://test/v1/chat/completions",
+    )
+
+    captured = {}
+
+    def mock_json_post(url, payload, timeout):
+        captured["payload"] = dict(payload)
+        return {
+            "id": "test",
+            "object": "chat.completion",
+            "model": "llama3.2",
+            "choices": [
+                {"index": 0, "message": {"role": "assistant", "content": "ok"}}
+            ],
+        }
+
+    monkeypatch.setattr("modelito.ollama.json_post", mock_json_post)
+
+    payload = {
+        "messages": [{"role": "user", "content": "return json"}],
+        "response_format": {"type": "json_object"},
+        "temperature": 0,
+        "top_p": 0.9,
+        "max_tokens": 128,
+        "stop": ["END"],
+    }
+
+    provider.raw_complete(payload)
+
+    assert captured["payload"]["model"] == "llama3.2"
+    assert captured["payload"]["response_format"] == {"type": "json_object"}
+    assert captured["payload"]["temperature"] == 0
+    assert captured["payload"]["top_p"] == 0.9
+    assert captured["payload"]["max_tokens"] == 128
+    assert captured["payload"]["stop"] == ["END"]

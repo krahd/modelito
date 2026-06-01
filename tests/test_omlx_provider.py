@@ -260,7 +260,7 @@ def test_omlx_chat_fallback_returns_response(monkeypatch):
 
     assert isinstance(r, Response)
     assert "offline" in r.text
-    assert r.model is None
+    assert r.model == "omlx"
     assert r.finish_reason is None
 
 
