@@ -55,7 +55,7 @@ API and are safe to import directly from their namespace:
 Example usage:
 
 ```python
-from modelito import MockProvider
+from modelito.mock_provider import MockProvider
 from modelito.messages import Message
 from modelito.recording import RecordingProvider, ReplayProvider
 
