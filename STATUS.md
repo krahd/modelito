@@ -8,9 +8,9 @@ modelito is a compact, dependency-light Python library that provides provider-ag
 
 ## Current implementation state
 
-Current package metadata version is `1.4.5` in `pyproject.toml`.
+Current package metadata version is `1.4.6` in `pyproject.toml`.
 
-Release `v1.4.5` was tagged and published to GitHub on 2026-05-19, and successfully published to PyPI after configuring the trusted publisher.
+Release `v1.4.5` was tagged and published to GitHub on 2026-05-19, and successfully published to PyPI after configuring the trusted publisher. Release `v1.4.6` is a patch bump adding strict raw_stream non-dict event handling, fallback model propagation, and comprehensive field-preservation tests for raw passthrough.
 
 The package provides:
 
@@ -22,7 +22,7 @@ The package provides:
 - optional SDK-backed behaviour with deterministic fallback support for offline tests/examples
 - provider readiness diagnostics via `check_provider_ready()` and `python -m modelito doctor`
 - optional OpenAI-compatible server mode via `modelito-serve` for non-Python clients such as Pi, with bind settings kept separate from provider backend configuration
-- raw OpenAI chat-completions passthrough via `RawChatProvider`, `OpenAICompatibleHTTPProvider`, `OMLXProvider`, `OpenAIProvider`, and `OllamaProvider` (via Ollama `/v1/chat/completions`)
+- raw OpenAI chat-completions passthrough via `RawChatProvider`, `OpenAICompatibleHTTPProvider`, `OMLXProvider`, `OpenAIProvider`, and `OllamaProvider` with strict non-dict event handling and field preservation for tool calling
 - shared readiness probes in `modelito/probes.py`, with `modelito-doctor` as a console script and `flatten_message_inputs` exported from the package root for convenience
 - comprehensive docs under `docs/` including architecture, usage, API reference, install guide, and local server integration
 - concise release checklist documentation in `docs/RELEASE.md`

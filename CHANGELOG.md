@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.4.6
+
+- Added strict non-dict JSON event handling to `OllamaProvider.raw_stream()` in strict mode for validation of Server-Sent Events.
+- Updated `OpenAICompatibleHTTPProvider` fallback chat response to preserve requested model instead of returning `None`.
+- Added comprehensive tests for Ollama raw passthrough: strict non-dict JSON rejection, `/v1/chat/completions` endpoint routing, input payload immutability, and preservation of OpenAI-compatible generation fields (`response_format`, `temperature`, `top_p`, `max_tokens`, `stop`).
+- Updated documentation examples to use `llama3.2` instead of `llama2-uncensored:7b`.
+
 ## 1.4.5 - 2026-05-19
 
 - Python 3.10 test compatibility fixed by using `tomli` as fallback for `tomllib` (available from Python 3.11+).

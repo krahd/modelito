@@ -1,11 +1,10 @@
-"""Compatibility shim for Ollama provider.
+"""Ollama provider and local runtime helpers.
 
-Provides a lightweight `OllamaProvider` compatible with older imports
-(`from modelito import OllamaProvider` and `import modelito.ollama`).
-
-This implementation is intentionally minimal: it exposes `list_models()`
-and `summarize()` with safe defaults so downstream projects that expect
-the provider API during tests or local runs continue to work.
+The provider exposes the standard modelito provider surface for listing models,
+summarising messages, streaming text, and embeddings. It also implements raw
+OpenAI-compatible chat passthrough through Ollama's `/v1/chat/completions`
+endpoint so `modelito-serve` can preserve tool-call metadata and other raw
+OpenAI-compatible fields.
 """
 
 from __future__ import annotations
@@ -37,10 +36,11 @@ from .ollama_service import (
 
 
 class OllamaProvider:
-    """Minimal compatibility shim for Ollama-style providers.
+    """Provider for local Ollama runtimes.
 
-    Provides `list_models()` and `summarize()` with safe defaults for local
-    testing and compatibility with older imports.
+    `OllamaProvider` supports the standard modelito provider methods, local Ollama
+    HTTP/CLI fallbacks, embeddings, and raw OpenAI-compatible chat passthrough via
+    Ollama's `/v1/chat/completions` endpoint.
     """
 
     def __init__(
