@@ -211,7 +211,7 @@ result = provider.summarize([Message(role="user", content="hello")])
 
 # Later (or in CI): replay without any network access
 replay = ReplayProvider(cassette="tests/cassettes/demo.jsonl")
-print(replay.summarize([Message(role="user", content="hello")]))</p>
+print(replay.summarize([Message(role="user", content="hello")]))
 ```
 
 **Supported input forms** — all of the following are accepted by both
@@ -220,11 +220,12 @@ print(replay.summarize([Message(role="user", content="hello")]))</p>
 ```py
 provider.summarize("hello")                                      # bare string
 provider.summarize(["hello", "world"])                           # list of strings
-provider.summarize({"role": "user", "content": "hello"})        # single dict
-provider.summarize([{"role": "user", "content": "hello"}])      # list of dicts
 provider.summarize([Message(role="user", content="hello")])     # Message objects
 provider.summarize(iter([Message(role="user", content="hi")]))  # generator
 ```
+
+Dict-shaped message inputs are also accepted for compatibility, but examples
+prefer `Message(...)` dataclasses.
 
 **V1 scope:** `list_models()`, `summarize()`, and `chat()` only.
 `stream()` and `embed()` raise `NotImplementedError`.
