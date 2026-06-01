@@ -10,7 +10,6 @@ the provider API during tests or local runs continue to work.
 
 from __future__ import annotations
 
-import copy
 import json as _json
 import time
 import uuid
@@ -452,8 +451,11 @@ class OllamaProvider:
             ModelitoTimeoutError: In strict mode, if the request times out.
             ModelitoProviderError: In strict mode, for other provider errors.
         """
-        # Copy the payload to avoid mutating caller input.
-        request_payload = copy.copy(payload or {})
+        # Shallow copy only: raw_complete only adds/overrides top-level transport
+        # keys ("model").  Nested OpenAI-compatible structures such as messages,
+        # tools, tool_choice, and response_format are intentionally not deep-copied
+        # so callers can pass large payloads without unnecessary allocation.
+        request_payload = dict(payload or {})
 
         # Set model if absent, but don't overwrite an explicit model.
         if "model" not in request_payload and self.model:
@@ -525,8 +527,12 @@ class OllamaProvider:
             ModelitoTimeoutError: In strict mode, if the request times out.
             ModelitoProviderError: In strict mode, for other provider errors.
         """
-        # Copy the payload to avoid mutating caller input.
-        request_payload = copy.copy(payload or {})
+        # Shallow copy only: raw_stream only adds/overrides top-level transport
+        # keys ("model", "stream").  Nested OpenAI-compatible structures such as
+        # messages, tools, tool_choice, and response_format are intentionally not
+        # deep-copied so callers can pass large payloads without unnecessary
+        # allocation.
+        request_payload = dict(payload or {})
 
         # Set model if absent, but don't overwrite an explicit model.
         if "model" not in request_payload and self.model:
@@ -535,6 +541,10 @@ class OllamaProvider:
         # Force streaming.
         request_payload["stream"] = True
 
+        # raw_stream uses urlopen directly instead of json_post because it needs
+        # access to the response iterator to parse SSE data: frames incrementally.
+        # json_post reads the full response body before returning, which is
+        # incompatible with a streaming response.
         try:
             url = endpoint_url(self.host, self.port, "/v1/chat/completions")
             req = Request(
