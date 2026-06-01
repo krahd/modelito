@@ -15,6 +15,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, Iterator, List, Optional
 
+from . import __version__
 from .client import Client
 from .exceptions import (
     ModelitoBadResponseError,
@@ -477,7 +478,7 @@ def create_app(runtime: ServeRuntime):
     FastAPI, _HTTPException, _Request, JSONResponse, StreamingResponse, _uvicorn = (
         _require_server_dependencies()
     )
-    app = FastAPI(title="Modelito", version="1.4.4")
+    app = FastAPI(title="Modelito", version=__version__)
 
     @app.get("/v1/models")
     async def list_models() -> Any:

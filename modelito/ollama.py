@@ -610,10 +610,11 @@ class OllamaProvider:
         # Non-strict fallback: yield deterministic stream events.
         created = int(time.time())
         model = request_payload.get("model", self.model or "unknown")
+        event_id = f"chatcmpl-modelito-{uuid.uuid4().hex}"
 
         # Initial role chunk
         yield {
-            "id": f"chatcmpl-modelito-{uuid.uuid4().hex}",
+            "id": event_id,
             "object": "chat.completion.chunk",
             "created": created,
             "model": model,
@@ -654,7 +655,7 @@ class OllamaProvider:
                 continue
 
             yield {
-                "id": f"chatcmpl-modelito-{uuid.uuid4().hex}",
+                "id": event_id,
                 "object": "chat.completion.chunk",
                 "created": created,
                 "model": model,
@@ -669,7 +670,7 @@ class OllamaProvider:
 
         # Final stop chunk
         yield {
-            "id": f"chatcmpl-modelito-{uuid.uuid4().hex}",
+            "id": event_id,
             "object": "chat.completion.chunk",
             "created": created,
             "model": model,

@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-05-19 10:15
+Last updated: 2026-05-31 23:25
 
 ## Project purpose
 
@@ -22,7 +22,7 @@ The package provides:
 - optional SDK-backed behaviour with deterministic fallback support for offline tests/examples
 - provider readiness diagnostics via `check_provider_ready()` and `python -m modelito doctor`
 - optional OpenAI-compatible server mode via `modelito-serve` for non-Python clients such as Pi, with bind settings kept separate from provider backend configuration
-- raw OpenAI chat-completions passthrough via `RawChatProvider`, `OpenAICompatibleHTTPProvider`, `OMLXProvider`, and `OpenAIProvider`
+- raw OpenAI chat-completions passthrough via `RawChatProvider`, `OpenAICompatibleHTTPProvider`, `OMLXProvider`, `OpenAIProvider`, and `OllamaProvider` (via Ollama `/v1/chat/completions`)
 - shared readiness probes in `modelito/probes.py`, with `modelito-doctor` as a console script and `flatten_message_inputs` exported from the package root for convenience
 - comprehensive docs under `docs/` including architecture, usage, API reference, install guide, and local server integration
 - concise release checklist documentation in `docs/RELEASE.md`
@@ -47,7 +47,7 @@ Phase 4 server-contract hardening and provider cleanup pass complete:
 10. Raw-provider non-dict completion payloads are treated as upstream bad responses (`ModelitoBadResponseError`) and return 502 errors.
 11. Regression tests now cover lazy raw streaming, runtime config separation (server bind host/port are not forwarded to provider constructors), payload validators, error-shape/status helpers, malformed JSON handling, OpenAI provider raw/chat behavior, and Ollama dict/string message normalization.
 12. The legacy dict-style docs checker now ignores tests because dict `MessageInput` compatibility is intentionally tested there, and the README example now uses `Message(...)`.
-13. README wording was tightened for Ollama extra semantics and `--profile`/`--profile-path` path handling, and Ollama raw passthrough remains explicitly deferred.
+13. README wording was tightened for Ollama extra semantics and `--profile`/`--profile-path` path handling, and Ollama raw passthrough is documented as supported via `/v1/chat/completions`.
 14. Publish workflow now includes a tag/version gate plus explicit trusted-publishing prerequisites and PyPI environment URL metadata.
 15. `ChatProvider` — `@runtime_checkable` Protocol in `modelito/provider.py` formalising the `chat()` interface returning `Response`; exported from package root.
 16. `MessageInput` type alias (`Union[Message, str, Mapping[str, Any]]`) added to `provider.py` and exported; `Client` method signatures broadened from `Iterable[Message]` to `Iterable[MessageInput]`; `SyncProvider.summarize()` and `AsyncProvider.acomplete()` signatures similarly broadened.
@@ -56,7 +56,7 @@ Phase 4 server-contract hardening and provider cleanup pass complete:
 19. Latest review-feedback fixes made fallback streaming lazy, scoped warning headers to tool fallbacks, shared readiness probes between client and doctor, and cleaned up package exports.
 
 - `modelito-serve` exposes `/v1/models`, `/v1/chat/completions`, and `/v1/embeddings` for Pi and other OpenAI-compatible consumers.
-- Pi/tool-calling should use raw-capable OpenAI-compatible providers such as `OMLXProvider` or hosted `OpenAIProvider`; Ollama raw passthrough remains explicitly deferred.
+- Pi/tool-calling should use raw-capable providers (`OpenAICompatibleHTTPProvider`, `OMLXProvider`, hosted `OpenAIProvider`, or `OllamaProvider`) when full OpenAI-compatible payload fidelity is required.
 - Validation status is recorded in the current session snapshot under Recent changes.
 
 ## Architecture overview
@@ -76,7 +76,7 @@ modelito exposes a small common provider protocol, concrete adapters, connectors
   <rect x="400" y="190" width="170" height="85" rx="10" fill="none" stroke="black" /><text x="485" y="223" text-anchor="middle" font-size="14">Fallback path</text><text x="485" y="245" text-anchor="middle" font-size="12">summarize / stream</text><text x="485" y="263" text-anchor="middle" font-size="12">Response / dict output</text>
   <rect x="600" y="40" width="180" height="95" rx="10" fill="none" stroke="black" /><text x="690" y="74" text-anchor="middle" font-size="14">Hosted adapters</text><text x="690" y="96" text-anchor="middle" font-size="12">OpenAI, Claude,</text><text x="690" y="114" text-anchor="middle" font-size="12">Gemini, Grok</text>
   <rect x="600" y="155" width="180" height="95" rx="10" fill="none" stroke="black" /><text x="690" y="189" text-anchor="middle" font-size="14">Shared probes</text><text x="690" y="211" text-anchor="middle" font-size="12">modelito/probes.py</text><text x="690" y="229" text-anchor="middle" font-size="12">modelito-doctor</text>
-  <rect x="600" y="270" width="180" height="95" rx="10" fill="none" stroke="black" /><text x="690" y="304" text-anchor="middle" font-size="14">Local Ollama</text><text x="690" y="326" text-anchor="middle" font-size="12">provider and admin</text><text x="690" y="344" text-anchor="middle" font-size="12">raw passthrough deferred</text>
+  <rect x="600" y="270" width="180" height="95" rx="10" fill="none" stroke="black" /><text x="690" y="304" text-anchor="middle" font-size="14">Local Ollama</text><text x="690" y="326" text-anchor="middle" font-size="12">provider and admin</text><text x="690" y="344" text-anchor="middle" font-size="12">raw passthrough via /v1</text>
   <rect x="815" y="40" width="180" height="95" rx="10" fill="none" stroke="black" /><text x="905" y="74" text-anchor="middle" font-size="14">Metadata helpers</text><text x="905" y="96" text-anchor="middle" font-size="12">ModelMetadata,</text><text x="905" y="114" text-anchor="middle" font-size="12">get_model_info, infer</text>
   <rect x="815" y="270" width="180" height="95" rx="10" fill="none" stroke="black" /><text x="905" y="304" text-anchor="middle" font-size="14">docs and tests</text><text x="905" y="326" text-anchor="middle" font-size="12">CI, build, release</text><text x="905" y="344" text-anchor="middle" font-size="12">current-state snapshot</text>
   <line x1="175" y1="227" x2="200" y2="227" stroke="black" marker-end="url(#arrow)" /><line x1="365" y1="97" x2="400" y2="97" stroke="black" marker-end="url(#arrow)" /><line x1="365" y1="232" x2="400" y2="232" stroke="black" marker-end="url(#arrow)" /><line x1="570" y1="97" x2="600" y2="87" stroke="black" marker-end="url(#arrow)" /><line x1="570" y1="232" x2="600" y2="202" stroke="black" marker-end="url(#arrow)" /><line x1="780" y1="87" x2="815" y2="87" stroke="black" marker-end="url(#arrow)" /><line x1="780" y1="202" x2="815" y2="202" stroke="black" marker-end="url(#arrow)" /><line x1="690" y1="250" x2="690" y2="270" stroke="black" marker-end="url(#arrow)" />
@@ -156,7 +156,7 @@ python -m twine check dist/*
 - **Namespaced public helpers documentation (Option A)**: Added new "Namespaced public helpers" section to docs/API.md explaining the pattern and providing example code for `RecordingProvider` and `ReplayProvider` from `modelito.recording`. Documentation already used correct `from modelito.recording import ...` imports consistently.
 - **LiteLLM documentation note**: Added "Future adapters: LiteLLM" section to docs/USAGE.md explaining LiteLLM as planned optional adapter (`modelito[litellm]`), noting core maintains `dependencies = []`, and positioning as future extra alongside other provider-specific integrations.
 - **OpenAI-compatible raw passthrough documentation**: Added "OpenAI-compatible raw passthrough" section to docs/API.md with detailed signature documentation, availability list (OpenAIProvider, OMLXProvider, OpenAICompatibleHTTPProvider, OllamaProvider), tool preservation explanation, and Python example showing Ollama with function calling. Added "OpenAI-compatible raw passthrough (tool calling)" section to docs/USAGE.md with practical example showing tool definitions, payload construction, and response handling.
-- **Code quality fixes**: Removed legacy dict-shaped message literals from new docs/API.md examples (used `Message(...)` syntax instead). Fixed 9 linting issues in test file (removed unused imports json/patch/BytesIO/Message, removed unused result variables, removed late import). All 84 files reformatted by ruff for consistency.
+- **Code quality fixes**: Legacy-dict docs checker now allows raw OpenAI-compatible passthrough payload examples while continuing to reject legacy `summarize([{"role": ...}])` patterns in docs/examples. Fixed 9 linting issues in test file (removed unused imports json/patch/BytesIO/Message, removed unused result variables, removed late import). All 84 files reformatted by ruff for consistency.
 - **Validation completed this session**:
   - `python scripts/check_no_legacy_dicts.py` → clean
   - `ruff check .` → clean
@@ -176,7 +176,7 @@ python -m twine check dist/*
 - Model metadata inference no longer treats every `o...` model name as OpenAI; only `gpt-*` and known OpenAI reasoning prefixes (`o1*`, `o3*`, `o4*`) infer OpenAI.
 - Model metadata helpers are now exported from the package root (`ModelMetadata`, `get_model_info`, `get_model_metadata`, `infer_model_metadata`).
 - Release checklist now includes explicit trusted publishing requirements, tag/publish commands, and clean-environment install checks.
-- README now embeds standalone current-state SVG assets from `docs/assets/`, and the architecture/usage docs call out `modelito-serve`, shared probes, raw-capable providers, and deferred Ollama raw passthrough.
+- README now embeds standalone current-state SVG assets from `docs/assets/`, and the architecture/usage docs call out `modelito-serve`, shared probes, and raw-capable providers including Ollama.
 - Current release line is `1.4.5` (tagged and GitHub-released 2026-05-19; PyPI publish pending trusted publisher configuration on PyPI account).
 - Current oMLX stack uses `OpenAICompatibleHTTPProvider` with strict-mode typed error handling.
 - Current provider typing includes `ChatProvider`, `MessageInput`, and `OpenAIMessageDict` exports, with `Client` chat-related methods accepting broadened message input types; provider protocols are aligned so `SyncProvider`, `AsyncProvider`, `StreamingProvider`, and `ChatProvider` all accept `Iterable[MessageInput]`.
@@ -201,7 +201,7 @@ python -m twine check dist/*
 ## Next steps
 
 1. Keep reviewing provider additions against the portable-common-surface rule.
-2. Decide whether to add optional Ollama raw passthrough in a later milestone.
+2. Continue monitoring Ollama raw passthrough behaviour and keep docs/tests aligned with OpenAI-compatible payload expectations.
 
 ## Longer-term steps
 
@@ -217,12 +217,8 @@ python -m twine check dist/*
 - The core value of the package is provider-agnostic normalisation, optional local tooling, and dependency-light embeddability.
 - Consider persistent lifecycle-storage support if downstream tooling needs cross-process tracking.
 
-Last updated: 2026-05-31 12:00
 - Consider optional pluggable key-provider interfaces only if secret-storage demand grows.
 - Deeper cloud-provider features should remain optional unless they map cleanly across providers.
 - CI intentionally excludes integration tests by path/flags to keep default hosted CI fast and safe.
 
-
----
-
-Last updated: 2026-05-19 10:15
+Last updated: 2026-05-31 23:25

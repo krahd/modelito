@@ -2,7 +2,7 @@
 
 Several high-performance local inference engines provide OpenAI Chat Completions API compatibility. modelito's `OpenAIProvider` works with any of them via the `base_url` parameter—no new provider implementation needed.
 
-Current state: for Pi / OpenAI-compatible tool-calling workflows, prefer the raw-capable OpenAI-compatible path (`OpenAICompatibleHTTPProvider`, `OMLXProvider`, or hosted `OpenAIProvider`). `modelito-serve` exposes `/v1/models`, `/v1/chat/completions`, and `/v1/embeddings`, while Ollama raw passthrough remains deferred.
+Current state: for Pi / OpenAI-compatible tool-calling workflows, use raw-capable providers (`OpenAICompatibleHTTPProvider`, `OMLXProvider`, hosted `OpenAIProvider`, or `OllamaProvider`). `modelito-serve` exposes `/v1/models`, `/v1/chat/completions`, and `/v1/embeddings`; `OllamaProvider` raw passthrough uses Ollama's `/v1/chat/completions` endpoint.
 
 ## Supported servers
 

@@ -38,7 +38,6 @@ surface. The primary exports (also visible via `from modelito import *`) are:
   JSON/YAML parsing.
 - `parse_host_port(host_url: str) -> Tuple[str, int]` — parse `host:port` or URL into `(host, port)`.
 - `LLMProviderError` — base exception used by connector/provider helpers.
-- Recording and replay: `RecordingProvider`, `ReplayProvider`, `CassetteFormatError`, `ReplayMissError` from `modelito.recording` — zero-dependency JSONL cassette wrappers for offline testing and debugging.
 - Ollama helpers: `server_is_up`, `endpoint_url`, `ensure_ollama_running`, `get_ollama_binary`, `install_ollama`, `start_ollama`, `stop_ollama`, `update_ollama`, `list_local_models`, `list_remote_models`, `download_model`, `delete_model`, `serve_model`, `change_ollama_config`, `run_ollama_command`, etc.
 
 Namespaced public helpers
@@ -55,8 +54,6 @@ API and are safe to import directly from their namespace:
 
 Example usage:
 
-```python
-from modelito.recording import RecordingProvider, ReplayProvider
 ```python
 from modelito import MockProvider
 from modelito.messages import Message

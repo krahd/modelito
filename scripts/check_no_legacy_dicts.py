@@ -34,6 +34,22 @@ def _is_excluded(path: Path) -> bool:
     return False
 
 
+def _is_raw_passthrough_context(lines: list[str], line_index: int) -> bool:
+    """Allow dict-style message snippets only in raw passthrough examples.
+
+    Raw OpenAI-compatible payload examples intentionally include dict-shaped
+    `messages` entries. These contexts should not be flagged by this checker.
+    """
+    start = max(0, line_index - 20)
+    end = min(len(lines), line_index + 21)
+    window = "\n".join(lines[start:end]).lower()
+    return (
+        "raw_complete(" in window
+        or "raw_stream(" in window
+        or "openai-compatible raw passthrough" in window
+    )
+
+
 def scan() -> int:
     matches = []
     for p in ROOT.rglob("*"):
@@ -54,10 +70,14 @@ def scan() -> int:
 
         text = p.read_text(encoding="utf8")
 
+        lines = text.splitlines()
+
         # line-by-line quick checks (common in docs/examples)
-        for i, line in enumerate(text.splitlines(), start=1):
+        for i, line in enumerate(lines, start=1):
             for pat in PATTERNS:
                 if pat.search(line):
+                    if _is_raw_passthrough_context(lines, i - 1):
+                        continue
                     matches.append((p.relative_to(ROOT), i, line.strip()))
 
         # multi-line pattern: assignments like `new_messages = [ { 'role': ... } ]`

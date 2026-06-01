@@ -7,12 +7,12 @@ utilities used by downstream projects.
 try:
     from importlib.metadata import version, PackageNotFoundError
 except Exception:
-    __version__ = "1.4.4"
+    __version__ = "1.4.5"
 else:
     try:
         __version__ = version("modelito")
     except PackageNotFoundError:
-        __version__ = "1.4.4"
+        __version__ = "1.4.5"
 
 from .tokenizer import count_tokens
 from .timeout import estimate_remote_timeout, estimate_remote_timeout_details

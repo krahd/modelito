@@ -3,14 +3,15 @@ About
 
 Modelito is a lightweight Python library that provides provider abstractions,
 compatibility shims, and small utilities for interacting with both local and
-cloud and local LLM runtimes (Ollama, OpenAI, Anthropic/Claude, Gemini, oMLX). The project
+cloud LLM runtimes (Ollama, OpenAI, Anthropic/Claude, Gemini, oMLX). The project
 is intentionally dependency-light: install optional extras when you need the
 real SDKs, otherwise the shims provide deterministic fallbacks suitable for
 testing and offline use.
 
 Current state: `modelito-serve` exposes `/v1/models`, `/v1/chat/completions`,
 and `/v1/embeddings`; raw-capable OpenAI-compatible providers are `OpenAICompatibleHTTPProvider`,
-`OMLXProvider`, and hosted `OpenAIProvider`; `OllamaProvider` raw passthrough remains deferred.
+`OMLXProvider`, hosted `OpenAIProvider`, and `OllamaProvider` via Ollama's
+`/v1/chat/completions` endpoint.
 
 Usage
 -----

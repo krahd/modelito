@@ -316,6 +316,37 @@ def test_raw_stream_parses_sse_lines(monkeypatch):
     assert not any("[DONE]" in str(e) for e in events)
 
 
+def test_raw_stream_preserves_tool_calls_chunks(monkeypatch):
+    """raw_stream should preserve tool_calls deltas from SSE events."""
+    provider = OllamaProvider(model="llama3.2", strict=False)
+
+    monkeypatch.setattr(
+        "modelito.ollama.endpoint_url",
+        lambda h, p, e: "http://test/v1/chat/completions",
+    )
+
+    sse_lines = [
+        b'data: {"id":"x","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_1","type":"function","function":{"name":"lookup","arguments":"{}"}}]},"finish_reason":null}]}'
+        + b"\n",
+        b"data: [DONE]\n",
+    ]
+
+    mock_response = MagicMock()
+    mock_response.__enter__ = Mock(return_value=mock_response)
+    mock_response.__exit__ = Mock(return_value=None)
+    mock_response.readline = Mock(side_effect=sse_lines + [b""])
+
+    monkeypatch.setattr("modelito.ollama.urlopen", Mock(return_value=mock_response))
+
+    events = list(
+        provider.raw_stream({"messages": [{"role": "user", "content": "hello"}]})
+    )
+
+    assert len(events) == 1
+    tool_calls = events[0]["choices"][0]["delta"]["tool_calls"]
+    assert tool_calls[0]["function"]["name"] == "lookup"
+
+
 def test_raw_stream_preserves_tool_fields(monkeypatch):
     """raw_stream should preserve tools and tool_choice fields."""
     provider = OllamaProvider(model="llama3.2", strict=False)
@@ -405,3 +436,6 @@ def test_raw_stream_non_strict_fallback(monkeypatch):
         assert isinstance(event, dict)
         assert event["object"] == "chat.completion.chunk"
         assert "choices" in event
+    # OpenAI-style streams keep a stable completion id across chunks.
+    ids = {event["id"] for event in events}
+    assert len(ids) == 1
