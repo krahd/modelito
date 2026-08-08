@@ -12,33 +12,54 @@ The default **auto** local profile selects `mac-performance` on Apple Silicon an
 ## Python
 
 ```python
-from modelito import Client
+from modelito import local_client
 
-portable = Client.local(model="gemma4:12b-mlx", profile="portable")
+portable = local_client(model="gemma4:12b-mlx", profile="portable")
+```
 
-mac = Client.local(
-    model="your-loaded-mlx-model",
+For an application that can use provider-specific model identifiers:
+
+```python
+from modelito import local_client
+
+client = local_client(
     profile="mac-performance",
+    models={
+        "omlx": "mlx-community/your-mlx-model",
+        "ollama": "your-ollama-tag",
+    },
 )
 ```
 
-`Client.local()` is strict about finding a local runtime: it does not silently fall back to a hosted provider. Existing `Client(provider="auto")` behaviour is unchanged.
+`local_client()` is strict about finding and using a local runtime: it does not silently fall back to a hosted provider or to Modelito's deterministic offline shim. Existing `Client(provider="auto")` behaviour is unchanged.
 
 To override the profile's order after benchmarking a machine:
 
 ```python
-client = Client.local(
-    model="your-model",
+client = local_client(
     profile="mac-performance",
+    models={"omlx": "your-mlx-model", "ollama": "your-ollama-tag"},
     prefer=["ollama", "omlx"],
 )
 ```
 
-The `model` identifier is still provider-specific. An Ollama tag and an oMLX/Hugging Face model name are not assumed to be interchangeable.
+Use `select_local_runtime()` when an application wants to inspect the decision before constructing a client.
+
+```python
+from modelito import select_local_runtime
+
+selection = select_local_runtime(
+    profile="auto",
+    models={"omlx": "your-mlx-model", "ollama": "your-ollama-tag"},
+)
+print(selection.provider, selection.model, selection.endpoint)
+```
+
+The model mapping is intentional. An Ollama tag and an oMLX/Hugging Face model name are not assumed to be interchangeable.
 
 ## Environment
 
-`MODELITO_LOCAL_PROFILE` can set the profile used by `Client.local()` when its `profile` argument is omitted. Accepted values are:
+`MODELITO_LOCAL_PROFILE` can set the profile used when the `profile` argument is omitted. Accepted values are:
 
 - `auto`
 - `portable`
