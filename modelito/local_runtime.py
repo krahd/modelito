@@ -1,15 +1,20 @@
-"""Local runtime profile helpers.
+"""Local runtime selection helpers.
 
 Profiles express deployment intent without claiming that one local backend is
-universally fastest.  ``portable`` uses Ollama as the common cross-platform
-path.  ``mac-performance`` uses Apple-Silicon-native backends, preferring oMLX
-and retaining Ollama as a fallback.  Applications can override the order after
+universally fastest. ``portable`` uses Ollama as the common cross-platform
+path. ``mac-performance`` uses Apple-Silicon-native backends, preferring oMLX
+and retaining Ollama as a fallback. Applications can override the order after
 benchmarking representative workloads.
 """
 
 from __future__ import annotations
 
-from typing import List, Optional
+from dataclasses import dataclass
+import os
+import platform
+from typing import Any, List, Mapping, Optional, Sequence
+
+from .probes import ProviderStatus, probe_ollama_status, probe_omlx_status
 
 LOCAL_PROFILE_AUTO = "auto"
 LOCAL_PROFILE_PORTABLE = "portable"
@@ -19,6 +24,7 @@ LOCAL_PROFILES = (
     LOCAL_PROFILE_PORTABLE,
     LOCAL_PROFILE_MAC_PERFORMANCE,
 )
+LOCAL_PROVIDERS = ("omlx", "ollama")
 
 _ALIASES = {
     "mac": LOCAL_PROFILE_MAC_PERFORMANCE,
@@ -31,18 +37,44 @@ _ALIASES = {
 }
 
 
+@dataclass(frozen=True)
+class LocalRuntimeSelection:
+    """Resolved local runtime and model."""
+
+    profile: str
+    provider: str
+    model: Optional[str]
+    endpoint: Optional[str] = None
+
+
+def is_macos_apple_silicon() -> bool:
+    """Return whether the current host is macOS on Apple Silicon."""
+
+    try:
+        return platform.system() == "Darwin" and platform.machine().lower() in {
+            "arm64",
+            "aarch64",
+        }
+    except Exception:
+        return False
+
+
 def normalize_local_profile(profile: Optional[str]) -> str:
     """Return the canonical local-runtime profile name.
 
-    ``None`` resolves to ``auto``.  Unknown names fail explicitly rather than
-    silently changing provider-selection behaviour.
+    ``None`` resolves from ``MODELITO_LOCAL_PROFILE`` and then to ``auto``.
+    Unknown names fail explicitly rather than silently changing provider
+    selection behaviour.
     """
 
-    value = str(profile or LOCAL_PROFILE_AUTO).strip().lower()
+    raw = profile if profile is not None else os.getenv("MODELITO_LOCAL_PROFILE")
+    value = str(raw or LOCAL_PROFILE_AUTO).strip().lower()
     value = _ALIASES.get(value, value)
     if value not in LOCAL_PROFILES:
         allowed = ", ".join(LOCAL_PROFILES)
-        raise ValueError(f"Unknown local runtime profile: {profile!r}. Expected one of: {allowed}")
+        raise ValueError(
+            f"Unknown local runtime profile: {profile!r}. Expected one of: {allowed}"
+        )
     return value
 
 
@@ -51,7 +83,7 @@ def local_provider_candidates(
 ) -> List[str]:
     """Return the ordered local providers for *profile*.
 
-    ``mac-performance`` is intentionally restricted to Apple Silicon.  The
+    ``mac-performance`` is intentionally restricted to Apple Silicon. The
     ordering is a practical default, not a benchmark guarantee.
     """
 
@@ -72,3 +104,173 @@ def local_provider_candidates(
             "Use profile='portable' on other platforms."
         )
     return ["omlx", "ollama"]
+
+
+def _normalize_provider(name: str) -> str:
+    value = str(name or "").strip().lower()
+    if value == "om":
+        return "omlx"
+    return value
+
+
+def _ordered_candidates(
+    profile: str,
+    prefer: Optional[Sequence[str]],
+    *,
+    on_macos_apple_silicon: bool,
+) -> List[str]:
+    defaults = local_provider_candidates(
+        profile, is_macos_apple_silicon=on_macos_apple_silicon
+    )
+    requested = [_normalize_provider(x) for x in (prefer or [])]
+    unknown = [x for x in requested if x not in LOCAL_PROVIDERS]
+    if unknown:
+        raise ValueError(
+            "Local runtime preference can only contain omlx or ollama; got: "
+            + ", ".join(unknown)
+        )
+    if not on_macos_apple_silicon and "omlx" in requested:
+        raise ValueError("oMLX requires macOS on Apple Silicon")
+
+    ordered: List[str] = []
+    for candidate in requested + defaults:
+        if candidate not in ordered:
+            ordered.append(candidate)
+    return ordered
+
+
+def _model_for_provider(
+    provider: str,
+    model: Optional[str],
+    models: Optional[Mapping[str, str]],
+) -> Optional[str]:
+    if not models:
+        return model
+    normalized = {_normalize_provider(k): v for k, v in models.items()}
+    return normalized.get(provider, model)
+
+
+def _probe_local_provider(
+    provider: str,
+    model: Optional[str],
+    *,
+    host: Optional[str],
+    port: Optional[int],
+    base_url: Optional[str],
+    api_key: Optional[str],
+    probe_timeout: float,
+) -> ProviderStatus:
+    if provider == "omlx":
+        return probe_omlx_status(model, base_url, api_key, probe_timeout)
+    if provider == "ollama":
+        return probe_ollama_status(model, host, port, probe_timeout)
+    raise ValueError(f"Unsupported local provider: {provider}")
+
+
+def select_local_runtime(
+    model: Optional[str] = None,
+    *,
+    models: Optional[Mapping[str, str]] = None,
+    profile: Optional[str] = None,
+    prefer: Optional[Sequence[str]] = None,
+    host: Optional[str] = None,
+    port: Optional[int] = None,
+    base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+    probe_timeout: float = 1.5,
+    _is_macos_apple_silicon: Optional[bool] = None,
+) -> LocalRuntimeSelection:
+    """Select a ready local runtime without falling back to a hosted provider.
+
+    ``models`` may map provider names to provider-specific model identifiers,
+    which avoids pretending that an Ollama tag and an oMLX/Hugging Face model
+    name are interchangeable.
+    """
+
+    resolved_profile = normalize_local_profile(profile)
+    on_mac = (
+        is_macos_apple_silicon()
+        if _is_macos_apple_silicon is None
+        else bool(_is_macos_apple_silicon)
+    )
+    candidates = _ordered_candidates(
+        resolved_profile, prefer, on_macos_apple_silicon=on_mac
+    )
+    diagnostics: List[str] = []
+
+    for provider in candidates:
+        candidate_model = _model_for_provider(provider, model, models)
+        status = _probe_local_provider(
+            provider,
+            candidate_model,
+            host=host,
+            port=port,
+            base_url=base_url,
+            api_key=api_key,
+            probe_timeout=probe_timeout,
+        )
+        if status.ready:
+            return LocalRuntimeSelection(
+                profile=resolved_profile,
+                provider=provider,
+                model=candidate_model,
+                endpoint=status.endpoint,
+            )
+        reason = status.reason or "not ready"
+        endpoint = status.endpoint or "unknown endpoint"
+        diagnostics.append(f"{provider} at {endpoint}: {reason}")
+
+    detail = "; ".join(diagnostics) if diagnostics else "no local providers probed"
+    raise ValueError(
+        f"No ready local runtime for profile '{resolved_profile}'. {detail}. "
+        "Start a local backend and ensure its requested model is available."
+    )
+
+
+def local_client(
+    model: Optional[str] = None,
+    *,
+    models: Optional[Mapping[str, str]] = None,
+    profile: Optional[str] = None,
+    prefer: Optional[Sequence[str]] = None,
+    host: Optional[str] = None,
+    port: Optional[int] = None,
+    base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+    probe_timeout: float = 1.5,
+    **provider_kwargs: Any,
+):
+    """Return a :class:`modelito.Client` bound to a ready local runtime.
+
+    The returned provider is strict by default so a runtime failure is not
+    silently replaced by Modelito's deterministic offline fallback.
+    """
+
+    selection = select_local_runtime(
+        model,
+        models=models,
+        profile=profile,
+        prefer=prefer,
+        host=host,
+        port=port,
+        base_url=base_url,
+        api_key=api_key,
+        probe_timeout=probe_timeout,
+    )
+
+    from .client import Client
+
+    kwargs = dict(provider_kwargs)
+    kwargs.setdefault("strict", True)
+    if selection.provider == "omlx":
+        if base_url is not None:
+            kwargs["base_url"] = base_url
+        if api_key is not None:
+            kwargs["api_key"] = api_key
+    else:
+        if host is not None:
+            kwargs["host"] = host
+        if port is not None:
+            kwargs["port"] = port
+
+    return Client(provider=selection.provider, model=selection.model, **kwargs)
