@@ -80,3 +80,13 @@ For latency-sensitive conversational applications, benchmark at least:
 - behaviour after repeated prefixes and conversation branches.
 
 Do not select a runtime solely from synthetic tokens-per-second figures if the application is conversational.
+
+## Current upstream evidence
+
+This policy was reviewed against the current upstream runtime documentation in August 2026:
+
+- Ollama's Apple-Silicon MLX engine and June 2026 performance update: <https://ollama.com/blog/mlx-performance>
+- Ollama's Gemma 4 multi-token-prediction acceleration: <https://ollama.com/blog/faster-gemma-4-mlx-mtp>
+- oMLX features and hardware guidance: <https://omlx.ai/>
+
+These sources justify exposing both paths; they do not establish a universal winner for arbitrary models or workloads.
