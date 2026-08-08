@@ -94,6 +94,18 @@ from .provider import (
     OpenAIMessageDict,
 )
 from .client import Client
+from .local_runtime import (
+    LOCAL_PROFILE_AUTO,
+    LOCAL_PROFILE_PORTABLE,
+    LOCAL_PROFILE_MAC_PERFORMANCE,
+    LOCAL_PROFILES,
+    LocalRuntimeSelection,
+    is_macos_apple_silicon,
+    normalize_local_profile,
+    local_provider_candidates,
+    select_local_runtime,
+    local_client,
+)
 from .doctor import ProviderStatus, check_provider_ready, format_provider_status
 from .embeddings import Embedder, StubEmbeddingProvider, embed_texts
 from .messages import Message, Messages, Response, flatten_message_inputs
@@ -134,6 +146,16 @@ __all__ = [
     "ModelLifecycleState",
     "ReadinessResult",
     "Client",
+    "LOCAL_PROFILE_AUTO",
+    "LOCAL_PROFILE_PORTABLE",
+    "LOCAL_PROFILE_MAC_PERFORMANCE",
+    "LOCAL_PROFILES",
+    "LocalRuntimeSelection",
+    "is_macos_apple_silicon",
+    "normalize_local_profile",
+    "local_provider_candidates",
+    "select_local_runtime",
+    "local_client",
     "ProviderStatus",
     "check_provider_ready",
     "format_provider_status",
