@@ -2,9 +2,9 @@
 
 Profiles express deployment intent without claiming that one local backend is
 universally fastest. ``portable`` uses Ollama as the common cross-platform
-path. ``mac-performance`` uses Apple-Silicon-native backends, preferring oMLX
-and retaining Ollama as a fallback. Applications can override the order after
-benchmarking representative workloads.
+path. ``mac-performance`` uses Apple-Silicon-oriented backends, trying BaseRT,
+oMLX, then Ollama. Applications can override the order after benchmarking
+representative workloads.
 """
 
 from __future__ import annotations
@@ -14,7 +14,12 @@ import os
 import platform
 from typing import Any, List, Mapping, Optional, Sequence
 
-from .probes import ProviderStatus, probe_ollama_status, probe_omlx_status
+from .probes import (
+    ProviderStatus,
+    probe_basert_status,
+    probe_ollama_status,
+    probe_omlx_status,
+)
 
 LOCAL_PROFILE_AUTO = "auto"
 LOCAL_PROFILE_PORTABLE = "portable"
@@ -24,7 +29,7 @@ LOCAL_PROFILES = (
     LOCAL_PROFILE_PORTABLE,
     LOCAL_PROFILE_MAC_PERFORMANCE,
 )
-LOCAL_PROVIDERS = ("omlx", "ollama")
+LOCAL_PROVIDERS = ("basert", "omlx", "ollama")
 
 _ALIASES = {
     "mac": LOCAL_PROFILE_MAC_PERFORMANCE,
@@ -84,7 +89,8 @@ def local_provider_candidates(
     """Return the ordered local providers for *profile*.
 
     ``mac-performance`` is intentionally restricted to Apple Silicon. The
-    ordering is a practical default, not a benchmark guarantee.
+    ordering is a practical default informed by current upstream runtimes, not
+    a benchmark guarantee for every model or workload.
     """
 
     normalized = normalize_local_profile(profile)
@@ -103,7 +109,7 @@ def local_provider_candidates(
             "The mac-performance local runtime profile requires macOS on Apple Silicon. "
             "Use profile='portable' on other platforms."
         )
-    return ["omlx", "ollama"]
+    return ["basert", "omlx", "ollama"]
 
 
 def _normalize_provider(name: str) -> str:
@@ -126,11 +132,12 @@ def _ordered_candidates(
     unknown = [x for x in requested if x not in LOCAL_PROVIDERS]
     if unknown:
         raise ValueError(
-            "Local runtime preference can only contain omlx or ollama; got: "
+            "Local runtime preference can only contain basert, omlx or ollama; got: "
             + ", ".join(unknown)
         )
-    if not on_macos_apple_silicon and "omlx" in requested:
-        raise ValueError("oMLX requires macOS on Apple Silicon")
+    apple_only = [x for x in requested if x in {"basert", "omlx"}]
+    if not on_macos_apple_silicon and apple_only:
+        raise ValueError("BaseRT and oMLX require macOS on Apple Silicon")
 
     ordered: List[str] = []
     for candidate in requested + defaults:
@@ -150,6 +157,17 @@ def _model_for_provider(
     return normalized.get(provider, model)
 
 
+def _mapped_value(
+    provider: str,
+    default: Optional[str],
+    mapping: Optional[Mapping[str, str]],
+) -> Optional[str]:
+    if not mapping:
+        return default
+    normalized = {_normalize_provider(k): v for k, v in mapping.items()}
+    return normalized.get(provider, default)
+
+
 def _probe_local_provider(
     provider: str,
     model: Optional[str],
@@ -160,6 +178,8 @@ def _probe_local_provider(
     api_key: Optional[str],
     probe_timeout: float,
 ) -> ProviderStatus:
+    if provider == "basert":
+        return probe_basert_status(model, base_url, api_key, probe_timeout)
     if provider == "omlx":
         return probe_omlx_status(model, base_url, api_key, probe_timeout)
     if provider == "ollama":
@@ -176,15 +196,17 @@ def select_local_runtime(
     host: Optional[str] = None,
     port: Optional[int] = None,
     base_url: Optional[str] = None,
+    base_urls: Optional[Mapping[str, str]] = None,
     api_key: Optional[str] = None,
+    api_keys: Optional[Mapping[str, str]] = None,
     probe_timeout: float = 1.5,
     _is_macos_apple_silicon: Optional[bool] = None,
 ) -> LocalRuntimeSelection:
     """Select a ready local runtime without falling back to a hosted provider.
 
-    ``models`` may map provider names to provider-specific model identifiers,
-    which avoids pretending that an Ollama tag and an oMLX/Hugging Face model
-    name are interchangeable.
+    ``models`` may map provider names to provider-specific model identifiers.
+    ``base_urls`` and ``api_keys`` provide the same per-provider distinction for
+    OpenAI-compatible local servers such as BaseRT and oMLX.
     """
 
     resolved_profile = normalize_local_profile(profile)
@@ -200,13 +222,15 @@ def select_local_runtime(
 
     for provider in candidates:
         candidate_model = _model_for_provider(provider, model, models)
+        candidate_base_url = _mapped_value(provider, base_url, base_urls)
+        candidate_api_key = _mapped_value(provider, api_key, api_keys)
         status = _probe_local_provider(
             provider,
             candidate_model,
             host=host,
             port=port,
-            base_url=base_url,
-            api_key=api_key,
+            base_url=candidate_base_url,
+            api_key=candidate_api_key,
             probe_timeout=probe_timeout,
         )
         if status.ready:
@@ -236,7 +260,9 @@ def local_client(
     host: Optional[str] = None,
     port: Optional[int] = None,
     base_url: Optional[str] = None,
+    base_urls: Optional[Mapping[str, str]] = None,
     api_key: Optional[str] = None,
+    api_keys: Optional[Mapping[str, str]] = None,
     probe_timeout: float = 1.5,
     **provider_kwargs: Any,
 ):
@@ -254,7 +280,9 @@ def local_client(
         host=host,
         port=port,
         base_url=base_url,
+        base_urls=base_urls,
         api_key=api_key,
+        api_keys=api_keys,
         probe_timeout=probe_timeout,
     )
 
@@ -262,11 +290,13 @@ def local_client(
 
     kwargs = dict(provider_kwargs)
     kwargs.setdefault("strict", True)
-    if selection.provider == "omlx":
-        if base_url is not None:
-            kwargs["base_url"] = base_url
-        if api_key is not None:
-            kwargs["api_key"] = api_key
+    if selection.provider in {"basert", "omlx"}:
+        selected_base_url = _mapped_value(selection.provider, base_url, base_urls)
+        selected_api_key = _mapped_value(selection.provider, api_key, api_keys)
+        if selected_base_url is not None:
+            kwargs["base_url"] = selected_base_url
+        if selected_api_key is not None:
+            kwargs["api_key"] = selected_api_key
     else:
         if host is not None:
             kwargs["host"] = host
