@@ -35,7 +35,7 @@ jobs:
       - name: Run ruff
         run: ruff check .
       - name: Run black
-        run: black --check .
+        run: black --diff --check .
       - name: Run mypy
         run: mypy modelito --ignore-missing-imports
 
