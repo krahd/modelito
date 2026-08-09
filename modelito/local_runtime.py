@@ -2,9 +2,9 @@
 
 Profiles express deployment intent without claiming that one local backend is
 universally fastest. ``portable`` uses Ollama as the common cross-platform
-path. ``mac-performance`` uses Apple-Silicon-oriented backends, trying BaseRT,
-oMLX, then Ollama. Applications can override the order after benchmarking
-representative workloads.
+path. ``mac-performance`` uses Apple-Silicon-oriented backends before Ollama.
+Applications should benchmark representative workloads and may override the
+candidate order with ``prefer=``.
 """
 
 from __future__ import annotations
@@ -12,13 +12,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 import platform
-from typing import Any, List, Mapping, Optional, Sequence
+from typing import Any, List, Literal, Mapping, Optional, Sequence
 
 from .probes import (
     ProviderStatus,
     probe_basert_status,
     probe_ollama_status,
     probe_omlx_status,
+    probe_vllm_mlx_status,
 )
 
 LOCAL_PROFILE_AUTO = "auto"
@@ -29,7 +30,9 @@ LOCAL_PROFILES = (
     LOCAL_PROFILE_PORTABLE,
     LOCAL_PROFILE_MAC_PERFORMANCE,
 )
-LOCAL_PROVIDERS = ("basert", "omlx", "ollama")
+LOCAL_PROVIDERS = ("basert", "vllm-mlx", "omlx", "ollama")
+
+CapabilityState = Literal["yes", "no", "conditional", "unknown"]
 
 _ALIASES = {
     "mac": LOCAL_PROFILE_MAC_PERFORMANCE,
@@ -41,6 +44,12 @@ _ALIASES = {
     "cross_platform": LOCAL_PROFILE_PORTABLE,
 }
 
+_PROVIDER_ALIASES = {
+    "om": "omlx",
+    "vllm_mlx": "vllm-mlx",
+    "vllmmlx": "vllm-mlx",
+}
+
 
 @dataclass(frozen=True)
 class LocalRuntimeSelection:
@@ -50,6 +59,65 @@ class LocalRuntimeSelection:
     provider: str
     model: Optional[str]
     endpoint: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class LocalRuntimeCapabilities:
+    """Coarse upstream capabilities relevant to local runtime selection.
+
+    Values describe the runtime family, not every model/configuration. A
+    ``conditional`` capability depends on model, parser, packaging, or runtime
+    configuration. ``unknown`` means Modelito deliberately does not claim the
+    capability from the upstream evidence currently recorded in the project.
+    """
+
+    streaming: CapabilityState
+    prefix_cache: CapabilityState
+    cancellation: CapabilityState
+    structured_output: CapabilityState
+    tool_calls: CapabilityState
+    model_discovery: CapabilityState
+    notes: str = ""
+
+
+_LOCAL_RUNTIME_CAPABILITIES = {
+    "basert": LocalRuntimeCapabilities(
+        streaming="yes",
+        prefix_cache="yes",
+        cancellation="unknown",
+        structured_output="unknown",
+        tool_calls="yes",
+        model_discovery="yes",
+        notes="Native Metal runtime; exact features depend on the served model and BaseRT release.",
+    ),
+    "vllm-mlx": LocalRuntimeCapabilities(
+        streaming="yes",
+        prefix_cache="yes",
+        cancellation="yes",
+        structured_output="yes",
+        tool_calls="conditional",
+        model_discovery="yes",
+        notes="Tool calling depends on model support and server parser/configuration.",
+    ),
+    "omlx": LocalRuntimeCapabilities(
+        streaming="yes",
+        prefix_cache="yes",
+        cancellation="yes",
+        structured_output="conditional",
+        tool_calls="conditional",
+        model_discovery="yes",
+        notes="Structured output and tool calling can depend on installation and model/chat-template support.",
+    ),
+    "ollama": LocalRuntimeCapabilities(
+        streaming="yes",
+        prefix_cache="yes",
+        cancellation="unknown",
+        structured_output="yes",
+        tool_calls="conditional",
+        model_discovery="yes",
+        notes="Model support and engine choice vary by Ollama release and model format.",
+    ),
+}
 
 
 def is_macos_apple_silicon() -> bool:
@@ -89,8 +157,8 @@ def local_provider_candidates(
     """Return the ordered local providers for *profile*.
 
     ``mac-performance`` is intentionally restricted to Apple Silicon. The
-    ordering is a practical default informed by current upstream runtimes, not
-    a benchmark guarantee for every model or workload.
+    order is a starting policy, not a benchmark result for an arbitrary model,
+    machine, or workload. Use ``prefer=`` after measuring the target workload.
     """
 
     normalized = normalize_local_profile(profile)
@@ -109,14 +177,29 @@ def local_provider_candidates(
             "The mac-performance local runtime profile requires macOS on Apple Silicon. "
             "Use profile='portable' on other platforms."
         )
-    return ["basert", "omlx", "ollama"]
+    return ["basert", "vllm-mlx", "omlx", "ollama"]
 
 
 def _normalize_provider(name: str) -> str:
     value = str(name or "").strip().lower()
-    if value == "om":
-        return "omlx"
-    return value
+    return _PROVIDER_ALIASES.get(value, value)
+
+
+def local_runtime_capabilities(provider: str) -> LocalRuntimeCapabilities:
+    """Return coarse capability metadata for a supported local runtime.
+
+    The metadata is intentionally conservative and does not replace a runtime
+    probe or an application-specific feature test.
+    """
+
+    normalized = _normalize_provider(provider)
+    try:
+        return _LOCAL_RUNTIME_CAPABILITIES[normalized]
+    except KeyError as exc:
+        allowed = ", ".join(LOCAL_PROVIDERS)
+        raise ValueError(
+            f"Unknown local runtime provider: {provider!r}. Expected one of: {allowed}"
+        ) from exc
 
 
 def _ordered_candidates(
@@ -132,12 +215,12 @@ def _ordered_candidates(
     unknown = [x for x in requested if x not in LOCAL_PROVIDERS]
     if unknown:
         raise ValueError(
-            "Local runtime preference can only contain basert, omlx or ollama; got: "
-            + ", ".join(unknown)
+            "Local runtime preference can only contain basert, vllm-mlx, omlx or "
+            "ollama; got: " + ", ".join(unknown)
         )
-    apple_only = [x for x in requested if x in {"basert", "omlx"}]
+    apple_only = [x for x in requested if x in {"basert", "vllm-mlx", "omlx"}]
     if not on_macos_apple_silicon and apple_only:
-        raise ValueError("BaseRT and oMLX require macOS on Apple Silicon")
+        raise ValueError("BaseRT, vllm-mlx and oMLX require macOS on Apple Silicon")
 
     ordered: List[str] = []
     for candidate in requested + defaults:
@@ -180,6 +263,8 @@ def _probe_local_provider(
 ) -> ProviderStatus:
     if provider == "basert":
         return probe_basert_status(model, base_url, api_key, probe_timeout)
+    if provider == "vllm-mlx":
+        return probe_vllm_mlx_status(model, base_url, api_key, probe_timeout)
     if provider == "omlx":
         return probe_omlx_status(model, base_url, api_key, probe_timeout)
     if provider == "ollama":
@@ -206,9 +291,9 @@ def select_local_runtime(
 
     ``models`` may map provider names to provider-specific model identifiers.
     ``base_urls`` and ``api_keys`` provide the same per-provider distinction for
-    OpenAI-compatible local servers such as BaseRT and oMLX. When no model is
-    requested, the selector binds to the first model reported by a ready local
-    server; a server with no loaded models is not considered usable.
+    OpenAI-compatible local servers. When no model is requested, the selector
+    binds to the first model reported by a ready local server; a server with no
+    loaded models is not considered usable.
     """
 
     resolved_profile = normalize_local_profile(profile)
@@ -300,7 +385,7 @@ def local_client(
 
     kwargs = dict(provider_kwargs)
     kwargs.setdefault("strict", True)
-    if selection.provider in {"basert", "omlx"}:
+    if selection.provider in {"basert", "vllm-mlx", "omlx"}:
         selected_base_url = _mapped_value(selection.provider, base_url, base_urls)
         selected_api_key = _mapped_value(selection.provider, api_key, api_keys)
         if selected_base_url is not None:
