@@ -202,7 +202,10 @@ def probe_ollama_status(
                 endpoint=endpoint,
                 models=[],
                 reason="Ollama server not reachable",
-                setup_hint="Start Ollama and pull the requested model with `ollama pull <model>`.",
+                setup_hint=(
+                    "Start Ollama and pull the requested model with "
+                    "`ollama pull <model>`."
+                ),
             )
 
         models = list_local_models()
@@ -222,6 +225,9 @@ def probe_ollama_status(
             endpoint=endpoint,
             models=[],
             reason="Ollama probe failed",
-            setup_hint="Start Ollama and pull the requested model with `ollama pull <model>`.",
+            setup_hint=(
+                "Start Ollama and pull the requested model with "
+                "`ollama pull <model>`."
+            ),
             details={"error": str(exc)},
         )
