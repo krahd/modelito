@@ -33,9 +33,7 @@ class OpenAIMessageDict(TypedDict):
 
 # Convenience type alias for message inputs accepted by OpenAI-compatible providers.
 # Callers may pass Message instances, plain strings, or OpenAI-style dicts.
-MessageInput = Union[
-    Message, str, OpenAIMessageDict, Mapping[str, Any]
-]
+MessageInput = Union[Message, str, OpenAIMessageDict, Mapping[str, Any]]
 
 
 @runtime_checkable
