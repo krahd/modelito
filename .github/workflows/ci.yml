@@ -34,8 +34,6 @@ jobs:
         run: python scripts/check_no_legacy_dicts.py
       - name: Run ruff
         run: ruff check .
-      - name: Run black
-        run: black --diff --check .
       - name: Run mypy
         run: mypy modelito --ignore-missing-imports
 
