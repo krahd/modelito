@@ -3,11 +3,12 @@ modelito
 
 Modelito is a compact, dependency-light Python library that provides provider-
 agnostic abstractions and connectors for large language models (LLMs). It
-offers lightweight shims for OpenAI, Claude, Gemini, oMLX, local Ollama deployments,
-and local OpenAI-compatible servers (llama.cpp, vLLM, LM Studio), plus
-utilities for token counting, timeout estimation, and small helpers to manage
-Ollama servers when needed. The library is designed for easy integration into
-applications and CI pipelines. 
+offers lightweight shims for OpenAI, Claude, Gemini, local Ollama deployments,
+BaseRT, vllm-mlx, oMLX, and generic OpenAI-compatible servers (llama.cpp,
+vLLM, LM Studio, and similar runtimes), plus utilities for token counting,
+timeout estimation, provider readiness, and small helpers to manage Ollama
+servers when needed. The library is designed for easy integration into
+applications and CI pipelines.
 
 Quick start
 -----------
@@ -78,6 +79,7 @@ pip install dist/*.whl
 See the `docs/` folder for more details:
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) — Core design, Provider Protocol, and SDK hierarchy
 - [USAGE.md](docs/USAGE.md) — Usage guide and examples
+- [LOCAL-RUNTIMES.md](docs/LOCAL-RUNTIMES.md) — Local runtime profiles, capabilities, and benchmarking
 - [local-openai-compatible.md](docs/local-openai-compatible.md) — Using local OpenAI-compatible servers
 - [INSTALL.md](docs/INSTALL.md), [API.md](docs/API.md) — Installation and API reference
 - [RELEASE.md](docs/RELEASE.md) — Release checklist and publication steps
@@ -121,6 +123,10 @@ Provided shims and utilities:
 - `ClaudeProvider` — will use the official Anthropic SDK when installed,
   falling back to deterministic behavior otherwise.
 - `GeminiProvider`, `GrokProvider` — lightweight shims.
+- `BaseRTProvider` — thin BaseRT preset built on
+  `OpenAICompatibleHTTPProvider`.
+- `VLLMMLXProvider` — thin vllm-mlx preset built on
+  `OpenAICompatibleHTTPProvider`.
 - `OMLXProvider` — thin oMLX preset built on `OpenAICompatibleHTTPProvider`.
 - `OllamaProvider` — HTTP-aware provider that can call a local Ollama HTTP API
   through stdlib helpers and can fall back to the local Ollama CLI or
@@ -132,11 +138,10 @@ The client layer recognises the same provider stack through `ChatProvider`,
 `MessageInput`, and structured response helpers such as `Client.chat()` and
 `Client.chat_json()`.
 
-`OpenAICompatibleHTTPProvider`, `OMLXProvider`, `OpenAIProvider`, and
-`OllamaProvider` also
-expose `raw_complete()` and `raw_stream()` for OpenAI-compatible passthrough.
-`Client.chat_parsed()` remains the structured JSON convenience path for Python
-applications.
+`OpenAICompatibleHTTPProvider`, `BaseRTProvider`, `VLLMMLXProvider`,
+`OMLXProvider`, `OpenAIProvider`, and `OllamaProvider` expose `raw_complete()`
+and `raw_stream()` for OpenAI-compatible passthrough. `Client.chat_parsed()`
+remains the structured JSON convenience path for Python applications.
 
 For quick diagnostics, use the provider readiness API or CLI:
 
@@ -153,6 +158,51 @@ dict conversion.
 ```sh
 python -m modelito doctor --provider omlx --model omlx
 ```
+
+Local runtime profiles
+----------------------
+
+For applications that require local execution rather than Modelito's general
+provider auto-selection, use `local_client()` or `select_local_runtime()`:
+
+```py
+from modelito import local_client
+
+client = local_client(
+    profile="mac-performance",
+    models={
+        "basert": "my-base-model",
+        "vllm-mlx": "my-vllm-model",
+        "omlx": "my-omlx-model",
+        "ollama": "my-ollama-tag",
+    },
+)
+```
+
+The profiles are:
+
+- `portable`: Ollama as the common cross-platform path;
+- `mac-performance`: on Apple Silicon, try BaseRT, vllm-mlx, oMLX, then
+  Ollama;
+- `auto`: use `mac-performance` on Apple Silicon and `portable` elsewhere.
+
+That order is a deployment starting point, not a universal speed ranking.
+`prefer=` can override it after benchmarking the target workload. Local
+selection is strict: it does not silently fall back to a hosted provider or to
+the deterministic offline shim.
+
+`local_runtime_capabilities()` exposes conservative metadata for streaming,
+prefix caching, cancellation, structured output, tool calls, and model
+discovery. Model- or configuration-dependent features are marked
+`conditional`; uncertain claims are marked `unknown`.
+
+For latency-sensitive local work, `modelito-benchmark-local` measures first
+request TTFT, warm-prefix TTFT, first useful streamed phrase, estimated decode
+rate, context-growth latency, cancellation/stream-close behavior, and optional
+process RSS against an already-running OpenAI-compatible server. Raw MLX-LM is
+supported as a benchmark reference without being added to automatic runtime
+selection. See [docs/LOCAL-RUNTIMES.md](docs/LOCAL-RUNTIMES.md) for the caveats
+and current upstream-source audit.
 
 Server mode for non-Python clients:
 
@@ -207,9 +257,9 @@ Example `~/.pi/agent/models.json` provider entry:
 ```
 
 Tool-calling workflows require raw passthrough support. Modelito currently
-implements that on `OpenAICompatibleHTTPProvider`, `OMLXProvider`,
-`OpenAIProvider`, and `OllamaProvider` via Ollama's
-`/v1/chat/completions` endpoint.
+implements that on `OpenAICompatibleHTTPProvider`, `BaseRTProvider`,
+`VLLMMLXProvider`, `OMLXProvider`, `OpenAIProvider`, and `OllamaProvider` via
+their OpenAI-compatible chat-completions paths.
 
 The package also exposes a small Ollama administration layer for local model
 operations, including install backend detection, remote catalog metadata,
@@ -269,8 +319,9 @@ compatible with existing duck-typed providers — it requires only:
 - `summarize(messages, settings=None)` -> `str`
 
 All built-in providers shipped with the package (`OpenAIProvider`,
-`ClaudeProvider`, `GeminiProvider`, `OMLXProvider`, `OllamaProvider`, `GrokProvider`) satisfy
-the `Provider` protocol structurally. The `Provider` Protocol is decorated with
+`ClaudeProvider`, `GeminiProvider`, `BaseRTProvider`, `VLLMMLXProvider`,
+`OMLXProvider`, `OllamaProvider`, `GrokProvider`) satisfy the `Provider`
+protocol structurally. The `Provider` Protocol is decorated with
 `@runtime_checkable`, so you can use `isinstance()` checks at runtime when
 you need to enforce the contract in application code.
 
