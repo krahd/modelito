@@ -23,7 +23,7 @@ and pass `prefer=` when a different order is appropriate.
 ```python
 from modelito import local_client
 
-portable = local_client(model="gemma4:12b-mlx", profile="portable")
+portable = local_client(model="my-ollama-tag", profile="portable")
 ```
 
 Provider-specific model identifiers are supported because an Ollama tag, an
@@ -36,10 +36,10 @@ from modelito import local_client
 client = local_client(
     profile="mac-performance",
     models={
-        "basert": "basecompute/gemma-4-E4B-it",
-        "vllm-mlx": "mlx-community/gemma-4-12B-4bit",
-        "omlx": "mlx-community/gemma-4-12B-4bit",
-        "ollama": "gemma4:12b-mlx",
+        "basert": "my-base-model",
+        "vllm-mlx": "my-vllm-model",
+        "omlx": "my-omlx-model",
+        "ollama": "my-ollama-tag",
     },
 )
 ```
@@ -68,8 +68,8 @@ client = local_client(
 )
 ```
 
-Two MLX servers commonly default to port 8000, so run them on distinct ports
-when comparing them simultaneously.
+vllm-mlx and oMLX both commonly use port 8000 by default, so run them on
+distinct ports when comparing them simultaneously.
 
 To override the default order after benchmarking a machine:
 
@@ -145,11 +145,10 @@ Default Modelito endpoint: `http://127.0.0.1:8080/v1`.
 
 ### vllm-mlx
 
-vllm-mlx is an Apple-Silicon MLX server with OpenAI- and
-Anthropic-compatible APIs. Current upstream documentation includes continuous
-batching, paged/prefix KV caching, structured JSON output, tool-call parsers,
-request cancellation, and a `bench-serve` command. Several features are
-configuration- or model-dependent.
+vllm-mlx is an Apple-Silicon MLX server with OpenAI-compatible serving. Current
+upstream documentation includes continuous batching, paged/prefix KV caching,
+structured JSON output, tool-call parsers, request cancellation, and a
+`bench-serve` command. Several features are configuration- or model-dependent.
 
 Default Modelito endpoint: `http://localhost:8000/v1`.
 
@@ -159,16 +158,18 @@ oMLX is an MLX-native server oriented towards persistent local workflows. It
 supports OpenAI- and Anthropic-compatible APIs, continuous batching, prefix
 sharing, and a tiered hot-RAM/SSD KV cache. Tool calling and structured output
 are available but can depend on the model's chat template and parser support.
+Current releases also include request-abort handling for streaming API paths.
 
 Default Modelito endpoint: `http://localhost:8000/v1`.
 
 ### Ollama
 
 Ollama is the portability path and should not be treated as merely a slow
-fallback. Its current Apple-Silicon stack includes an MLX engine, prefix/cache
-snapshot work for repeated agent contexts, and ongoing model-specific
-optimisations. Ollama 0.30 and later also use llama.cpp paths to broaden model
-and hardware support, so the engine used by a particular model can vary.
+fallback. Current Apple-Silicon releases include an MLX engine and cache
+snapshot/prefix-reuse work aimed at repeated conversational and agent contexts.
+Which model formats and execution paths are available can change between
+releases, so Modelito does not assume a fixed performance relationship between
+Ollama and the dedicated Apple-Silicon servers.
 
 ### Generic OpenAI-compatible servers
 
@@ -197,7 +198,7 @@ OpenAI-compatible server:
 ```bash
 modelito-benchmark-local \
   --provider vllm-mlx \
-  --model mlx-community/Qwen3-4B-Instruct-4bit \
+  --model my-model \
   --repetitions 3 \
   --json \
   --output vllm-mlx.json
@@ -279,14 +280,13 @@ to `omlx`.
 
 The runtime descriptions above were checked against current upstream material:
 
-- BaseRT: <https://github.com/basecompute/baseRT>,
-  <https://www.basecompute.co/getbasert>, and
+- BaseRT: <https://github.com/basecompute/baseRT> and
   <https://huggingface.co/blog/basecompute/basert-release>
 - vllm-mlx: <https://github.com/waybarrios/vllm-mlx> and
   <https://github.com/waybarrios/vllm-mlx/blob/main/docs/reference/cli.md>
 - oMLX: <https://github.com/jundot/omlx>
 - Ollama MLX/cache work: <https://ollama.com/blog/mlx-performance> and
-  <https://ollama.com/blog/improved-performance-and-model-support-with-gguf>
+  <https://ollama.com/blog/mlx>
 - MLX-LM prompt caching and HTTP server:
   <https://github.com/ml-explore/mlx-lm> and
   <https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/SERVER.md>
