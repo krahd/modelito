@@ -6,6 +6,7 @@ from modelito.local_runtime import (
     LocalRuntimeSelection,
     local_client,
     local_provider_candidates,
+    local_runtime_capabilities,
     normalize_local_profile,
     select_local_runtime,
 )
@@ -15,6 +16,7 @@ from modelito.probes import ProviderStatus
 def status(provider, ready, model=None, reason="", endpoint=None):
     endpoints = {
         "basert": "http://127.0.0.1:8080/v1",
+        "vllm-mlx": "http://localhost:8000/v1",
         "omlx": "http://localhost:8000/v1",
         "ollama": "http://127.0.0.1:11434",
     }
@@ -40,6 +42,7 @@ def test_portable_profile_is_ollama_everywhere():
 def test_auto_profile_uses_mac_native_order_on_apple_silicon():
     assert local_provider_candidates("auto", is_macos_apple_silicon=True) == [
         "basert",
+        "vllm-mlx",
         "omlx",
         "ollama",
     ]
@@ -61,19 +64,32 @@ def test_profile_alias_and_environment(monkeypatch):
     assert normalize_local_profile(None) == LOCAL_PROFILE_PORTABLE
 
 
+def test_capabilities_cover_vllm_mlx_alias():
+    caps = local_runtime_capabilities("vllm_mlx")
+
+    assert caps.streaming == "yes"
+    assert caps.prefix_cache == "yes"
+    assert caps.cancellation == "yes"
+    assert caps.model_discovery == "yes"
+
+
+def test_capabilities_reject_unknown_provider():
+    with pytest.raises(ValueError, match="Unknown local runtime provider"):
+        local_runtime_capabilities("unknown")
+
+
 def test_select_portable_does_not_probe_mac_only_backends(monkeypatch):
-    monkeypatch.setattr(
-        "modelito.local_runtime.probe_basert_status",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            AssertionError("unexpected BaseRT probe")
-        ),
-    )
-    monkeypatch.setattr(
-        "modelito.local_runtime.probe_omlx_status",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            AssertionError("unexpected oMLX probe")
-        ),
-    )
+    for probe in (
+        "probe_basert_status",
+        "probe_vllm_mlx_status",
+        "probe_omlx_status",
+    ):
+        monkeypatch.setattr(
+            f"modelito.local_runtime.{probe}",
+            lambda *args, **kwargs: (_ for _ in ()).throw(
+                AssertionError("unexpected Apple-only probe")
+            ),
+        )
     monkeypatch.setattr(
         "modelito.local_runtime.probe_ollama_status",
         lambda model, host, port, timeout: status("ollama", True, model),
@@ -94,6 +110,38 @@ def test_select_mac_performance_prefers_basert(monkeypatch):
         "modelito.local_runtime.probe_basert_status",
         lambda model, base_url, api_key, timeout: status("basert", True, model),
     )
+    for probe in (
+        "probe_vllm_mlx_status",
+        "probe_omlx_status",
+        "probe_ollama_status",
+    ):
+        monkeypatch.setattr(
+            f"modelito.local_runtime.{probe}",
+            lambda *args, **kwargs: (_ for _ in ()).throw(
+                AssertionError("unexpected fallback probe")
+            ),
+        )
+
+    selection = select_local_runtime(
+        "base-model",
+        profile="mac-performance",
+        _is_macos_apple_silicon=True,
+    )
+
+    assert selection.provider == "basert"
+
+
+def test_select_mac_performance_uses_vllm_mlx_after_basert(monkeypatch):
+    monkeypatch.setattr(
+        "modelito.local_runtime.probe_basert_status",
+        lambda model, base_url, api_key, timeout: status(
+            "basert", False, reason="not reachable"
+        ),
+    )
+    monkeypatch.setattr(
+        "modelito.local_runtime.probe_vllm_mlx_status",
+        lambda model, base_url, api_key, timeout: status("vllm-mlx", True, model),
+    )
     monkeypatch.setattr(
         "modelito.local_runtime.probe_omlx_status",
         lambda *args, **kwargs: (_ for _ in ()).throw(
@@ -108,19 +156,25 @@ def test_select_mac_performance_prefers_basert(monkeypatch):
     )
 
     selection = select_local_runtime(
-        "base-model",
+        "mlx-model",
         profile="mac-performance",
         _is_macos_apple_silicon=True,
     )
 
-    assert selection.provider == "basert"
+    assert selection.provider == "vllm-mlx"
 
 
-def test_select_mac_performance_falls_back_through_omlx_to_ollama(monkeypatch):
+def test_select_mac_performance_falls_back_through_all_backends(monkeypatch):
     monkeypatch.setattr(
         "modelito.local_runtime.probe_basert_status",
         lambda model, base_url, api_key, timeout: status(
             "basert", False, reason="not reachable"
+        ),
+    )
+    monkeypatch.setattr(
+        "modelito.local_runtime.probe_vllm_mlx_status",
+        lambda model, base_url, api_key, timeout: status(
+            "vllm-mlx", False, reason="not reachable"
         ),
     )
     monkeypatch.setattr(
@@ -138,7 +192,8 @@ def test_select_mac_performance_falls_back_through_omlx_to_ollama(monkeypatch):
         profile="mac-performance",
         models={
             "basert": "base-model",
-            "omlx": "mlx-model",
+            "vllm-mlx": "vllm-model",
+            "omlx": "omlx-model",
             "ollama": "ollama-model",
         },
         _is_macos_apple_silicon=True,
@@ -155,6 +210,10 @@ def test_provider_specific_model_mapping_is_used(monkeypatch):
         seen.append(("basert", model))
         return status("basert", False, reason="not ready")
 
+    def vllm_probe(model, base_url, api_key, timeout):
+        seen.append(("vllm-mlx", model))
+        return status("vllm-mlx", False, reason="not ready")
+
     def omlx_probe(model, base_url, api_key, timeout):
         seen.append(("omlx", model))
         return status("omlx", False, reason="not ready")
@@ -164,6 +223,7 @@ def test_provider_specific_model_mapping_is_used(monkeypatch):
         return status("ollama", True, model)
 
     monkeypatch.setattr("modelito.local_runtime.probe_basert_status", basert_probe)
+    monkeypatch.setattr("modelito.local_runtime.probe_vllm_mlx_status", vllm_probe)
     monkeypatch.setattr("modelito.local_runtime.probe_omlx_status", omlx_probe)
     monkeypatch.setattr("modelito.local_runtime.probe_ollama_status", ollama_probe)
 
@@ -171,7 +231,8 @@ def test_provider_specific_model_mapping_is_used(monkeypatch):
         model="fallback-model",
         models={
             "basert": "base-specific",
-            "om": "mlx-specific",
+            "vllm_mlx": "vllm-specific",
+            "om": "omlx-specific",
             "ollama": "ollama-specific",
         },
         profile="mac-performance",
@@ -180,7 +241,8 @@ def test_provider_specific_model_mapping_is_used(monkeypatch):
 
     assert seen == [
         ("basert", "base-specific"),
-        ("omlx", "mlx-specific"),
+        ("vllm-mlx", "vllm-specific"),
+        ("omlx", "omlx-specific"),
         ("ollama", "ollama-specific"),
     ]
     assert selection.model == "ollama-specific"
@@ -216,23 +278,22 @@ def test_prefer_can_reorder_mac_profile_after_benchmarking(monkeypatch):
         "modelito.local_runtime.probe_ollama_status",
         lambda model, host, port, timeout: status("ollama", True, model),
     )
-    monkeypatch.setattr(
-        "modelito.local_runtime.probe_basert_status",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            AssertionError("unexpected BaseRT probe")
-        ),
-    )
-    monkeypatch.setattr(
-        "modelito.local_runtime.probe_omlx_status",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            AssertionError("unexpected oMLX probe")
-        ),
-    )
+    for probe in (
+        "probe_basert_status",
+        "probe_vllm_mlx_status",
+        "probe_omlx_status",
+    ):
+        monkeypatch.setattr(
+            f"modelito.local_runtime.{probe}",
+            lambda *args, **kwargs: (_ for _ in ()).throw(
+                AssertionError("unexpected earlier probe")
+            ),
+        )
 
     selection = select_local_runtime(
         "ollama-model",
         profile="mac-performance",
-        prefer=["ollama", "basert", "omlx"],
+        prefer=["ollama", "vllm-mlx", "basert", "omlx"],
         _is_macos_apple_silicon=True,
     )
 
@@ -240,7 +301,7 @@ def test_prefer_can_reorder_mac_profile_after_benchmarking(monkeypatch):
 
 
 def test_local_prefer_rejects_hosted_provider():
-    with pytest.raises(ValueError, match="basert, omlx or ollama"):
+    with pytest.raises(ValueError, match="vllm-mlx"):
         select_local_runtime(
             profile="portable",
             prefer=["openai"],
@@ -252,7 +313,7 @@ def test_local_prefer_rejects_mac_only_backend_off_mac():
     with pytest.raises(ValueError, match="require macOS on Apple Silicon"):
         select_local_runtime(
             profile="portable",
-            prefer=["basert"],
+            prefer=["vllm-mlx"],
             _is_macos_apple_silicon=False,
         )
 
