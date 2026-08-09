@@ -7,7 +7,7 @@ from .basert import BaseRTProvider
 from .claude import ClaudeProvider
 from .gemini import GeminiProvider
 from .mock_provider import MockProvider
-from .ollama import OllamaProvider
+from .ollama_strict import OllamaProvider
 from .omlx import OMLXProvider
 from .openai import OpenAIProvider
 from .provider import EmbeddingProvider, SyncProvider
