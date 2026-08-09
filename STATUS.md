@@ -1,10 +1,14 @@
 # modelito – Project Status
 
-Last updated: 2026-08-08 18:04
+Last updated: 2026-08-09
 
 ## Project purpose
 
-modelito is a compact, dependency-light Python library for provider-agnostic LLM access. It supports hosted and local providers, OpenAI-compatible serving, streaming and structured responses, embeddings, readiness probes, token/timeout helpers, Ollama administration, and deterministic/offline-friendly test fallbacks.
+Modelito is a compact, dependency-light Python library for provider-agnostic
+LLM access. It supports hosted and local providers, OpenAI-compatible serving,
+streaming and structured responses, embeddings, readiness probes,
+token/timeout helpers, Ollama administration, and deterministic/offline-friendly
+test fallbacks.
 
 ## Current state
 
@@ -12,43 +16,117 @@ modelito is a compact, dependency-light Python library for provider-agnostic LLM
 - Python: 3.10–3.12.
 - Licence: MIT.
 - Hosted providers include OpenAI, Anthropic/Claude, Gemini, and Grok.
-- Local providers include Ollama, oMLX, and generic OpenAI-compatible HTTP servers.
-- `modelito-serve` exposes OpenAI-compatible models, chat-completions, and embeddings endpoints.
-- `modelito-doctor` and `check_provider_ready()` provide read-only provider diagnostics.
-- Raw OpenAI chat-completions passthrough is supported by raw-capable providers for tool-calling and metadata-preserving integrations.
-- Ollama helpers cover installation detection, local service control, model lifecycle/readiness, download, preload, and diagnostics while keeping mutating operations explicit.
-- `RecordingProvider` / `ReplayProvider` provide JSONL cassette recording and deterministic replay.
+- Local providers include Ollama, BaseRT, vllm-mlx, oMLX, and generic
+  OpenAI-compatible HTTP servers.
+- `modelito-serve` exposes OpenAI-compatible models, chat-completions, and
+  embeddings endpoints.
+- `modelito-doctor` and `check_provider_ready()` provide read-only provider
+  diagnostics.
+- `modelito-benchmark-local` measures conversational latency for already-running
+  OpenAI-compatible local runtimes.
+- Raw OpenAI chat-completions passthrough is supported by raw-capable providers
+  for tool-calling and metadata-preserving integrations.
+- Ollama helpers cover installation detection, local service control, model
+  lifecycle/readiness, download, preload, and diagnostics while keeping
+  mutating operations explicit.
+- `RecordingProvider` / `ReplayProvider` provide JSONL cassette recording and
+  deterministic replay.
 
-## Active focus
+## Local runtime policy
 
-Branch `feature/local-runtime-profiles` adds explicit local deployment profiles without changing the established `Client(provider="auto")` contract.
-
-The new local-runtime surface provides:
+The explicit local-only surface is separate from the established
+`Client(provider="auto")` contract:
 
 - `portable`: Ollama as the common macOS/Linux/Windows path;
-- `mac-performance`: on Apple Silicon, oMLX first with Ollama fallback;
+- `mac-performance`: on Apple Silicon, BaseRT → vllm-mlx → oMLX → Ollama;
 - `auto`: `mac-performance` on Apple Silicon and `portable` elsewhere;
 - `MODELITO_LOCAL_PROFILE` environment configuration;
 - `select_local_runtime()` for read-only selection and diagnostics;
-- `local_client()` for a strict local-only client that never falls back to hosted APIs or deterministic shims;
-- provider-specific model mappings so Ollama tags and oMLX/Hugging Face identifiers are not treated as interchangeable;
-- explicit `prefer=` ordering so benchmark results can override defaults.
+- `local_client()` for a strict local-only client with no hosted or
+  deterministic fallback;
+- provider-specific model, endpoint, and API-key mappings;
+- explicit `prefer=` ordering so benchmark results can override defaults;
+- `local_runtime_capabilities()` for conservative runtime-family capability
+  metadata.
 
-The selection order is a deployment policy, not a universal performance claim. Current Ollama releases use MLX on Apple Silicon and include significant caching/performance work; oMLX provides MLX-native serving with persistent paged KV caching and continuous batching. Representative workloads should therefore be benchmarked on the target machine.
+The candidate order is a deployment starting point, not a universal performance
+claim. Modelito does not encode a claim that any one local runtime is fastest
+for every model or workload.
+
+## Supported local runtime roles
+
+### Ollama
+
+The portable path. Current Apple-Silicon releases can use MLX and cache/snapshot
+optimisations, while later 2026 releases also use llama.cpp paths to broaden
+model and hardware support.
+
+### BaseRT
+
+An Apple-Silicon native-Metal runtime exposed through an OpenAI-compatible
+server. Modelito integrates only through the local HTTP API.
+
+### vllm-mlx
+
+An Apple-Silicon MLX server with OpenAI-compatible serving, caching/batching,
+structured-output and cancellation capabilities in current upstream releases.
+
+### oMLX
+
+An MLX-native server oriented towards persistent conversational/agent
+workloads, including continuous batching and tiered prefix/KV caching.
+
+### Generic OpenAI-compatible
+
+The existing `OpenAICompatibleHTTPProvider` remains the escape hatch for
+llama.cpp, LM Studio, vLLM, MLX-LM's HTTP server, and other compatible
+endpoints. Arbitrary endpoints are not auto-selected.
+
+### MLX-LM reference
+
+Raw MLX-LM remains a benchmark/reference path rather than another automatic
+runtime provider. Its prompt caching is useful for repeated conversational
+contexts. The benchmark CLI recognises `mlx-lm` as a label for comparisons.
+
+## Conversational benchmark
+
+`modelito-benchmark-local` records:
+
+- first-request TTFT;
+- first phrase-like streamed latency;
+- estimated decode tokens/s;
+- warm-prefix TTFT over repeated requests;
+- context-growth TTFT;
+- client stream-close latency and a post-cancellation probe;
+- optional sampled server process RSS.
+
+The benchmark embeds its own caveats. First-request TTFT is only a cold-model
+measurement when the server/model was actually cold. Token rate uses Modelito's
+token-count helper, client stream-close time does not prove server-side
+cancellation acknowledgement, and process RSS can under-report Metal/unified
+memory on macOS.
+
+This benchmark is intended to compare equivalent workloads on the target
+machine. It does not replace runtime-specific instrumentation such as
+vllm-mlx's `bench-serve` command.
 
 ## Architecture
 
-The primary application surface is `modelito.Client`, backed by registered provider adapters. Providers implement a small common interface and may expose richer raw/streaming capabilities when available. Local runtime readiness is separated from provider construction:
+The primary application surface is `modelito.Client`, backed by registered
+provider adapters. Providers implement a small common interface and may expose
+richer raw/streaming capabilities when available. Local runtime policy remains
+outside the provider protocol:
 
 1. application declares local deployment intent;
-2. local-runtime selector chooses ordered candidate backends;
-3. readiness probes check whether the requested provider-specific model is actually available;
+2. selector chooses ordered candidate backends;
+3. readiness probes check whether the requested provider-specific model is
+   actually available;
 4. a strict concrete provider is constructed only after readiness succeeds;
-5. callers may continue to use the normal `Client` API.
+5. callers continue to use the normal `Client` API.
 
-This keeps local policy outside the provider protocol and preserves existing public APIs.
+This preserves existing public APIs while making local deployment explicit.
 
-## Setup
+## Setup and verification
 
 Development installation:
 
@@ -56,84 +134,60 @@ Development installation:
 python -m pip install -e '.[dev]'
 ```
 
-Optional runtime extras remain separate, for example:
-
-```bash
-python -m pip install -e '.[ollama,serve,openai]'
-```
-
 Typical checks:
 
 ```bash
-pytest -q
 ruff check .
+black --check .
 mypy modelito --ignore-missing-imports
+pytest -q --ignore=tests/integration tests
 python -m build
-python -m twine check dist/*
 ```
 
-Local runtime examples are documented in `docs/LOCAL-RUNTIMES.md`.
-
-## Configuration
-
-Relevant existing variables include provider credentials/endpoints plus Modelito provider/profile variables. The local-runtime branch adds:
-
-- `MODELITO_LOCAL_PROFILE=auto|portable|mac-performance`
-
-Aliases such as `mac` and `apple-silicon` normalise to `mac-performance`. Applications can bypass the environment and pass `profile=` and `prefer=` directly.
-
-## Important files
-
-- `modelito/client.py`: unified client and existing provider-auto selection.
-- `modelito/provider.py`: provider protocols and common types.
-- `modelito/provider_registry.py`: provider registration/factory.
-- `modelito/local_runtime.py`: explicit local-runtime profiles and strict local selection.
-- `modelito/omlx.py`: oMLX/OpenAI-compatible local provider.
-- `modelito/ollama.py`: Ollama provider.
-- `modelito/probes.py`: shared readiness probes.
-- `modelito/serve.py`: OpenAI-compatible server.
-- `tests/test_local_runtime.py`: local-profile selection tests.
-- `docs/LOCAL-RUNTIMES.md`: local runtime policy, examples, benchmarking guidance, and upstream evidence.
-- `AGENTS.md`: repository agent rules.
+Local runtime policy, benchmark usage, capability caveats, and upstream sources
+are documented in `docs/LOCAL-RUNTIMES.md`.
 
 ## Current decisions
 
-1. Do not encode “oMLX is always faster than Ollama”. Both use MLX-capable paths on current Apple Silicon; actual performance is model/workload dependent.
-2. Keep a portable Ollama path because it is the broadest cross-platform local backend.
-3. Keep a Mac-oriented path because Apple-Silicon-specific runtimes can materially improve latency and memory behaviour.
-4. Preserve existing `Client(provider="auto")` behaviour; use a new local-only selector rather than changing established fallback semantics.
-5. A local-only client must fail explicitly when no requested local backend/model is ready.
-6. Provider-specific model identifiers must be expressible independently.
+1. Do not encode a universal local-runtime performance ranking.
+2. Keep Ollama as the portable path.
+3. Keep a Mac-oriented path because Apple-Silicon-specific runtimes expose
+   materially different caching, serving, and execution strategies.
+4. Preserve existing `Client(provider="auto")` behaviour.
+5. A local-only client must fail explicitly when no requested local backend or
+   model is ready.
+6. Provider-specific model identifiers and endpoints must be expressible
+   independently.
 7. Local runtime defaults remain benchmark-overridable with `prefer=`.
-8. No release/tag/version bump is part of the current branch unless explicitly requested.
+8. Capability metadata is conservative: `conditional` and `unknown` are used
+   instead of guessing model- or version-specific support.
+9. Speech/VAD/TTS/ASR orchestration does not belong in Modelito's LLM runtime
+   abstraction.
+10. No release, tag, or version bump is part of this work.
 
-## Verification
+## Remaining empirical work
 
-The branch includes unit tests for profile normalisation, platform restrictions, local-only selection, oMLX/Ollama fallback order, provider-specific model identifiers, benchmark-driven ordering overrides, diagnostics, and strict provider construction.
+The repository now contains the benchmark needed for workload-specific local
+selection, but a real Apple-Silicon performance ranking must be measured on the
+actual target machine with comparable model families, quantisations, runtime
+configuration, and cache state. GitHub-hosted Linux CI cannot provide that
+evidence.
 
-Full repository CI has not yet been run for this branch at the time of this status snapshot. The next step is to open a pull request, run the existing lint/type/test matrix, and correct any failures before considering the branch complete.
+Until those measurements exist, `mac-performance` is intentionally a curated
+candidate order with an explicit `prefer=` override rather than an empirical
+winner table.
 
 ## Risks and constraints
 
-- Local backend performance changes quickly upstream; Modelito should not freeze transient benchmark conclusions into API semantics.
-- Model availability differs between Ollama and oMLX; a shared string model name may be invalid for one provider.
-- Readiness probes establish availability, not conversational latency, output quality, thermal behaviour, or memory pressure.
-- CI cannot validate Apple-Silicon runtime performance on GitHub-hosted Linux runners.
-- Local integration tests that install or download Ollama models remain explicitly gated.
-- Provider deterministic fallbacks are useful for tests but inappropriate for a strict local runtime path; `local_client()` therefore defaults to strict provider behaviour.
+- Local backend performance and model support change quickly upstream.
+- Model identifiers and formats differ between runtimes.
+- BaseRT, vllm-mlx, and oMLX are Apple-Silicon-oriented; hosted Linux CI can
+  validate adapters and policy but not their native execution.
+- Readiness probes establish availability, not latency, quality, memory
+  pressure, cache effectiveness, or thermal behaviour.
+- Capability metadata can become stale and should be reviewed when upstream
+  runtime behaviour materially changes.
+- Deterministic fallbacks remain useful for tests but are inappropriate for the
+  strict local-only runtime path.
 
-## Pending work
-
-1. Open the local-runtime profile pull request.
-2. Run lint, mypy, Python-version test matrix, build checks as appropriate, and fix all branch failures.
-3. Add a concise README pointer to `docs/LOCAL-RUNTIMES.md` if the PR remains otherwise focused and clean.
-4. Benchmark portable Ollama and Mac-oriented oMLX/Ollama paths on representative conversational workloads before changing default ordering.
-5. After review, decide whether the new API warrants a minor version bump and release; do not publish automatically.
-
-## Longer-term possibilities
-
-- A benchmark helper that reports TTFT, prompt processing, decode throughput and memory observations without declaring a provider winner.
-- Richer local capability metadata if applications need to select by context length, structured output, tool support, or model format.
-- Additional local backends only when they offer a real capability not already covered by the generic OpenAI-compatible provider.
-
-Last updated: 2026-08-08 18:04
+Last updated: 2026-08-09
