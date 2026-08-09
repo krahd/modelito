@@ -9,9 +9,9 @@ candidate order with ``prefer=``.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
 import platform
+from dataclasses import dataclass
 from typing import Any, List, Literal, Mapping, Optional, Sequence
 
 from .probes import (
