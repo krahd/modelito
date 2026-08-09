@@ -85,6 +85,7 @@ from .grok import GrokProvider
 from .openai import OpenAIProvider
 from .claude import ClaudeProvider
 from .omlx import OMLXProvider
+from .basert import BaseRTProvider
 from .provider import (
     Provider,
     EmbeddingProvider,
@@ -136,6 +137,7 @@ __all__ = [
     "OpenAIProvider",
     "ClaudeProvider",
     "OMLXProvider",
+    "BaseRTProvider",
     "Provider",
     "EmbeddingProvider",
     "ChatProvider",
