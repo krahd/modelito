@@ -1,7 +1,12 @@
 import pytest
 
+import modelito
 from modelito.exceptions import ModelitoBadResponseError, ModelitoConnectionError
 from modelito.ollama_strict import OllamaProvider
+
+
+def test_package_root_exports_strict_aware_ollama_provider():
+    assert modelito.OllamaProvider is OllamaProvider
 
 
 def test_strict_summarize_uses_raw_completion(monkeypatch):
