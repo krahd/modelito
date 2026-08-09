@@ -11,6 +11,7 @@ from typing import Any, Dict, Iterable, List, Optional
 
 from .ollama_service import DEFAULT_PORT, DEFAULT_URL, list_local_models, server_is_up
 from .omlx import OMLXProvider
+from .basert import BaseRTProvider
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,49 @@ def build_status(
 _build_status = build_status
 
 
+def probe_basert_status(
+    model: Optional[str],
+    base_url: Optional[str],
+    api_key: Optional[str],
+    probe_timeout: float,
+) -> ProviderStatus:
+    endpoint = base_url or "http://127.0.0.1:8080/v1"
+    try:
+        provider = BaseRTProvider(
+            base_url=endpoint,
+            model=model,
+            api_key=api_key,
+            timeout=probe_timeout,
+            strict=True,
+        )
+        models = provider.list_models()
+        ready = _model_is_available(model, models)
+        return _build_status(
+            "basert",
+            ready,
+            endpoint=getattr(provider, "base_url", endpoint),
+            models=models,
+            reason="" if ready else "requested model not found",
+            setup_hint=(
+                "Start BaseRT with `basert serve <model> --port 8080` and use the "
+                "same API key in Modelito if `--api-key` is enabled."
+            ),
+        )
+    except Exception as exc:
+        return _build_status(
+            "basert",
+            False,
+            endpoint=endpoint,
+            models=[],
+            reason="BaseRT server not reachable",
+            setup_hint=(
+                "Start BaseRT with `basert serve <model> --port 8080` and use the "
+                "same API key in Modelito if `--api-key` is enabled."
+            ),
+            details={"error": str(exc)},
+        )
+
+
 def probe_omlx_status(
     model: Optional[str],
     base_url: Optional[str],
@@ -100,7 +144,7 @@ def probe_ollama_status(
     model: Optional[str],
     host: Optional[str],
     port: Optional[int],
-    probe_timeout: float,  # kept for API symmetry with probe_omlx_status; server_is_up has no timeout
+    probe_timeout: float,  # kept for API symmetry; server_is_up has no timeout
 ) -> ProviderStatus:
     _ = probe_timeout
     host_value = host or DEFAULT_URL
