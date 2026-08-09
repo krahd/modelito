@@ -8,6 +8,7 @@ from .claude import ClaudeProvider
 from .gemini import GeminiProvider
 from .ollama import OllamaProvider
 from .omlx import OMLXProvider
+from .basert import BaseRTProvider
 
 # Registry of provider classes
 from .mock_provider import MockProvider
@@ -21,6 +22,7 @@ PROVIDER_REGISTRY: Dict[str, Type] = {
     "ollama": OllamaProvider,
     "omlx": OMLXProvider,
     "om": OMLXProvider,
+    "basert": BaseRTProvider,
     "mock": MockProvider,
 }
 
