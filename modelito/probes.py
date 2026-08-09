@@ -1,7 +1,7 @@
 """Shared provider readiness probes.
 
 These helpers are used by both the client auto-selection path and the doctor
-diagnostics so the readiness behaviour stays aligned.
+diagnostics so readiness behaviour stays aligned.
 """
 
 from __future__ import annotations
@@ -9,9 +9,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional
 
+from .basert import BaseRTProvider
 from .ollama_service import DEFAULT_PORT, DEFAULT_URL, list_local_models, server_is_up
 from .omlx import OMLXProvider
-from .basert import BaseRTProvider
+from .vllm_mlx import VLLMMLXProvider
 
 
 @dataclass(frozen=True)
@@ -103,6 +104,49 @@ def probe_basert_status(
         )
 
 
+def probe_vllm_mlx_status(
+    model: Optional[str],
+    base_url: Optional[str],
+    api_key: Optional[str],
+    probe_timeout: float,
+) -> ProviderStatus:
+    endpoint = base_url or "http://localhost:8000/v1"
+    try:
+        provider = VLLMMLXProvider(
+            base_url=endpoint,
+            model=model,
+            api_key=api_key,
+            timeout=probe_timeout,
+            strict=True,
+        )
+        models = provider.list_models()
+        ready = _model_is_available(model, models)
+        return _build_status(
+            "vllm-mlx",
+            ready,
+            endpoint=getattr(provider, "base_url", endpoint),
+            models=models,
+            reason="" if ready else "requested model not found",
+            setup_hint=(
+                "Start vllm-mlx with `vllm-mlx serve <model> --port 8000` and use "
+                "the same API key in Modelito if `--api-key` is enabled."
+            ),
+        )
+    except Exception as exc:
+        return _build_status(
+            "vllm-mlx",
+            False,
+            endpoint=endpoint,
+            models=[],
+            reason="vllm-mlx server not reachable",
+            setup_hint=(
+                "Start vllm-mlx with `vllm-mlx serve <model> --port 8000` and use "
+                "the same API key in Modelito if `--api-key` is enabled."
+            ),
+            details={"error": str(exc)},
+        )
+
+
 def probe_omlx_status(
     model: Optional[str],
     base_url: Optional[str],
@@ -126,7 +170,7 @@ def probe_omlx_status(
             endpoint=getattr(provider, "base_url", endpoint),
             models=models,
             reason="" if ready else "requested model not found",
-            setup_hint="Start oMLX and download an MLX model via the admin dashboard.",
+            setup_hint="Start oMLX and make the requested model available to the server.",
         )
     except Exception as exc:
         return _build_status(
@@ -135,7 +179,7 @@ def probe_omlx_status(
             endpoint=endpoint,
             models=[],
             reason="oMLX server not reachable",
-            setup_hint="Start oMLX and download an MLX model via the admin dashboard.",
+            setup_hint="Start oMLX and make the requested model available to the server.",
             details={"error": str(exc)},
         )
 
