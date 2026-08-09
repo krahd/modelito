@@ -27,6 +27,40 @@ def test_check_provider_ready_omlx_success(monkeypatch):
     assert "omlx" in status.models
 
 
+def test_check_provider_ready_vllm_mlx_alias(monkeypatch):
+    monkeypatch.setattr(
+        "modelito.probes.probe_vllm_mlx_status",
+        lambda *args, **kwargs: ProviderStatus(
+            provider="vllm-mlx",
+            ready=True,
+            endpoint="http://localhost:8000/v1",
+            models=["mlx-model"],
+        ),
+    )
+
+    status = check_provider_ready("vllm_mlx", model="mlx-model")
+
+    assert status.ready is True
+    assert status.provider == "vllm-mlx"
+
+
+def test_check_provider_ready_basert_success(monkeypatch):
+    monkeypatch.setattr(
+        "modelito.probes.probe_basert_status",
+        lambda *args, **kwargs: ProviderStatus(
+            provider="basert",
+            ready=True,
+            endpoint="http://127.0.0.1:8080/v1",
+            models=["base-model"],
+        ),
+    )
+
+    status = check_provider_ready("basert", model="base-model")
+
+    assert status.ready is True
+    assert status.provider == "basert"
+
+
 def test_check_provider_ready_ollama_failure(monkeypatch):
     monkeypatch.setattr(
         "modelito.probes.probe_ollama_status",
@@ -49,25 +83,63 @@ def test_check_provider_ready_ollama_failure(monkeypatch):
     assert "ollama pull" in status.setup_hint
 
 
-def test_check_provider_ready_auto_prefers_omlx_on_macos(monkeypatch):
+def test_check_provider_ready_auto_follows_mac_runtime_order(monkeypatch):
     monkeypatch.setattr("modelito.doctor._is_macos_apple_silicon", lambda: True)
-    monkeypatch.setattr(
-        "modelito.doctor._probe_omlx",
-        lambda model, base_url, api_key, probe_timeout: ProviderStatus(
-            provider="omlx",
+    seen = []
+
+    def basert_probe(*args, **kwargs):
+        seen.append("basert")
+        return ProviderStatus(provider="basert", ready=False)
+
+    def vllm_probe(*args, **kwargs):
+        seen.append("vllm-mlx")
+        return ProviderStatus(
+            provider="vllm-mlx",
             ready=True,
             endpoint="http://localhost:8000/v1",
-            models=["omlx"],
+            models=["mlx-model"],
+        )
+
+    monkeypatch.setattr("modelito.doctor._probe_basert", basert_probe)
+    monkeypatch.setattr("modelito.doctor._probe_vllm_mlx", vllm_probe)
+    monkeypatch.setattr(
+        "modelito.doctor._probe_omlx",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("unexpected oMLX probe")
         ),
     )
     monkeypatch.setattr(
         "modelito.doctor._probe_ollama",
-        lambda *args, **kwargs: ProviderStatus(provider="ollama", ready=False),
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("unexpected Ollama probe")
+        ),
     )
 
-    status = check_provider_ready("auto", model="omlx")
+    status = check_provider_ready("auto", model="mlx-model")
 
-    assert status.provider == "omlx"
+    assert status.provider == "vllm-mlx"
+    assert status.ready is True
+    assert seen == ["basert", "vllm-mlx"]
+
+
+def test_check_provider_ready_auto_non_mac_only_probes_ollama(monkeypatch):
+    monkeypatch.setattr("modelito.doctor._is_macos_apple_silicon", lambda: False)
+    monkeypatch.setattr(
+        "modelito.doctor._probe_ollama",
+        lambda *args, **kwargs: ProviderStatus(
+            provider="ollama", ready=True, models=["local"]
+        ),
+    )
+    monkeypatch.setattr(
+        "modelito.doctor._probe_basert",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("unexpected BaseRT probe")
+        ),
+    )
+
+    status = check_provider_ready("auto", model="local")
+
+    assert status.provider == "ollama"
     assert status.ready is True
 
 
