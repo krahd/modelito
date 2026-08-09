@@ -53,7 +53,6 @@ from .model_metadata import (
     infer_model_metadata,
 )
 from .normalization import normalize_metadata, normalize_models
-from .ollama import OllamaProvider
 from .ollama_service import (
     ModelLifecycleState,
     ReadinessResult,
@@ -98,6 +97,7 @@ from .ollama_service import (
     update_ollama,
     wait_until_ready,
 )
+from .ollama_strict import OllamaProvider
 from .omlx import OMLXProvider
 from .openai import OpenAIProvider
 from .openai_compat import OpenAICompatibleHTTPProvider
