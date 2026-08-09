@@ -9,13 +9,13 @@ quantisation, context, and server configuration.
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
 import json
 import statistics
 import subprocess
 import threading
 import time
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 from urllib.request import Request, urlopen
 
