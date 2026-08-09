@@ -125,10 +125,10 @@ def _ordered_candidates(
     *,
     on_macos_apple_silicon: bool,
 ) -> List[str]:
-    defaults = local_provider_candidates(
+    defaults: List[str] = local_provider_candidates(
         profile, is_macos_apple_silicon=on_macos_apple_silicon
     )
-    requested = [_normalize_provider(x) for x in (prefer or [])]
+    requested: List[str] = [_normalize_provider(x) for x in (prefer or [])]
     unknown = [x for x in requested if x not in LOCAL_PROVIDERS]
     if unknown:
         raise ValueError(
@@ -217,7 +217,7 @@ def select_local_runtime(
         if _is_macos_apple_silicon is None
         else bool(_is_macos_apple_silicon)
     )
-    candidates = _ordered_candidates(
+    candidates: List[str] = _ordered_candidates(
         resolved_profile, prefer, on_macos_apple_silicon=on_mac
     )
     diagnostics: List[str] = []
