@@ -19,6 +19,9 @@ surface. The primary exports (also visible via `from modelito import *`) are:
 - `Provider`, `SyncProvider`, `AsyncProvider`, `StreamingProvider`, `EmbeddingProvider`, `ChatProvider`, `RawChatProvider` — structural provider protocols for legacy, chat-first, and raw OpenAI-compatible code.
 - `Message`, `Response`, `MessageInput`, `OpenAIMessageDict` — message and response dataclasses / type helpers.
 - `ProviderStatus`, `check_provider_ready()`, `format_provider_status()` — readiness diagnostics helpers for local and hosted providers.
+- `LocalRuntimeSelection`, `select_local_runtime()`, `local_client()` — explicit local-only runtime selection and client construction.
+- `LocalRuntimeCapabilities`, `local_runtime_capabilities()` — conservative capability metadata for supported local runtime families.
+- `LOCAL_PROFILE_AUTO`, `LOCAL_PROFILE_PORTABLE`, `LOCAL_PROFILE_MAC_PERFORMANCE`, `LOCAL_PROFILES`, `normalize_local_profile()`, `local_provider_candidates()`, `is_macos_apple_silicon()` — local deployment-profile helpers.
 - `OpenAICompatibleHTTPProvider` — shared HTTP base class for local OpenAI-compatible runtimes.
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama HTTP
   API when available (via the bundled `ollama_service` helpers). If the HTTP
@@ -26,6 +29,8 @@ surface. The primary exports (also visible via `from modelito import *`) are:
   fallback (using `run_ollama_command`) before exposing a safe deterministic
   `summarize()` fallback useful for tests.
 - `OpenAIProvider` — SDK-backed hosted OpenAI provider; can also target hosted OpenAI-compatible APIs via `base_url`.
+- `BaseRTProvider` — thin preset for a local BaseRT OpenAI-compatible server.
+- `VLLMMLXProvider` — thin preset for a local vllm-mlx OpenAI-compatible server.
 - `OMLXProvider` — thin preset for local oMLX runtimes, built on `OpenAICompatibleHTTPProvider`.
 - `GeminiProvider`, `GrokProvider`, `ClaudeProvider` — minimal provider shims with the legacy `list_models()` / `summarize()` surface.
 - `EmbeddingProvider` — structural protocol for provider implementations that expose `embed(texts, **kwargs)`.
@@ -115,6 +120,40 @@ Important `OllamaConnector` methods
 - `complete(conv_id: Optional[str], new_messages: Optional[Iterable]=None, settings: Optional[dict]=None) -> Response` — typed convenience wrapper returning a `Response` dataclass.
 - `acomplete(conv_id: Optional[str], new_messages: Optional[Iterable]=None, settings: Optional[dict]=None) -> Response` — asynchronous variant.
 
+Local runtime selection
+-----------------------
+
+`local_client(model=None, *, models=None, profile=None, prefer=None, host=None, port=None, base_url=None, base_urls=None, api_key=None, api_keys=None, probe_timeout=1.5, **provider_kwargs)`
+: Construct a strict local-only `Client` after probing the configured local
+  runtime candidates. It does not fall back to hosted providers or to the
+  deterministic offline shim when no requested local runtime/model is ready.
+
+`select_local_runtime(...) -> LocalRuntimeSelection`
+: Run the same read-only local selection logic without constructing a client.
+  The result records the resolved profile, provider, model, and endpoint.
+
+`local_runtime_capabilities(provider: str) -> LocalRuntimeCapabilities`
+: Return coarse runtime-family metadata for streaming, prefix caching,
+  cancellation, structured output, tool calls, and model discovery. Values are
+  `yes`, `no`, `conditional`, or `unknown`; they do not replace feature-testing
+  the actual model/runtime configuration.
+
+Profiles:
+
+- `portable` — Ollama as the cross-platform path.
+- `mac-performance` — Apple Silicon only; default candidate order is BaseRT,
+  vllm-mlx, oMLX, then Ollama.
+- `auto` — resolves to `mac-performance` on Apple Silicon and `portable`
+  elsewhere.
+
+The candidate order is a deployment policy, not a universal performance
+ranking. Pass `prefer=` to reorder candidates after benchmarking the target
+workload. `models`, `base_urls`, and `api_keys` can map provider names to
+runtime-specific values.
+
+See `docs/LOCAL-RUNTIMES.md` for benchmark usage, capability caveats, and the
+upstream-source audit.
+
 Provider shims
 --------------
 
@@ -196,8 +235,9 @@ OpenAI-compatible request payloads to supported providers. These methods preserv
 all request fields (including `tools`, `tool_choice`, `response_format`, etc.)
 and return raw OpenAI-compatible response dicts or streams without transformation.
 
-**Availability**: `OpenAIProvider`, `OMLXProvider`, `OpenAICompatibleHTTPProvider`,
-and `OllamaProvider` support raw passthrough.
+**Availability**: `OpenAIProvider`, `BaseRTProvider`, `VLLMMLXProvider`,
+`OMLXProvider`, `OpenAICompatibleHTTPProvider`, and `OllamaProvider` support raw
+passthrough.
 
 `raw_complete(payload: dict[str, Any]) -> dict[str, Any]`
 : Send a raw OpenAI-compatible request payload and return the complete response
@@ -310,10 +350,11 @@ For higher-level tooling, `ollama_service` now exposes two small dataclasses:
 CLI usage
 ---------
 
-`modelito` exposes two small module-level CLIs useful during development:
+`modelito` exposes small module-level CLIs useful during development:
 
 - `python -m modelito doctor` — diagnose provider readiness and report setup hints.
 - `modelito-serve` — optional OpenAI-compatible server (`/v1/models`, `/v1/chat/completions`, `/v1/embeddings`) requiring `pip install "modelito[serve]"`.
+- `modelito-benchmark-local` — compare conversational latency against an already-running local OpenAI-compatible server; see `docs/LOCAL-RUNTIMES.md` for measurement caveats.
 - `python -m modelito.ollama_service` — minimal Ollama lifecycle CLI (`start`, `stop`, `install`, `inspect`, `pull`, `list-local`, `list-remote`, `version`).
 - `python -m modelito.timeout_cli` — print estimated timeouts and diagnostic details for a model.
 - `python -m modelito.timeout_calibrate` — write calibration prompts and (optionally) exercise a local Ollama server to collect timing samples.

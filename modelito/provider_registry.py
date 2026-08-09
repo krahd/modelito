@@ -1,16 +1,18 @@
 """Provider and embedder registry helpers for Modelito."""
 
-from inspect import signature, Parameter
+from inspect import Parameter, signature
 from typing import Any, Dict, List, Optional, Type
-from .provider import EmbeddingProvider, SyncProvider
-from .openai import OpenAIProvider
+
+from .basert import BaseRTProvider
 from .claude import ClaudeProvider
 from .gemini import GeminiProvider
-from .ollama import OllamaProvider
-from .omlx import OMLXProvider
-
-# Registry of provider classes
 from .mock_provider import MockProvider
+from .ollama_strict import OllamaProvider
+from .omlx import OMLXProvider
+from .openai import OpenAIProvider
+from .provider import EmbeddingProvider, SyncProvider
+from .vllm_mlx import VLLMMLXProvider
+
 
 PROVIDER_REGISTRY: Dict[str, Type] = {
     "openai": OpenAIProvider,
@@ -21,6 +23,9 @@ PROVIDER_REGISTRY: Dict[str, Type] = {
     "ollama": OllamaProvider,
     "omlx": OMLXProvider,
     "om": OMLXProvider,
+    "basert": BaseRTProvider,
+    "vllm-mlx": VLLMMLXProvider,
+    "vllm_mlx": VLLMMLXProvider,
     "mock": MockProvider,
 }
 
@@ -28,14 +33,7 @@ EMBEDDER_REGISTRY: Dict[str, Type] = dict(PROVIDER_REGISTRY)
 
 
 def get_provider(name: str, **kwargs: Any) -> Optional[SyncProvider]:
-    """
-    Factory to instantiate a provider by name.
-    Args:
-        name: Provider name (e.g., 'openai', 'claude', 'gemini', 'ollama')
-        kwargs: Passed to provider constructor
-    Returns:
-        Provider instance or None if not found
-    """
+    """Instantiate a provider by name, or return ``None`` when unknown."""
     cls = PROVIDER_REGISTRY.get(name.lower())
     if cls is not None:
         try:
@@ -57,7 +55,7 @@ def get_provider(name: str, **kwargs: Any) -> Optional[SyncProvider]:
 
 
 def get_embedder(name: str, **kwargs: Any) -> Optional[EmbeddingProvider]:
-    """Factory to instantiate an embedder by name."""
+    """Instantiate an embedder by name, or return ``None`` when unknown."""
     cls = EMBEDDER_REGISTRY.get(name.lower())
     if cls is not None:
         try:
@@ -79,10 +77,10 @@ def get_embedder(name: str, **kwargs: Any) -> Optional[EmbeddingProvider]:
 
 
 def list_providers() -> List[str]:
-    """Return a list of available provider names."""
+    """Return the available provider names."""
     return list(PROVIDER_REGISTRY.keys())
 
 
 def list_embedders() -> List[str]:
-    """Return a list of available embedder names."""
+    """Return the available embedder names."""
     return list(EMBEDDER_REGISTRY.keys())

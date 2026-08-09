@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "modelito"
 version = "1.4.6"
-description = "Lightweight Python abstractions and connectors for LLM providers (OpenAI, Claude, Gemini, oMLX, Ollama)."
+description = "Lightweight Python abstractions and connectors for hosted and local LLM providers."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [ { name = "krahd" } ]
 license = "MIT"
 license-files = ["LICENSE"]
-keywords = ["llm", "provider", "tokenizer", "ollama", "openai", "omlx"]
+keywords = ["llm", "provider", "tokenizer", "ollama", "openai", "omlx", "local-inference"]
 classifiers = [
 	"Development Status :: 4 - Beta",
 	"Intended Audience :: Developers",
@@ -38,6 +38,7 @@ dev = ["pytest", "pytest-asyncio", "pytest-mock", "mypy", "ruff", "black", "toml
 [project.scripts]
 modelito-serve = "modelito.serve:main"
 modelito-doctor = "modelito.doctor:main"
+modelito-benchmark-local = "modelito.local_benchmark:main"
 
 [project.urls]
 Homepage = "https://github.com/krahd/modelito"
@@ -47,3 +48,9 @@ Changelog = "https://github.com/krahd/modelito/blob/main/CHANGELOG.md"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["modelito*"]
+
+# Ruff 0.16 expanded its unconfigured default from 59 to 413 rules. Modelito's
+# existing lint contract predates that change; make it explicit so CI does not
+# change semantics when the unpinned development dependency advances.
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

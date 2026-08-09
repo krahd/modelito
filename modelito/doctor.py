@@ -21,9 +21,30 @@ ProviderStatus = probes.ProviderStatus
 
 def _normalize_provider_name(provider: str) -> str:
     name = str(provider or "").strip().lower()
-    if name == "om":
-        return "omlx"
-    return name
+    aliases = {
+        "om": "omlx",
+        "vllm_mlx": "vllm-mlx",
+        "vllmmlx": "vllm-mlx",
+    }
+    return aliases.get(name, name)
+
+
+def _probe_basert(
+    model: Optional[str],
+    base_url: Optional[str],
+    api_key: Optional[str],
+    probe_timeout: float,
+) -> ProviderStatus:
+    return probes.probe_basert_status(model, base_url, api_key, probe_timeout)
+
+
+def _probe_vllm_mlx(
+    model: Optional[str],
+    base_url: Optional[str],
+    api_key: Optional[str],
+    probe_timeout: float,
+) -> ProviderStatus:
+    return probes.probe_vllm_mlx_status(model, base_url, api_key, probe_timeout)
 
 
 def _probe_omlx(
@@ -64,7 +85,10 @@ def _probe_openai(
             endpoint=endpoint,
             models=models,
             reason="" if ready else "requested model not found or API unavailable",
-            setup_hint="Set OPENAI_API_KEY and optional OPENAI_BASE_URL if you are targeting a hosted OpenAI-compatible API.",
+            setup_hint=(
+                "Set OPENAI_API_KEY and optional OPENAI_BASE_URL if you are "
+                "targeting a hosted OpenAI-compatible API."
+            ),
         )
     except Exception as exc:
         return probes.build_status(
@@ -73,7 +97,10 @@ def _probe_openai(
             endpoint=base_url or "https://api.openai.com/v1",
             models=[],
             reason="OpenAI provider unavailable",
-            setup_hint="Set OPENAI_API_KEY and optional OPENAI_BASE_URL if you are targeting a hosted OpenAI-compatible API.",
+            setup_hint=(
+                "Set OPENAI_API_KEY and optional OPENAI_BASE_URL if you are "
+                "targeting a hosted OpenAI-compatible API."
+            ),
             details={"error": str(exc)},
         )
 
@@ -86,9 +113,11 @@ def _probe_generic_provider(provider: str, model: Optional[str]) -> ProviderStat
                 provider,
                 False,
                 reason=f"Unknown provider: {provider}",
-                setup_hint="Pick one of the built-in providers or configure a valid provider profile.",
+                setup_hint=(
+                    "Pick one of the built-in providers or configure a valid "
+                    "provider profile."
+                ),
             )
-        models = []
         try:
             models = list(resolved.list_models())
         except Exception as exc:
@@ -122,6 +151,27 @@ def _probe_generic_provider(provider: str, model: Optional[str]) -> ProviderStat
         )
 
 
+def _probe_local_candidate(
+    provider: str,
+    model: Optional[str],
+    *,
+    host: Optional[str],
+    port: Optional[int],
+    base_url: Optional[str],
+    api_key: Optional[str],
+    probe_timeout: float,
+) -> ProviderStatus:
+    if provider == "basert":
+        return _probe_basert(model, base_url, api_key, probe_timeout)
+    if provider == "vllm-mlx":
+        return _probe_vllm_mlx(model, base_url, api_key, probe_timeout)
+    if provider == "omlx":
+        return _probe_omlx(model, base_url, api_key, probe_timeout)
+    if provider == "ollama":
+        return _probe_ollama(model, host, port, probe_timeout)
+    return _probe_generic_provider(provider, model)
+
+
 def check_provider_ready(
     provider: str,
     model: Optional[str] = None,
@@ -136,42 +186,60 @@ def check_provider_ready(
     """Diagnose whether a provider looks ready to use.
 
     The helper is read-only: it does not install, download, or mutate state.
+    ``auto`` follows the same local candidate family as ``local_client()``.
     """
     normalized = _normalize_provider_name(provider)
     if normalized == "auto":
-        default_prefer: List[str] = list(
-            prefer or (["omlx", "ollama"] if _is_macos_apple_silicon() else ["ollama"])
-        )
-        for candidate in default_prefer:
-            candidate_name = _normalize_provider_name(candidate)
-            if candidate_name == "omlx":
-                status = _probe_omlx(model, base_url, api_key, probe_timeout)
-            elif candidate_name == "ollama":
-                status = _probe_ollama(model, host, port, probe_timeout)
-            else:
-                status = _probe_generic_provider(candidate_name, model)
+        if prefer:
+            default_prefer = [_normalize_provider_name(name) for name in prefer]
+        elif _is_macos_apple_silicon():
+            default_prefer = ["basert", "vllm-mlx", "omlx", "ollama"]
+        else:
+            default_prefer = ["ollama"]
+
+        for candidate_name in default_prefer:
+            status = _probe_local_candidate(
+                candidate_name,
+                model,
+                host=host,
+                port=port,
+                base_url=base_url,
+                api_key=api_key,
+                probe_timeout=probe_timeout,
+            )
             if status.ready:
                 return status
+
         if _is_macos_apple_silicon():
             return probes.build_status(
                 "auto",
                 False,
                 reason="No local backend was ready on macOS Apple Silicon",
                 setup_hint=(
-                    "Start oMLX at http://localhost:8000/v1 or Ollama at http://127.0.0.1:11434, then ensure the requested model is available."
+                    "Start BaseRT, vllm-mlx, oMLX, or Ollama and ensure the "
+                    "requested model is available."
                 ),
             )
         return probes.build_status(
             "auto",
             False,
             reason="No suitable provider was ready",
-            setup_hint="Configure a provider profile, environment override, or a local backend.",
+            setup_hint=(
+                "Configure a provider profile, environment override, or a local "
+                "backend."
+            ),
         )
 
-    if normalized == "omlx":
-        return _probe_omlx(model, base_url, api_key, probe_timeout)
-    if normalized == "ollama":
-        return _probe_ollama(model, host, port, probe_timeout)
+    if normalized in {"basert", "vllm-mlx", "omlx", "ollama"}:
+        return _probe_local_candidate(
+            normalized,
+            model,
+            host=host,
+            port=port,
+            base_url=base_url,
+            api_key=api_key,
+            probe_timeout=probe_timeout,
+        )
     if normalized == "openai":
         return _probe_openai(model, base_url, api_key)
 
@@ -223,7 +291,9 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.add_argument("--host", default=None, help="Provider host override")
     doctor.add_argument("--port", type=int, default=None, help="Provider port override")
     doctor.add_argument(
-        "--base-url", default=None, help="OpenAI/oMLX-compatible base URL override"
+        "--base-url",
+        default=None,
+        help="OpenAI-compatible provider base URL override",
     )
     doctor.add_argument("--api-key", default=None, help="Optional API key override")
     doctor.add_argument(
