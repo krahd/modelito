@@ -206,7 +206,9 @@ def select_local_runtime(
 
     ``models`` may map provider names to provider-specific model identifiers.
     ``base_urls`` and ``api_keys`` provide the same per-provider distinction for
-    OpenAI-compatible local servers such as BaseRT and oMLX.
+    OpenAI-compatible local servers such as BaseRT and oMLX. When no model is
+    requested, the selector binds to the first model reported by a ready local
+    server; a server with no loaded models is not considered usable.
     """
 
     resolved_profile = normalize_local_profile(profile)
@@ -234,12 +236,20 @@ def select_local_runtime(
             probe_timeout=probe_timeout,
         )
         if status.ready:
-            return LocalRuntimeSelection(
-                profile=resolved_profile,
-                provider=provider,
-                model=candidate_model,
-                endpoint=status.endpoint,
+            resolved_model = candidate_model
+            if not resolved_model:
+                resolved_model = status.models[0] if status.models else None
+            if resolved_model:
+                return LocalRuntimeSelection(
+                    profile=resolved_profile,
+                    provider=provider,
+                    model=resolved_model,
+                    endpoint=status.endpoint,
+                )
+            diagnostics.append(
+                f"{provider} at {status.endpoint or 'unknown endpoint'}: no loaded models"
             )
+            continue
         reason = status.reason or "not ready"
         endpoint = status.endpoint or "unknown endpoint"
         diagnostics.append(f"{provider} at {endpoint}: {reason}")
