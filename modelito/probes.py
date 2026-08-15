@@ -26,10 +26,18 @@ class ProviderStatus:
     details: Dict[str, Any] = field(default_factory=dict)
 
 
+def _normalise_model_listing_item(item: str) -> str:
+    """Return the model identifier from either a bare name or a CLI table row."""
+    text = str(item or "").strip()
+    return text.split()[0] if text else ""
+
+
 def model_is_available(model: Optional[str], models: Iterable[str]) -> bool:
     if not model:
         return True
-    return model in set(models)
+    names = {_normalise_model_listing_item(item) for item in models}
+    names.discard("")
+    return model in names
 
 
 # Back-compat alias used internally
@@ -188,7 +196,7 @@ def probe_ollama_status(
     model: Optional[str],
     host: Optional[str],
     port: Optional[int],
-    probe_timeout: float,  # kept for API symmetry; server_is_up has no timeout
+    probe_timeout: float,
 ) -> ProviderStatus:
     _ = probe_timeout
     host_value = host or DEFAULT_URL
