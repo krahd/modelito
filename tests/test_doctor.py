@@ -218,3 +218,9 @@ def test_probes_model_is_available_public():
     assert probes_module.model_is_available(None, []) is True
     assert probes_module.model_is_available("llama3", ["llama3", "phi3"]) is True
     assert probes_module.model_is_available("missing", ["llama3"]) is False
+
+
+def test_probes_model_is_available_accepts_ollama_table_rows():
+    requested = "qwen3:30b-a3b-instruct-2507-q4_K_M"
+    row = f"{requested}    19e422b02313    18 GB    2 days ago"
+    assert probes_module.model_is_available(requested, [row]) is True
