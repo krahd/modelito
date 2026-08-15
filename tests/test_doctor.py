@@ -175,6 +175,22 @@ def test_doctor_main_json_output(monkeypatch, capsys):
     assert '"provider": "omlx"' in captured.out
 
 
+def test_modelito_doctor_direct_options_are_accepted(monkeypatch, capsys):
+    monkeypatch.setattr(
+        "modelito.doctor.check_provider_ready",
+        lambda *args, **kwargs: ProviderStatus(
+            provider="ollama", ready=True, models=["qwen3:4b"]
+        ),
+    )
+
+    code = main(["--provider", "ollama", "--model", "qwen3:4b"])
+    captured = capsys.readouterr()
+
+    assert code == 0
+    assert "provider: ollama" in captured.out
+    assert "ready: True" in captured.out
+
+
 def test_doctor_main_non_ready_returns_nonzero(monkeypatch, capsys):
     monkeypatch.setattr(
         "modelito.doctor.check_provider_ready",
