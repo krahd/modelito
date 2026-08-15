@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import platform
+import sys
 from typing import List, Optional, Sequence
 
 from . import probes
@@ -311,8 +312,19 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """Run the readiness CLI.
+
+    ``modelito`` historically exposes ``doctor`` as a subcommand, while the
+    dedicated ``modelito-doctor`` console script points directly at this same
+    function. Accept both forms so the dedicated command does not require the
+    redundant word ``doctor``.
+    """
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
+    if raw_argv and raw_argv[0] != "doctor" and raw_argv[0].startswith("-"):
+        raw_argv.insert(0, "doctor")
+
     parser = build_parser()
-    args = parser.parse_args(argv)
+    args = parser.parse_args(raw_argv)
 
     if getattr(args, "cmd", None) != "doctor":
         parser.print_help()
