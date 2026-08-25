@@ -108,6 +108,7 @@ Tool-calling integrations should prefer the raw-capable path only when full requ
 **OllamaProvider:**
 - SDK: None (Ollama isn't shipped as a Python SDK)
 - HTTP: Calls `/api/chat` for Message instances, `/api/generate` for prompt strings
+- Settings: Maps generation settings into the native API's `options` object while preserving top-level request controls
 - CLI: Calls `ollama run` or `ollama generate`
 - Shim: Concatenates messages for testing
 

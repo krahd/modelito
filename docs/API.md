@@ -27,7 +27,15 @@ surface. The primary exports (also visible via `from modelito import *`) are:
   API when available (via the bundled `ollama_service` helpers). If the HTTP
   API is not reachable it will attempt the Ollama CLI as a best-effort
   fallback (using `run_ollama_command`) before exposing a safe deterministic
-  `summarize()` fallback useful for tests.
+  `summarize()` fallback useful for tests. For native `/api/chat` and
+  `/api/generate` requests, flat generation settings such as `temperature`,
+  `seed`, and `num_predict` are placed in Ollama's `options` object. An explicit
+  `settings["options"]` mapping is also supported; `format`, `keep_alive`,
+  `think`, `tools`, and other recognised native request fields remain top-level
+  controls. Unknown flat settings are not guessed or forwarded; use
+  `settings["options"]` for additional model-specific Ollama options. The
+  common `max_tokens` and JSON `response_format` settings are translated to
+  `num_predict` and Ollama's native `format`, respectively.
 - `OpenAIProvider` — SDK-backed hosted OpenAI provider; can also target hosted OpenAI-compatible APIs via `base_url`.
 - `BaseRTProvider` — thin preset for a local BaseRT OpenAI-compatible server.
 - `VLLMMLXProvider` — thin preset for a local vllm-mlx OpenAI-compatible server.

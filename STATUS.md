@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-08-09
+Last updated: 2026-08-25 06:25
 
 ## Project purpose
 
@@ -172,8 +172,25 @@ python -m build
 Local runtime policy, benchmark usage, capability caveats, and upstream sources
 are documented in `docs/LOCAL-RUNTIMES.md`.
 
+## Current validation
+
+- Focused Ollama/client regression suite: 58 tests passed on 2026-08-25.
+- The available pytest configuration emits one warning because the installed
+  pytest does not recognise `asyncio_default_fixture_loop_scope`.
+- Ruff was not available in the current development environment, so the
+  focused lint command could not be run.
+- `python3 -m compileall -q modelito` passed. Black could not start because its
+  installed version imports a removed private symbol from the installed Click.
+- The full test suite, mypy, and package build were not run for the current
+  Ollama settings change.
+
 ## Recent changes
 
+- Ollama native `/api/chat` and `/api/generate` requests now preserve message
+  roles, explicitly select synchronous or streaming responses, place known
+  generation settings in the native `options` object, retain known request
+  controls at the top level, and avoid guessing how unknown flat settings
+  should be routed. `settings["options"]` remains the explicit escape hatch.
 - Added explicit `portable`, `mac-performance`, and `auto` local-runtime
   profiles without altering the established `Client(provider="auto")` contract.
 - Added BaseRT and vllm-mlx OpenAI-compatible provider presets alongside oMLX
@@ -276,4 +293,4 @@ winner table.
 - CI intentionally excludes integration tests by path/flags to keep default
   hosted CI fast and safe.
 
-Last updated: 2026-08-09
+Last updated: 2026-08-25 06:25

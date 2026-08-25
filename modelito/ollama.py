@@ -35,6 +35,86 @@ from .ollama_service import (
 )
 
 
+_OLLAMA_TOP_LEVEL_SETTINGS = frozenset(
+    {
+        "_debug_render_only",
+        "format",
+        "keep_alive",
+        "logprobs",
+        "shift",
+        "think",
+        "tools",
+        "top_logprobs",
+        "truncate",
+    }
+)
+_OLLAMA_GENERATION_OPTIONS = frozenset(
+    {
+        "draft_num_predict",
+        "frequency_penalty",
+        "main_gpu",
+        "min_p",
+        "num_batch",
+        "num_ctx",
+        "num_gpu",
+        "num_keep",
+        "num_predict",
+        "num_thread",
+        "presence_penalty",
+        "repeat_last_n",
+        "repeat_penalty",
+        "seed",
+        "stop",
+        "temperature",
+        "top_k",
+        "top_p",
+        "typical_p",
+        "use_mmap",
+    }
+)
+
+
+def _apply_ollama_settings(
+    payload: dict[str, Any], settings: Optional[dict[str, Any]]
+) -> None:
+    """Merge recognised settings without guessing where unknown keys belong.
+
+    ``settings["options"]`` is the explicit escape hatch for model-specific
+    Ollama options that Modelito does not yet recognise.
+    """
+    if not isinstance(settings, dict):
+        return
+
+    nested_options = settings.get("options")
+    options = dict(nested_options) if isinstance(nested_options, dict) else {}
+
+    for key, value in settings.items():
+        if key == "options" or key in {"chunk_size", "stream"}:
+            continue
+        if key in _OLLAMA_TOP_LEVEL_SETTINGS:
+            payload[key] = value
+            continue
+        if key == "response_format":
+            if isinstance(value, dict) and value.get("type") == "json_object":
+                payload["format"] = "json"
+            elif isinstance(value, dict) and value.get("type") == "json_schema":
+                json_schema = value.get("json_schema")
+                if isinstance(json_schema, dict) and isinstance(
+                    json_schema.get("schema"), dict
+                ):
+                    payload["format"] = json_schema["schema"]
+            continue
+        if key == "max_tokens":
+            if "num_predict" not in settings and "num_predict" not in options:
+                options["num_predict"] = value
+            continue
+        if key in _OLLAMA_GENERATION_OPTIONS:
+            options[key] = value
+
+    if options:
+        payload["options"] = options
+
+
 class OllamaProvider:
     """Provider for local Ollama runtimes.
 
@@ -121,14 +201,13 @@ class OllamaProvider:
         Args:
             messages: Iterable of message dicts (containing ``content``) or
                 plain strings.
-            settings: Optional settings passed through by callers (ignored).
+            settings: Optional generation settings. Ollama model parameters are
+                sent in the native API's ``options`` object; request controls
+                such as ``format`` and ``keep_alive`` remain top-level.
 
         Returns:
             A string containing the joined message contents.
         """
-        if settings is not None:
-            pass
-
         flattened = flatten_message_inputs(messages)
         prompt = "\n".join(
             str(item.get("content") or "")
@@ -143,7 +222,7 @@ class OllamaProvider:
         # First attempt: HTTP API
         try:
             if server_is_up(self.host, self.port):
-                payload: dict[str, Any] = {}
+                payload: dict[str, Any] = {"stream": False}
                 if self.model:
                     payload["model"] = self.model
                 # Determine if we have structured messages or a prompt
@@ -154,6 +233,7 @@ class OllamaProvider:
                 else:
                     payload["prompt"] = prompt
                     endpoint = "/api/generate"
+                _apply_ollama_settings(payload, settings)
 
                 try:
                     url = endpoint_url(self.host, self.port, endpoint)
@@ -281,7 +361,7 @@ class OllamaProvider:
             return
 
         # Build payload and determine endpoint
-        payload: dict[str, Any] = {}
+        payload: dict[str, Any] = {"stream": True}
         if self.model:
             payload["model"] = self.model
 
@@ -298,6 +378,7 @@ class OllamaProvider:
                 if isinstance(item, dict)
             )
             endpoint = "/api/generate"
+        _apply_ollama_settings(payload, settings)
 
         url = endpoint_url(self.host, self.port, endpoint)
 
