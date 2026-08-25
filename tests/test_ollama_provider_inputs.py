@@ -51,7 +51,11 @@ def test_ollama_summarize_preserves_roles_and_applies_settings(monkeypatch):
             "num_predict": 64,
             "options": {"top_p": 0.8},
             "keep_alive": "10m",
+            "tools": [{"type": "function", "function": {"name": "lookup"}}],
             "truncate": True,
+            "shift": True,
+            "_debug_render_only": True,
+            "suffix": "generate-only",
             "timeout": 1,
             "future_setting": "must not be guessed",
         },
@@ -63,7 +67,7 @@ def test_ollama_summarize_preserves_roles_and_applies_settings(monkeypatch):
         "model": "llama3.2",
         "messages": messages,
         "keep_alive": "10m",
-        "truncate": True,
+        "tools": [{"type": "function", "function": {"name": "lookup"}}],
         "options": {
             "top_p": 0.8,
             "temperature": 0,
@@ -73,6 +77,10 @@ def test_ollama_summarize_preserves_roles_and_applies_settings(monkeypatch):
     }
     assert "timeout" not in captured["payload"]
     assert "future_setting" not in captured["payload"]
+    assert "truncate" not in captured["payload"]
+    assert "shift" not in captured["payload"]
+    assert "_debug_render_only" not in captured["payload"]
+    assert "suffix" not in captured["payload"]
     assert "timeout" not in captured["payload"]["options"]
     assert "future_setting" not in captured["payload"]["options"]
 
@@ -98,6 +106,46 @@ def test_ollama_summarize_maps_common_json_and_token_settings(monkeypatch):
     assert out == "{}"
     assert captured_payload["format"] == "json"
     assert captured_payload["options"]["num_predict"] == 32
+
+
+def test_ollama_generate_applies_only_documented_top_level_settings(monkeypatch):
+    monkeypatch.setattr("modelito.ollama.server_is_up", lambda *_args: True)
+    captured_payload = {}
+
+    def fake_json_post(_url, payload, timeout):
+        captured_payload.update(payload)
+        return {"response": "generated"}
+
+    monkeypatch.setattr("modelito.ollama.json_post", fake_json_post)
+
+    out = OllamaProvider(model="code-model").summarize(
+        [],
+        settings={
+            "suffix": "after",
+            "images": ["base64-data"],
+            "system": "system override",
+            "raw": True,
+            "think": False,
+            "logprobs": True,
+            "top_logprobs": 3,
+            "tools": [{"type": "function"}],
+            "truncate": True,
+        },
+    )
+
+    assert out == "generated"
+    assert captured_payload == {
+        "stream": False,
+        "model": "code-model",
+        "prompt": "",
+        "suffix": "after",
+        "images": ["base64-data"],
+        "system": "system override",
+        "raw": True,
+        "think": False,
+        "logprobs": True,
+        "top_logprobs": 3,
+    }
 
 
 def test_ollama_stream_dict_message_input_falls_back_without_raising(monkeypatch):

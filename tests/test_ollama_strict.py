@@ -2,11 +2,28 @@ import pytest
 
 import modelito
 from modelito.exceptions import ModelitoBadResponseError, ModelitoConnectionError
+from modelito.ollama import OllamaProvider as BaseOllamaProvider
 from modelito.ollama_strict import OllamaProvider
 
 
 def test_package_root_exports_strict_aware_ollama_provider():
     assert modelito.OllamaProvider is OllamaProvider
+
+
+def test_base_provider_strict_mode_also_propagates_runtime_failure(monkeypatch):
+    provider = BaseOllamaProvider(model="local-model", strict=True)
+
+    def fail(_payload):
+        raise ModelitoConnectionError("direct transport failed")
+
+    monkeypatch.setattr(provider, "raw_complete", fail)
+    monkeypatch.setattr(
+        "modelito.ollama.ollama_installed",
+        lambda: pytest.fail("strict mode must not try the CLI"),
+    )
+
+    with pytest.raises(ModelitoConnectionError, match="direct transport failed"):
+        provider.summarize([{"role": "user", "content": "hola"}])
 
 
 def test_strict_summarize_uses_raw_completion(monkeypatch):

@@ -35,17 +35,27 @@ from .ollama_service import (
 )
 
 
-_OLLAMA_TOP_LEVEL_SETTINGS = frozenset(
+_OLLAMA_CHAT_TOP_LEVEL_SETTINGS = frozenset(
     {
-        "_debug_render_only",
         "format",
         "keep_alive",
         "logprobs",
-        "shift",
         "think",
         "tools",
         "top_logprobs",
-        "truncate",
+    }
+)
+_OLLAMA_GENERATE_TOP_LEVEL_SETTINGS = frozenset(
+    {
+        "format",
+        "images",
+        "keep_alive",
+        "logprobs",
+        "raw",
+        "suffix",
+        "system",
+        "think",
+        "top_logprobs",
     }
 )
 _OLLAMA_GENERATION_OPTIONS = frozenset(
@@ -75,7 +85,9 @@ _OLLAMA_GENERATION_OPTIONS = frozenset(
 
 
 def _apply_ollama_settings(
-    payload: dict[str, Any], settings: Optional[dict[str, Any]]
+    payload: dict[str, Any],
+    settings: Optional[dict[str, Any]],
+    endpoint: str,
 ) -> None:
     """Merge recognised settings without guessing where unknown keys belong.
 
@@ -85,13 +97,19 @@ def _apply_ollama_settings(
     if not isinstance(settings, dict):
         return
 
+    if endpoint == "/api/chat":
+        top_level_settings = _OLLAMA_CHAT_TOP_LEVEL_SETTINGS
+    elif endpoint == "/api/generate":
+        top_level_settings = _OLLAMA_GENERATE_TOP_LEVEL_SETTINGS
+    else:
+        top_level_settings = frozenset()
     nested_options = settings.get("options")
     options = dict(nested_options) if isinstance(nested_options, dict) else {}
 
     for key, value in settings.items():
         if key == "options" or key in {"chunk_size", "stream"}:
             continue
-        if key in _OLLAMA_TOP_LEVEL_SETTINGS:
+        if key in top_level_settings:
             payload[key] = value
             continue
         if key == "response_format":
@@ -136,7 +154,10 @@ class OllamaProvider:
 
         When an Ollama HTTP API is reachable at ``host:port`` the provider
         will attempt to use it for `list_models()` and `summarize()` calls.
-        Otherwise it falls back to a deterministic offline-friendly shim.
+        With ``strict=False``, failures may fall back through the Ollama CLI to
+        a deterministic offline-friendly shim. With ``strict=True``, summary
+        and streaming calls use the direct OpenAI-compatible HTTP transport and
+        propagate failures without changing transport.
         """
         # Accept host with or without scheme; endpoint_url will normalize it.
         self.host = host or "http://127.0.0.1"
@@ -188,15 +209,74 @@ class OllamaProvider:
 
         return []
 
+    @staticmethod
+    def _strict_messages(
+        messages: Iterable[MessageInput],
+    ) -> list[dict[str, Any]]:
+        return flatten_message_inputs(messages)
+
+    def _strict_summarize(
+        self,
+        messages: Iterable[MessageInput],
+        settings: Optional[dict[str, Any]],
+    ) -> str:
+        payload: dict[str, Any] = {"messages": self._strict_messages(messages)}
+        if settings:
+            payload.update(settings)
+        response = self.raw_complete(payload)
+        choices = response.get("choices")
+        if not isinstance(choices, list) or not choices:
+            raise ModelitoBadResponseError(
+                "Ollama strict summarize returned no completion choices"
+            )
+        first = choices[0]
+        if not isinstance(first, dict):
+            raise ModelitoBadResponseError(
+                "Ollama strict summarize returned an invalid completion choice"
+            )
+        message = first.get("message")
+        if isinstance(message, dict) and isinstance(message.get("content"), str):
+            return str(message["content"])
+        if isinstance(first.get("text"), str):
+            return str(first["text"])
+        raise ModelitoBadResponseError(
+            "Ollama strict summarize returned no textual completion"
+        )
+
+    def _strict_stream(
+        self,
+        messages: Iterable[MessageInput],
+        settings: Optional[dict[str, Any]],
+    ) -> Iterable[str]:
+        payload: dict[str, Any] = {"messages": self._strict_messages(messages)}
+        if settings:
+            payload.update(settings)
+        for event in self.raw_stream(payload):
+            choices = event.get("choices") if isinstance(event, dict) else None
+            if not isinstance(choices, list) or not choices:
+                continue
+            first = choices[0]
+            if not isinstance(first, dict):
+                continue
+            delta = first.get("delta")
+            if isinstance(delta, dict) and isinstance(delta.get("content"), str):
+                content = str(delta["content"])
+                if content:
+                    yield content
+                continue
+            text = first.get("text")
+            if isinstance(text, str) and text:
+                yield text
+
     def summarize(
         self,
         messages: Iterable[MessageInput],
         settings: Optional[dict[str, Any]] = None,
     ) -> str:
-        """Produce a deterministic summary by concatenating message contents.
+        """Return assistant text from Ollama or the configured fallback path.
 
-        This minimal implementation is intended for local testing and
-        compatibility; it does not contact a model service.
+        Strict mode uses direct HTTP and propagates failures. Non-strict mode
+        retains the legacy HTTP, CLI, and deterministic fallback chain.
 
         Args:
             messages: Iterable of message dicts (containing ``content``) or
@@ -208,6 +288,9 @@ class OllamaProvider:
         Returns:
             A string containing the joined message contents.
         """
+        if self.strict:
+            return self._strict_summarize(messages, settings)
+
         flattened = flatten_message_inputs(messages)
         prompt = "\n".join(
             str(item.get("content") or "")
@@ -233,7 +316,7 @@ class OllamaProvider:
                 else:
                     payload["prompt"] = prompt
                     endpoint = "/api/generate"
-                _apply_ollama_settings(payload, settings)
+                _apply_ollama_settings(payload, settings, endpoint)
 
                 try:
                     url = endpoint_url(self.host, self.port, endpoint)
@@ -348,6 +431,10 @@ class OllamaProvider:
         as they arrive. Falls back to the deterministic `summarize()` chunking
         when streaming isn't available.
         """
+        if self.strict:
+            yield from self._strict_stream(messages, settings)
+            return
+
         try:
             import json
             from urllib.request import Request, urlopen
@@ -378,7 +465,7 @@ class OllamaProvider:
                 if isinstance(item, dict)
             )
             endpoint = "/api/generate"
-        _apply_ollama_settings(payload, settings)
+        _apply_ollama_settings(payload, settings, endpoint)
 
         url = endpoint_url(self.host, self.port, endpoint)
 

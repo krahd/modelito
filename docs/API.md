@@ -30,12 +30,18 @@ surface. The primary exports (also visible via `from modelito import *`) are:
   `summarize()` fallback useful for tests. For native `/api/chat` and
   `/api/generate` requests, flat generation settings such as `temperature`,
   `seed`, and `num_predict` are placed in Ollama's `options` object. An explicit
-  `settings["options"]` mapping is also supported; `format`, `keep_alive`,
-  `think`, `tools`, and other recognised native request fields remain top-level
-  controls. Unknown flat settings are not guessed or forwarded; use
+  `settings["options"]` mapping is also supported. Documented top-level fields
+  are endpoint-specific: chat accepts `tools`, `format`, `think`, `keep_alive`,
+  `logprobs`, and `top_logprobs`; generate accepts `suffix`, `images`, `format`,
+  `system`, `raw`, `think`, `keep_alive`, `logprobs`, and `top_logprobs`.
+  Unknown or undocumented flat settings are not guessed or forwarded; use
   `settings["options"]` for additional model-specific Ollama options. The
   common `max_tokens` and JSON `response_format` settings are translated to
   `num_predict` and Ollama's native `format`, respectively.
+  With `strict=False`, native HTTP failures can fall back to the Ollama CLI and
+  then deterministic text. With `strict=True`, `summarize()` and `stream()` use
+  the direct `/v1/chat/completions` HTTP transport and propagate errors without
+  changing transport; use this mode when invocation consistency matters.
 - `OpenAIProvider` — SDK-backed hosted OpenAI provider; can also target hosted OpenAI-compatible APIs via `base_url`.
 - `BaseRTProvider` — thin preset for a local BaseRT OpenAI-compatible server.
 - `VLLMMLXProvider` — thin preset for a local vllm-mlx OpenAI-compatible server.

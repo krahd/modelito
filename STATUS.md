@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-08-25 06:25
+Last updated: 2026-08-25 06:39
 
 ## Project purpose
 
@@ -174,23 +174,28 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
 
 ## Current validation
 
-- Focused Ollama/client regression suite: 58 tests passed on 2026-08-25.
+- Full non-integration suite: 397 tests passed and 1 skipped on 2026-08-25.
+- Focused Ollama/client regression suite: 68 tests passed on 2026-08-25.
 - The available pytest configuration emits one warning because the installed
   pytest does not recognise `asyncio_default_fixture_loop_scope`.
-- Ruff was not available in the current development environment, so the
-  focused lint command could not be run.
+- Ruff and mypy were not available in the current development environment, so
+  lint and type checks could not be run.
 - `python3 -m compileall -q modelito` passed. Black could not start because its
   installed version imports a removed private symbol from the installed Click.
-- The full test suite, mypy, and package build were not run for the current
-  Ollama settings change.
+- The package build was not run for the current Ollama settings change.
 
 ## Recent changes
 
 - Ollama native `/api/chat` and `/api/generate` requests now preserve message
   roles, explicitly select synchronous or streaming responses, place known
-  generation settings in the native `options` object, retain known request
-  controls at the top level, and avoid guessing how unknown flat settings
-  should be routed. `settings["options"]` remains the explicit escape hatch.
+  generation settings in the native `options` object, and use separate
+  documentation-based allowlists for each endpoint's top-level controls.
+  Undocumented and unknown flat settings are not guessed; `settings["options"]`
+  remains the explicit escape hatch.
+- Ollama strict enforcement now lives in the base provider as well as the
+  package/registry compatibility export. `strict=True` summary and streaming
+  requests use direct HTTP and never fall back to CLI or deterministic output;
+  `strict=False` retains the resilient fallback chain.
 - Added explicit `portable`, `mac-performance`, and `auto` local-runtime
   profiles without altering the established `Client(provider="auto")` contract.
 - Added BaseRT and vllm-mlx OpenAI-compatible provider presets alongside oMLX
@@ -293,4 +298,4 @@ winner table.
 - CI intentionally excludes integration tests by path/flags to keep default
   hosted CI fast and safe.
 
-Last updated: 2026-08-25 06:25
+Last updated: 2026-08-25 06:39

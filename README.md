@@ -132,7 +132,8 @@ Provided shims and utilities:
   through stdlib helpers and can fall back to the local Ollama CLI or
   deterministic test behavior when needed. The `modelito[ollama]` extra installs
   optional support dependencies used by the broader Ollama service-management
-  helpers.
+  helpers. Set `strict=True` to use direct HTTP summary/streaming transport and
+  propagate failures without CLI or deterministic fallback.
 
 The client layer recognises the same provider stack through `ChatProvider`,
 `MessageInput`, and structured response helpers such as `Client.chat()` and
