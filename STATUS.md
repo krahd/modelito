@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-10-22 19:44
+Last updated: 2026-10-22 19:48
 
 ## Project purpose
 
@@ -12,9 +12,10 @@ test fallbacks.
 
 ## Current state
 
-- Package metadata version: `1.4.6`; PyPI currently serves `1.4.5`.
-- Release 1.4.6 is being validated for the authorised PyPI publication.
-- Active focus: eliminate silent Ollama request degradation and verify release artefacts.
+- Package metadata and latest PyPI version: `1.4.6`.
+- Release tag `v1.4.6` points to `0ecf54e`; trusted PyPI publication completed.
+- Active focus: Ollama request-fidelity repair and release verification are complete;
+  follow-up provider work remains listed below.
 - Python: 3.10–3.12.
 - Licence: MIT.
 - Hosted providers include OpenAI, Anthropic/Claude, Gemini, and Grok.
@@ -176,20 +177,30 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
 
 ## Current validation
 
-- Full non-integration suite: 406 passed, 1 skipped on 2026-10-22, followed by
-  19 passing focused tests after adding the real UTF-8 subprocess regression
-  and simplifying the error path. Final CI matrix is pending.
+- [Release-source CI](https://github.com/krahd/modelito/actions/runs/39885685585)
+  passed for commit `0ecf54e`: lint, Python 3.10/3.11/3.12 tests, Windows Ollama
+  regressions and documentation build.
+- Full CI suite: 407 passed, 1 skipped; Windows focused suite: 46 passed.
+  Legacy fallback tests emit the expected runtime warnings.
 - Ruff, mypy (43 source files), and the legacy-dict documentation check passed.
 - Live Ollama with existing `smollm2:latest`: summary and streaming requests with
   roles, Spanish text, `temperature=0`, and `num_ctx=2048` succeeded. An unknown
   model raised `ModelitoProviderError` with HTTP 404 rather than returning input.
 - Existing gated live integration test: 1 passed with installations, downloads
   and updates disabled.
-- Windows-focused CI coverage includes native requests and real UTF-8 subprocess
-  output; a Windows result is pending.
-- Sdist and wheel build, `twine check`, clean wheel import/version and default
-  strict provider construction passed. Final CI artefacts will be built from
-  the release commit.
+- Windows coverage includes native request payloads and UTF-8 output from a real
+  subprocess. No Windows Ollama daemon was installed or exercised.
+- Final committed sdist/wheel build, `twine check`, clean wheel import/version
+  and default strict provider construction passed. An isolated wheel installation
+  also passed a live `Client.chat()` request against the existing local model.
+- [Trusted PyPI publication](https://github.com/krahd/modelito/actions/runs/39885869196)
+  succeeded. A fresh uncached installation of `modelito==1.4.6` from public PyPI
+  passed import/version/default-strict checks, captured native roles/options/
+  synchronous flag/Spanish-response assertions, and a live `Client.chat()` call.
+- Published wheel SHA-256:
+  `73dfb59814b0b2d6bdb343837b7b25e0dab1fffac96d168fba0466f02ee18ca5`.
+- Published sdist SHA-256:
+  `28e7b6cdc1570834236c55ca1dcda9ac608d920d65e467fff4c9e13013be7c87`.
 
 ## Recent changes
 
@@ -275,8 +286,9 @@ winner table.
 
 ## Next steps
 
-1. Complete release checks, commit the focused fixes, and confirm CI including
-   Windows before tagging v1.4.6 for trusted PyPI publishing.
+1. Monitor reports from consumers upgrading to 1.4.6, particularly applications
+   that relied on silent Ollama fallbacks; document explicit `strict=False`
+   only for intentional legacy/offline use.
 2. Run the conversational benchmark on the target Apple-Silicon machine with
    equivalent models/configurations and record results separately from runtime
    marketing benchmarks.
@@ -316,4 +328,4 @@ winner table.
 - CI intentionally excludes integration tests by path/flags to keep default
   hosted CI fast and safe.
 
-Last updated: 2026-10-22 19:44
+Last updated: 2026-10-22 19:48
