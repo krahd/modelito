@@ -1,10 +1,8 @@
 """Strict-aware Ollama provider surface.
 
-The historical :mod:`modelito.ollama` provider intentionally keeps deterministic
-fallbacks for offline-friendly use. Local-runtime profiles have a stronger
-contract: when ``strict=True`` a failed local model request must fail rather than
-silently returning the prompt. The base provider now enforces that distinction
-directly. This subclass remains as the stable package-root and registry export
+The base provider defaults to strict native HTTP requests. Legacy offline
+fallbacks require explicit ``strict=False`` and warn about degraded semantics.
+This subclass remains as the stable package-root and registry export
 for compatibility.
 """
 

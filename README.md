@@ -128,12 +128,12 @@ Provided shims and utilities:
 - `VLLMMLXProvider` — thin vllm-mlx preset built on
   `OpenAICompatibleHTTPProvider`.
 - `OMLXProvider` — thin oMLX preset built on `OpenAICompatibleHTTPProvider`.
-- `OllamaProvider` — HTTP-aware provider that can call a local Ollama HTTP API
-  through stdlib helpers and can fall back to the local Ollama CLI or
-  deterministic test behavior when needed. The `modelito[ollama]` extra installs
-  optional support dependencies used by the broader Ollama service-management
-  helpers. Set `strict=True` to use direct HTTP summary/streaming transport and
-  propagate failures without CLI or deterministic fallback.
+- `OllamaProvider` — uses Ollama's native HTTP API for summaries and streaming,
+  preserving roles and generation options. Since 1.4.6, `strict=True` is the
+  default: failures raise instead of silently invoking the CLI or echoing input.
+  Legacy offline behaviour requires explicit `strict=False` and emits a
+  `RuntimeWarning` because roles/settings may be lost and output may be a shim.
+  The `modelito[ollama]` extra adds optional service-management dependencies.
 
 The client layer recognises the same provider stack through `ChatProvider`,
 `MessageInput`, and structured response helpers such as `Client.chat()` and

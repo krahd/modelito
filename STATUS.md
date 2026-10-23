@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-08-25 06:39
+Last updated: 2026-10-22 19:44
 
 ## Project purpose
 
@@ -12,7 +12,9 @@ test fallbacks.
 
 ## Current state
 
-- Package metadata version: `1.4.6`.
+- Package metadata version: `1.4.6`; PyPI currently serves `1.4.5`.
+- Release 1.4.6 is being validated for the authorised PyPI publication.
+- Active focus: eliminate silent Ollama request degradation and verify release artefacts.
 - Python: 3.10–3.12.
 - Licence: MIT.
 - Hosted providers include OpenAI, Anthropic/Claude, Gemini, and Grok.
@@ -174,17 +176,32 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
 
 ## Current validation
 
-- Full non-integration suite: 397 tests passed and 1 skipped on 2026-08-25.
-- Focused Ollama/client regression suite: 68 tests passed on 2026-08-25.
-- The available pytest configuration emits one warning because the installed
-  pytest does not recognise `asyncio_default_fixture_loop_scope`.
-- Ruff and mypy were not available in the current development environment, so
-  lint and type checks could not be run.
-- `python3 -m compileall -q modelito` passed. Black could not start because its
-  installed version imports a removed private symbol from the installed Click.
-- The package build was not run for the current Ollama settings change.
+- Full non-integration suite: 406 passed, 1 skipped on 2026-10-22, followed by
+  19 passing focused tests after adding the real UTF-8 subprocess regression
+  and simplifying the error path. Final CI matrix is pending.
+- Ruff, mypy (43 source files), and the legacy-dict documentation check passed.
+- Live Ollama with existing `smollm2:latest`: summary and streaming requests with
+  roles, Spanish text, `temperature=0`, and `num_ctx=2048` succeeded. An unknown
+  model raised `ModelitoProviderError` with HTTP 404 rather than returning input.
+- Existing gated live integration test: 1 passed with installations, downloads
+  and updates disabled.
+- Windows-focused CI coverage includes native requests and real UTF-8 subprocess
+  output; a Windows result is pending.
+- Sdist and wheel build, `twine check`, clean wheel import/version and default
+  strict provider construction passed. Final CI artefacts will be built from
+  the release commit.
 
 ## Recent changes
+
+- Ollama defaults to `strict=True`: native summary/streaming HTTP errors raise
+  explicitly, with no CLI or deterministic fallback. Both paths preserve roles
+  and native generation options, including `temperature` and `num_ctx`.
+- Legacy `strict=False` fallback remains an explicit opt-in with a runtime
+  warning about lost roles/settings and synthetic output.
+- Native streams reject invalid JSON/UTF-8 and incomplete responses without
+  replaying requests or appending fallback output. Configured timeout is used.
+- CLI output is decoded explicitly as UTF-8; synchronous raw completions force
+  `stream: false`. Regression coverage includes Spanish and a real subprocess.
 
 - Ollama native `/api/chat` and `/api/generate` requests now preserve message
   roles, explicitly select synchronous or streaming responses, place known
@@ -194,8 +211,8 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
   remains the explicit escape hatch.
 - Ollama strict enforcement now lives in the base provider as well as the
   package/registry compatibility export. `strict=True` summary and streaming
-  requests use direct HTTP and never fall back to CLI or deterministic output;
-  `strict=False` retains the resilient fallback chain.
+  requests use native HTTP and never fall back to CLI or deterministic output;
+  explicit `strict=False` retains the legacy chain with a warning.
 - Added explicit `portable`, `mac-performance`, and `auto` local-runtime
   profiles without altering the established `Client(provider="auto")` contract.
 - Added BaseRT and vllm-mlx OpenAI-compatible provider presets alongside oMLX
@@ -230,7 +247,8 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
    instead of guessing model- or version-specific support.
 9. Speech/VAD/TTS/ASR orchestration does not belong in Modelito's LLM runtime
    abstraction.
-10. No release, tag, or version bump is part of this work.
+10. Release 1.4.6 to PyPI is explicitly authorised for this task.
+11. Ollama must fail explicitly by default; legacy offline fallback is opt-in.
 
 ## Pending tasks
 
@@ -257,8 +275,8 @@ winner table.
 
 ## Next steps
 
-1. Keep the current CI green and resolve all PR review findings before merging
-   the local-runtime work.
+1. Complete release checks, commit the focused fixes, and confirm CI including
+   Windows before tagging v1.4.6 for trusted PyPI publishing.
 2. Run the conversational benchmark on the target Apple-Silicon machine with
    equivalent models/configurations and record results separately from runtime
    marketing benchmarks.
@@ -298,4 +316,4 @@ winner table.
 - CI intentionally excludes integration tests by path/flags to keep default
   hosted CI fast and safe.
 
-Last updated: 2026-08-25 06:39
+Last updated: 2026-10-22 19:44

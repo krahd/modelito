@@ -12,7 +12,8 @@ from __future__ import annotations
 import json as _json
 import time
 import uuid
-from typing import Any, Iterable, List, Optional
+import warnings
+from typing import Any, Iterable, List, NoReturn, Optional
 from urllib.request import Request, urlopen
 
 from .exceptions import (
@@ -33,7 +34,6 @@ from .ollama_service import (
     run_ollama_command,
     running_model_names,
 )
-
 
 _OLLAMA_CHAT_TOP_LEVEL_SETTINGS = frozenset(
     {
@@ -136,8 +136,8 @@ def _apply_ollama_settings(
 class OllamaProvider:
     """Provider for local Ollama runtimes.
 
-    `OllamaProvider` supports the standard modelito provider methods, local Ollama
-    HTTP/CLI fallbacks, embeddings, and raw OpenAI-compatible chat passthrough via
+    `OllamaProvider` supports native HTTP requests, explicit opt-in CLI/offline
+    fallbacks, embeddings, and raw OpenAI-compatible chat passthrough via
     Ollama's `/v1/chat/completions` endpoint.
     """
 
@@ -147,7 +147,7 @@ class OllamaProvider:
         port: int = 11434,
         model: Optional[str] = None,
         timeout: float = 20.0,
-        strict: bool = False,
+        strict: bool = True,
         **_: Any,
     ):
         """Initialize the provider.
@@ -156,7 +156,7 @@ class OllamaProvider:
         will attempt to use it for `list_models()` and `summarize()` calls.
         With ``strict=False``, failures may fall back through the Ollama CLI to
         a deterministic offline-friendly shim. With ``strict=True``, summary
-        and streaming calls use the direct OpenAI-compatible HTTP transport and
+        and streaming calls use the direct native HTTP transport and
         propagate failures without changing transport.
         """
         # Accept host with or without scheme; endpoint_url will normalize it.
@@ -210,63 +210,68 @@ class OllamaProvider:
         return []
 
     @staticmethod
-    def _strict_messages(
-        messages: Iterable[MessageInput],
-    ) -> list[dict[str, Any]]:
-        return flatten_message_inputs(messages)
+    def _raise_request_error(exc: Exception) -> NoReturn:
+        """Preserve transport causes while exposing the provider error contract."""
+        import socket
+        from urllib.error import HTTPError, URLError
+
+        cause = exc.__cause__ or exc
+        if isinstance(
+            exc,
+            (
+                ModelitoBadResponseError,
+                ModelitoConnectionError,
+                ModelitoTimeoutError,
+                ModelitoProviderError,
+            ),
+        ):
+            raise exc
+        if isinstance(cause, HTTPError):
+            raise ModelitoProviderError(f"HTTP {cause.code}: {exc}") from exc
+        if isinstance(cause, (TimeoutError, socket.timeout)):
+            raise ModelitoTimeoutError(str(exc)) from exc
+        if isinstance(cause, URLError):
+            if "timed out" in str(cause.reason).lower():
+                raise ModelitoTimeoutError(str(exc)) from exc
+            raise ModelitoConnectionError(str(exc)) from exc
+        if isinstance(cause, (ValueError, UnicodeError)):
+            raise ModelitoBadResponseError(str(exc)) from exc
+        raise ModelitoProviderError(str(exc)) from exc
 
     def _strict_summarize(
         self,
         messages: Iterable[MessageInput],
         settings: Optional[dict[str, Any]],
     ) -> str:
-        payload: dict[str, Any] = {"messages": self._strict_messages(messages)}
-        if settings:
-            payload.update(settings)
-        response = self.raw_complete(payload)
-        choices = response.get("choices")
-        if not isinstance(choices, list) or not choices:
-            raise ModelitoBadResponseError(
-                "Ollama strict summarize returned no completion choices"
+        flattened = flatten_message_inputs(messages)
+        endpoint = "/api/chat" if flattened else "/api/generate"
+        payload: dict[str, Any] = {"stream": False}
+        if self.model:
+            payload["model"] = self.model
+        if flattened:
+            payload["messages"] = flattened
+        else:
+            payload["prompt"] = ""
+        _apply_ollama_settings(payload, settings, endpoint)
+        try:
+            response = json_post(
+                endpoint_url(self.host, self.port, endpoint),
+                payload,
+                timeout=self.timeout,
             )
-        first = choices[0]
-        if not isinstance(first, dict):
-            raise ModelitoBadResponseError(
-                "Ollama strict summarize returned an invalid completion choice"
-            )
-        message = first.get("message")
-        if isinstance(message, dict) and isinstance(message.get("content"), str):
-            return str(message["content"])
-        if isinstance(first.get("text"), str):
-            return str(first["text"])
-        raise ModelitoBadResponseError(
-            "Ollama strict summarize returned no textual completion"
-        )
-
-    def _strict_stream(
-        self,
-        messages: Iterable[MessageInput],
-        settings: Optional[dict[str, Any]],
-    ) -> Iterable[str]:
-        payload: dict[str, Any] = {"messages": self._strict_messages(messages)}
-        if settings:
-            payload.update(settings)
-        for event in self.raw_stream(payload):
-            choices = event.get("choices") if isinstance(event, dict) else None
-            if not isinstance(choices, list) or not choices:
-                continue
-            first = choices[0]
-            if not isinstance(first, dict):
-                continue
-            delta = first.get("delta")
-            if isinstance(delta, dict) and isinstance(delta.get("content"), str):
-                content = str(delta["content"])
-                if content:
-                    yield content
-                continue
-            text = first.get("text")
-            if isinstance(text, str) and text:
-                yield text
+            if not isinstance(response, dict):
+                raise ModelitoBadResponseError("Ollama returned a non-object response")
+            if "error" in response:
+                raise ModelitoProviderError(str(response["error"]))
+            message = response.get("message")
+            content = message.get("content") if isinstance(message, dict) else None
+            if not flattened:
+                content = response.get("response")
+            if not isinstance(content, str):
+                raise ModelitoBadResponseError("Ollama returned no textual completion")
+            return content
+        except Exception as exc:
+            self._raise_request_error(exc)
 
     def summarize(
         self,
@@ -275,8 +280,8 @@ class OllamaProvider:
     ) -> str:
         """Return assistant text from Ollama or the configured fallback path.
 
-        Strict mode uses direct HTTP and propagates failures. Non-strict mode
-        retains the legacy HTTP, CLI, and deterministic fallback chain.
+        Strict mode (the default) uses native HTTP and propagates failures.
+        Explicit strict=False retains the legacy fallback chain with a warning.
 
         Args:
             messages: Iterable of message dicts (containing ``content``) or
@@ -286,11 +291,17 @@ class OllamaProvider:
                 such as ``format`` and ``keep_alive`` remain top-level.
 
         Returns:
-            A string containing the joined message contents.
+            The assistant response text.
         """
         if self.strict:
             return self._strict_summarize(messages, settings)
 
+        warnings.warn(
+            "Ollama strict=False enables legacy CLI/offline fallbacks; roles and "
+            "settings may be lost and returned text may not be model output.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
         flattened = flatten_message_inputs(messages)
         prompt = "\n".join(
             str(item.get("content") or "")
@@ -429,23 +440,17 @@ class OllamaProvider:
         Attempts to call the Ollama `/api/chat` endpoint for structured messages
         or `/api/generate` endpoint for prompts, yielding incremental text pieces
         as they arrive. Falls back to the deterministic `summarize()` chunking
-        when streaming isn't available.
+        when streaming isn't available and strict=False was explicitly selected.
         """
-        if self.strict:
-            yield from self._strict_stream(messages, settings)
-            return
-
-        try:
-            import json
-            from urllib.request import Request, urlopen
-        except Exception:
-            # best-effort fallback
-            text = self.summarize(messages, settings=settings)
-            if not text:
-                return
-            for i in range(0, len(text), 64):
-                yield text[i: i + 64]
-            return
+        if not self.strict:
+            warnings.warn(
+                "Ollama strict=False enables legacy streaming/offline fallbacks; "
+                "returned text may not be model output.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+        import json
+        from urllib.request import Request, urlopen
 
         # Build payload and determine endpoint
         payload: dict[str, Any] = {"stream": True}
@@ -476,7 +481,7 @@ class OllamaProvider:
             method="POST",
         )
         try:
-            with urlopen(req, timeout=60) as resp:
+            with urlopen(req, timeout=self.timeout) as resp:
                 # iterate lines as they arrive
                 while True:
                     chunk = resp.readline()
@@ -485,6 +490,8 @@ class OllamaProvider:
                     try:
                         s = chunk.decode("utf-8").strip()
                     except Exception:
+                        if self.strict:
+                            raise ModelitoBadResponseError("Ollama stream is not UTF-8")
                         try:
                             s = str(chunk)
                         except Exception:
@@ -499,11 +506,33 @@ class OllamaProvider:
                     # Try JSON parse
                     try:
                         obj = json.loads(s2)
-                    except Exception:
+                    except Exception as exc:
+                        if self.strict:
+                            raise ModelitoBadResponseError(
+                                "Invalid Ollama stream JSON"
+                            ) from exc
                         yield s2
                         continue
                     # Extract plausible text fields based on endpoint
                     if isinstance(obj, dict):
+                        if "error" in obj:
+                            raise ModelitoProviderError(str(obj["error"]))
+                        if self.strict:
+                            message = obj.get("message")
+                            content = (
+                                message.get("content")
+                                if isinstance(message, dict)
+                                else obj.get("response")
+                            )
+                            if isinstance(content, str) and content:
+                                yield content
+                            if obj.get("done") is True:
+                                return
+                            if not isinstance(content, str):
+                                raise ModelitoBadResponseError(
+                                    "Ollama stream has no text"
+                                )
+                            continue
                         # /api/chat returns message.content in streaming mode
                         if (
                             has_messages
@@ -546,16 +575,24 @@ class OllamaProvider:
                                 if "text" in first:
                                     yield str(first.get("text") or "")
                                     continue
+                    if self.strict:
+                        raise ModelitoBadResponseError(
+                            "Ollama stream event is not an object"
+                        )
                     # Fallback: yield the raw string
                     yield s2
+                if self.strict:
+                    raise ModelitoBadResponseError("Ollama stream ended before done")
                 return
-        except Exception:
+        except Exception as exc:
+            if self.strict:
+                self._raise_request_error(exc)
             # fallback deterministic chunked output
-            text = self.summarize(messages, settings=settings)
+            text = self.summarize(flattened, settings=settings)
             if not text:
                 return
             for i in range(0, len(text), 64):
-                yield text[i: i + 64]
+                yield text[i : i + 64]
             return
 
     def embed(self, texts: Iterable[str], **kwargs: Any) -> List[List[float]]:
@@ -624,6 +661,7 @@ class OllamaProvider:
         # tools, tool_choice, and response_format are intentionally not deep-copied
         # so callers can pass large payloads without unnecessary allocation.
         request_payload = dict(payload or {})
+        request_payload["stream"] = False
 
         # Set model if absent, but don't overwrite an explicit model.
         if "model" not in request_payload and self.model:
@@ -835,7 +873,7 @@ class OllamaProvider:
                 chunk_size = 64
 
         for start in range(0, len(text), chunk_size):
-            chunk = text[start: start + chunk_size]
+            chunk = text[start : start + chunk_size]
             if not chunk:
                 continue
 

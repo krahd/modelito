@@ -12,7 +12,7 @@ def _force_offline(monkeypatch):
 
 def test_ollama_summarize_dict_message_input_falls_back_to_text(monkeypatch):
     _force_offline(monkeypatch)
-    provider = OllamaProvider()
+    provider = OllamaProvider(strict=False)
 
     out = provider.summarize([{"role": "user", "content": "hello"}])
 
@@ -21,7 +21,7 @@ def test_ollama_summarize_dict_message_input_falls_back_to_text(monkeypatch):
 
 def test_ollama_summarize_string_message_input_falls_back_to_text(monkeypatch):
     _force_offline(monkeypatch)
-    provider = OllamaProvider()
+    provider = OllamaProvider(strict=False)
 
     out = provider.summarize(["hello"])
 
@@ -155,7 +155,7 @@ def test_ollama_stream_dict_message_input_falls_back_without_raising(monkeypatch
         raise RuntimeError("offline")
 
     monkeypatch.setattr("urllib.request.urlopen", _raise_urlopen)
-    provider = OllamaProvider()
+    provider = OllamaProvider(strict=False)
 
     chunks = list(provider.stream([{"role": "user", "content": "hello"}]))
 
@@ -185,7 +185,7 @@ def test_ollama_stream_applies_settings_to_native_options(monkeypatch):
         return FakeResponse()
 
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
-    provider = OllamaProvider(model="llama3.2")
+    provider = OllamaProvider(model="llama3.2", strict=False)
 
     chunks = list(
         provider.stream(
@@ -208,7 +208,7 @@ def test_ollama_stream_applies_settings_to_native_options(monkeypatch):
 
 def test_ollama_invalid_message_type_raises(monkeypatch):
     _force_offline(monkeypatch)
-    provider = OllamaProvider()
+    provider = OllamaProvider(strict=False)
 
     with pytest.raises(TypeError):
         provider.summarize([object()])

@@ -24,10 +24,8 @@ surface. The primary exports (also visible via `from modelito import *`) are:
 - `LOCAL_PROFILE_AUTO`, `LOCAL_PROFILE_PORTABLE`, `LOCAL_PROFILE_MAC_PERFORMANCE`, `LOCAL_PROFILES`, `normalize_local_profile()`, `local_provider_candidates()`, `is_macos_apple_silicon()` — local deployment-profile helpers.
 - `OpenAICompatibleHTTPProvider` — shared HTTP base class for local OpenAI-compatible runtimes.
 - `OllamaProvider` — HTTP-aware provider that will call a local Ollama HTTP
-  API when available (via the bundled `ollama_service` helpers). If the HTTP
-  API is not reachable it will attempt the Ollama CLI as a best-effort
-  fallback (using `run_ollama_command`) before exposing a safe deterministic
-  `summarize()` fallback useful for tests. For native `/api/chat` and
+  API via the bundled `ollama_service` helpers. Since 1.4.6, `strict=True`
+  is the default and failures raise explicitly. For native `/api/chat` and
   `/api/generate` requests, flat generation settings such as `temperature`,
   `seed`, and `num_predict` are placed in Ollama's `options` object. An explicit
   `settings["options"]` mapping is also supported. Documented top-level fields
@@ -38,10 +36,14 @@ surface. The primary exports (also visible via `from modelito import *`) are:
   `settings["options"]` for additional model-specific Ollama options. The
   common `max_tokens` and JSON `response_format` settings are translated to
   `num_predict` and Ollama's native `format`, respectively.
-  With `strict=False`, native HTTP failures can fall back to the Ollama CLI and
-  then deterministic text. With `strict=True`, `summarize()` and `stream()` use
-  the direct `/v1/chat/completions` HTTP transport and propagate errors without
-  changing transport; use this mode when invocation consistency matters.
+  With explicit `strict=False`, legacy CLI/deterministic fallbacks remain
+  available and emit a `RuntimeWarning`: roles/settings may be lost and output
+  may not come from a model. With default `strict=True`, `summarize()` and
+  `stream()` use native HTTP, honour `timeout`, preserve roles/options, and
+  propagate errors without changing transport. Synchronous requests force
+  `stream: false`; streaming requests require a terminal `done` event.
+  `raw_complete()` and `raw_stream()` retain the OpenAI-compatible endpoint;
+  pass native options through `summarize()`/`stream()` instead.
 - `OpenAIProvider` — SDK-backed hosted OpenAI provider; can also target hosted OpenAI-compatible APIs via `base_url`.
 - `BaseRTProvider` — thin preset for a local BaseRT OpenAI-compatible server.
 - `VLLMMLXProvider` — thin preset for a local vllm-mlx OpenAI-compatible server.

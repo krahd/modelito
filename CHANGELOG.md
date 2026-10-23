@@ -2,7 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.4.6 - 2026-05-19
+## 1.4.6 - 2026-10-22
+
+- Fix Ollama summaries to force `stream: false`, preserve conversation roles,
+  and pass generation settings including `temperature` and `num_ctx` in native
+  `options`. Strict summaries and streams now both use the native API.
+- **Behaviour change:** Ollama now defaults to `strict=True`. HTTP, model,
+  decoding and malformed-response errors raise instead of silently trying the
+  CLI or returning the input. Explicit `strict=False` retains legacy offline
+  behaviour with a warning about lost roles/settings and synthetic output.
+- Honour the configured request timeout; interrupted native streams raise
+  without retrying or appending fallback text.
+- Decode Ollama CLI output explicitly as UTF-8 for Windows accented text.
+- Force synchronous raw completions to send `stream: false`.
+
 
 - Added OpenAI-compatible raw passthrough support to `OllamaProvider` via Ollama's `/v1/chat/completions` endpoint.
 - Added `OllamaProvider.raw_complete()` and `OllamaProvider.raw_stream()` for preserving raw OpenAI-compatible chat payloads, including tool-call metadata.

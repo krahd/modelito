@@ -1419,6 +1419,7 @@ def run_ollama_command(
         [command, *args],
         cwd=str(ROOT),
         text=True,
+        encoding="utf-8",
         capture_output=True,
         check=False,
         env=base_env,

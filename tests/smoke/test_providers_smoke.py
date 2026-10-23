@@ -20,7 +20,7 @@ def test_openai_provider_summarize_fallback():
 
 
 def test_ollama_provider_summarize_fallback():
-    p = OllamaProvider()
+    p = OllamaProvider(strict=False)
     from modelito.messages import Message
 
     res = p.summarize([Message(role="user", content="hey")])

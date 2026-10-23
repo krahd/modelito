@@ -101,6 +101,6 @@ def test_ollama_server_response(monkeypatch):
         lambda url, payload, timeout=None: {"text": "ollama reply"},
     )
 
-    p = ollama_mod.OllamaProvider()
+    p = ollama_mod.OllamaProvider(strict=False)
     out = p.summarize([Message(role="user", content="hello")], settings={})
     assert out == "ollama reply"

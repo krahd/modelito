@@ -75,8 +75,8 @@ Each provider follows a fallback chain:
 3. **CLI tier (Ollama only):** If the Ollama CLI is installed, try calling `ollama run` or `ollama generate`.
 4. **Deterministic shim:** Return a stub response suitable for testing (concatenate message contents, or return a mock response).
 
-This Ollama fallback chain applies only when `strict=False`. With `strict=True`,
-summary and streaming requests use the direct OpenAI-compatible HTTP transport;
+This Ollama fallback chain requires explicit `strict=False` and emits a warning.
+Since 1.4.6, `strict=True` is the default; summary and streaming requests use the native HTTP API;
 transport or provider failures are raised without trying the CLI or shim.
 
 Tool-calling integrations should prefer the raw-capable path only when full request/response fidelity is available. The fallback path remains the correct choice for offline tests and non-raw providers.
