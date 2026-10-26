@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-10-26 15:57
+Last updated: 2026-10-26 16:15
 
 ## Project purpose
 
@@ -12,12 +12,12 @@ test fallbacks.
 
 ## Current state
 
-- Package metadata: `1.4.7`; release validation is in progress.
-- Published baseline: `1.4.6`; the audit repairs are prepared for the authorised
-  `1.4.7` release. Publication has not yet occurred.
-- Active focus: the five upstream audit findings and the additional remote
-  catalogue discovery defect are repaired and validated locally. Live lifecycle
-  acceptance remains separate.
+- Package metadata and published PyPI version: `1.4.7`.
+- Release tag `v1.4.7` points to `3a0d67c`; trusted PyPI publication and the
+  GitHub release completed. A fresh uncached public-PyPI installation is verified.
+- Active focus: the five upstream audit findings and additional remote catalogue
+  discovery defect are released. Monitor consumer reports and preserve explicit
+  endpoint, ownership and strict-response contracts.
 - Python: 3.10–3.12.
 - Licence: MIT.
 - Hosted providers include OpenAI, Anthropic/Claude, Gemini, and Grok.
@@ -177,100 +177,49 @@ python -m build
 Local runtime policy, benchmark usage, capability caveats, and upstream sources
 are documented in `docs/LOCAL-RUNTIMES.md`.
 
-## Release 1.4.7 validation
+## Current validation
 
-- `main` was fetched and matched `origin/main` before release preparation.
-- Public PyPI reports 1.4.6; version 1.4.7 was not present before preparation.
-- The repository has zero registered self-hosted runners. The integration gate
-  used its exact test locally against existing `smollm2:latest`: 1 passed.
-  Command: `RUN_OLLAMA_INTEGRATION=1 ALLOW_OLLAMA_INSTALL=0
-  ALLOW_OLLAMA_DOWNLOAD=0 ALLOW_OLLAMA_UPDATE=0 OLLAMA_MODEL=smollm2:latest
-  python -m pytest tests/integration/test_integration_ollama_stream.py -q`.
-- Final source suite: 463 passed, 1 skipped on Python 3.12.15. Ruff, mypy,
-  changed-file Black checks, documentation example checks and diff checks passed.
-- Isolated 1.4.7 wheel/sdist build and twine metadata validation passed. A fresh
-  dependency-free wheel installation passed version/default-strict checks, live
-  summary and complete streaming, native roles/options capture, per-call timeout
-  override, missing-model HTTP 404 and incomplete-response rejection. Live remote
-  discovery returned 260 model families.
-- Release-source commit `a37477a` is pushed to `origin/main`; hosted CI and
-  publication are pending. The expanded Windows test step stalled; per-test
-  output and a 45-second traceback/exit limit are added to identify the blocked
-  regression. The diagnostic Windows run also stalled without returning logs;
-  an outer 120-second process-tree watchdog now captures and prints test output
-  even when pytest cannot finish. The oversized-response regression generated
-  a 4 MiB automatic pytest ID; short case names now retain the full payload
-  assertion while keeping diagnostics bounded. No service shutdown,
-  model download/deletion or Ollama installation/update was performed.
-- Windows CI now includes the new audit and remote-catalogue regression files.
-
-## Remote discovery validation (pre-release repair)
-
-- Live read-only HTTPS discovery from `https://ollama.com/library` returned 260
-  unique model families without invoking the local daemon or CLI.
-- Regression tests cover independent discovery, filtering/deduplication,
-  explicit installed-state endpoints, default-tag matching, fetch/parse failures,
-  response size bounds and timeout validation: 20 focused tests passed.
-- Final full non-live suite on Python 3.12.15 and 3.14.9: 463 passed, 1 skipped
-  on each interpreter (`python -m pytest -q --ignore=tests/integration tests`).
-- Ruff, mypy (43 source files), Black on the changed Python files, the legacy-dict
-  documentation check and `git diff --check` passed. The existing no-CLI smoke
-  test now isolates the public fetch and local CLI state from the environment.
-- Changes remain local and unreleased; hosted CI and native Windows acceptance
-  were not run. Packaging evidence below predates this remote-discovery change.
-
-## Previous five-finding repair validation
-
-- Full non-live suite on macOS, independently on Python 3.12.15 and 3.14.9:
-  `python -m pytest -q --ignore=tests/integration tests` — 452 passed, 1 skipped
-  on each interpreter; the 10 warnings are expected legacy-fallback warnings.
-- Added 45 regressions for completion/model identity, timeout overrides,
-  endpoint routing, blocked download output, cancellation cleanup, receipt
-  creation and shutdown ownership. Synthetic loopback HTTP tests verify the
-  native request body and one-attempt timeout failure. Real Python subprocesses
-  verify execution deadlines and child cleanup. HTTP tests required expanded
-  sandbox permissions for loopback binding.
-- `ruff check .`, `mypy modelito --ignore-missing-imports` (43 source files),
-  Black checks on all changed Python files, the legacy-dict documentation check
-  and `git diff --check` passed.
-- Isolated wheel/sdist build and `python -m twine check` passed. A fresh
-  dependency-free wheel installation passed import/default-strict and completed/
-  incomplete response smoke checks; wheel package bytes match the current source.
-  Build dependencies were installed into temporary isolated environments; no
-  release was published.
-- No deliberate real Ollama inference, service shutdown, model download/deletion,
-  installation/update or native Windows execution was performed. Existing smoke
-  tests may inspect the installed CLI/service; the repaired inventory fallback
-  regression is isolated from that machine state. Hosted CI was not run.
-
-## Published 1.4.6 validation (historical)
-
-- [Release-source CI](https://github.com/krahd/modelito/actions/runs/39885685585)
-  passed for commit `0ecf54e`: lint, Python 3.10/3.11/3.12 tests, Windows Ollama
-  regressions and documentation build.
-- Full CI suite: 407 passed, 1 skipped; Windows focused suite: 46 passed.
-  Legacy fallback tests emit the expected runtime warnings.
-- Ruff, mypy (43 source files), and the legacy-dict documentation check passed.
-- Live Ollama with existing `smollm2:latest`: summary and streaming requests with
-  roles, Spanish text, `temperature=0`, and `num_ctx=2048` succeeded. An unknown
-  model raised `ModelitoProviderError` with HTTP 404 rather than returning input.
-- Existing gated live integration test: 1 passed with installations, downloads
-  and updates disabled.
-- Windows coverage includes native request payloads and UTF-8 output from a real
-  subprocess. No Windows Ollama daemon was installed or exercised.
-- Final committed sdist/wheel build, `twine check`, clean wheel import/version
-  and default strict provider construction passed. An isolated wheel installation
-  also passed a live `Client.chat()` request against the existing local model.
-- [Trusted PyPI publication](https://github.com/krahd/modelito/actions/runs/39885869196)
-  succeeded. A fresh uncached installation of `modelito==1.4.6` from public PyPI
-  passed import/version/default-strict checks, captured native roles/options/
-  synchronous flag/Spanish-response assertions, and a live `Client.chat()` call.
-- Published wheel SHA-256:
-  `73dfb59814b0b2d6bdb343837b7b25e0dab1fffac96d168fba0466f02ee18ca5`.
-- Published sdist SHA-256:
-  `28e7b6cdc1570834236c55ca1dcda9ac608d920d65e467fff4c9e13013be7c87`.
+- [Release-source CI](https://github.com/krahd/modelito/actions/runs/40410387950)
+  passed at `3a0d67c`: lint, Python 3.10/3.11/3.12 suites (463 passed, 1 skipped
+  each), Windows Ollama regressions (102 passed), and documentation build.
+  The matching source commit is on canonical `main`; CI was dispatched on an
+  isolated release reference while a superseded main run blocked concurrency.
+- Final local non-live suite: 463 passed, 1 skipped on Python 3.12.15. The remote
+  discovery repair was also verified on Python 3.14.9. Expected warnings exercise
+  explicit legacy fallbacks. Ruff, mypy (43 source files), changed-file Black
+  checks, the documentation example check and diff checks passed.
+- Zero self-hosted runners are registered. The exact maintained live integration
+  test ran locally against existing `smollm2:latest`: 1 passed. Command:
+  `RUN_OLLAMA_INTEGRATION=1 ALLOW_OLLAMA_INSTALL=0 ALLOW_OLLAMA_DOWNLOAD=0
+  ALLOW_OLLAMA_UPDATE=0 OLLAMA_MODEL=smollm2:latest python -m pytest
+  tests/integration/test_integration_ollama_stream.py -q`.
+- Isolated 1.4.7 wheel/sdist build, twine metadata checks and a dependency-free
+  wheel installation passed. Live checks captured native roles, synchronous
+  flags, generation options and timeout overrides, completed a full stream,
+  verified missing-model HTTP 404 and rejected a synthetic incomplete response.
+- [Trusted PyPI publication](https://github.com/krahd/modelito/actions/runs/40410636009)
+  succeeded. A fresh uncached installation of `modelito==1.4.7` from public PyPI
+  passed import/version/default-strict, the same live/native-wire checks,
+  incomplete-response rejection, remote discovery (260 model families) and
+  `pip check`. Public wheel package source bytes match the release checkout.
+- [GitHub release](https://github.com/krahd/modelito/releases/tag/v1.4.7) is public.
+- Published artifacts were downloaded and their SHA-256 hashes verified against
+  public PyPI metadata:
+  - Wheel: `6b5aceb4aefafd58e4b475d383de13183bbe2a5652157aeb4c378bda97d8543a`.
+  - Sdist: `4e32bf2b73965f3bd2ece36b29deaccdb76478f26496875530fa86c087a86607`.
+- Windows coverage now includes audit and catalogue regressions. Short IDs retain
+  the 4 MiB response-limit payload test without generating a multi-megabyte test
+  name. Per-test tracebacks and an outer process-tree watchdog bound diagnostics.
+- Real service shutdown, model download/deletion and Ollama installation/update
+  were not performed. Windows evidence covers synthetic transports/subprocesses,
+  not a Windows Ollama daemon. Response model matching is not model authentication.
 
 ## Recent changes
+
+- Released 1.4.7 with the Ollama audit repairs and remote catalogue fix. Added
+  bounded Windows diagnostic execution and short oversized-response case IDs.
+  Maintainer instructions document the exact local integration fallback when
+  no self-hosted runner is registered.
 
 - Replaced unsupported remote-list CLI flags and the adapter's unsupported HTTP
   route with bounded HTTPS parsing of the official Ollama library. Results are
@@ -373,9 +322,9 @@ winner table.
 
 ## Next steps
 
-1. Complete release 1.4.7 validation, commit/push, hosted CI and publication, then
-   verify a fresh installation from public PyPI.
-2. Monitor reports from consumers upgrading to 1.4.6, particularly applications
+1. Monitor consumers upgrading to 1.4.7, especially explicit endpoint management,
+   ownership-based shutdown and remote-library discovery.
+2. Monitor reports from consumers upgrading from releases before 1.4.6, particularly applications
    that relied on silent Ollama fallbacks; document explicit `strict=False`
    only for intentional legacy/offline use.
 3. Run the conversational benchmark on the target Apple-Silicon machine with
@@ -428,4 +377,4 @@ winner table.
 - CI intentionally excludes integration tests by path/flags to keep default
   hosted CI fast and safe.
 
-Last updated: 2026-10-26 15:57
+Last updated: 2026-10-26 16:15
