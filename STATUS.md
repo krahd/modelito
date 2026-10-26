@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-10-26 15:56
+Last updated: 2026-10-26 15:57
 
 ## Project purpose
 
@@ -193,7 +193,10 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
   summary and complete streaming, native roles/options capture, per-call timeout
   override, missing-model HTTP 404 and incomplete-response rejection. Live remote
   discovery returned 260 model families.
-- Hosted CI, commit/push and publication are pending. No service shutdown,
+- Release-source commit `a37477a` is pushed to `origin/main`; hosted CI and
+  publication are pending. The expanded Windows test step stalled; per-test
+  output and a 45-second traceback/exit limit are added to identify the blocked
+  regression. No service shutdown,
   model download/deletion or Ollama installation/update was performed.
 - Windows CI now includes the new audit and remote-catalogue regression files.
 
@@ -421,4 +424,4 @@ winner table.
 - CI intentionally excludes integration tests by path/flags to keep default
   hosted CI fast and safe.
 
-Last updated: 2026-10-26 15:56
+Last updated: 2026-10-26 15:57
