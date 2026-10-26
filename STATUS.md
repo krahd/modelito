@@ -198,7 +198,9 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
   output and a 45-second traceback/exit limit are added to identify the blocked
   regression. The diagnostic Windows run also stalled without returning logs;
   an outer 120-second process-tree watchdog now captures and prints test output
-  even when pytest cannot finish. No service shutdown,
+  even when pytest cannot finish. The oversized-response regression generated
+  a 4 MiB automatic pytest ID; short case names now retain the full payload
+  assertion while keeping diagnostics bounded. No service shutdown,
   model download/deletion or Ollama installation/update was performed.
 - Windows CI now includes the new audit and remote-catalogue regression files.
 

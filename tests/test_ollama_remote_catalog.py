@@ -50,6 +50,7 @@ def test_library_discovery_needs_no_cli_or_daemon(monkeypatch):
 @pytest.mark.parametrize(
     "body",
     [b"", b"<html>Service unavailable</html>", b"\xff", b"x" * (4 * 1024 * 1024 + 1)],
+    ids=["empty", "unrecognised-html", "invalid-utf8", "oversized"],
 )
 def test_unrecognised_library_is_an_error(monkeypatch, body):
     monkeypatch.setattr(svc, "urlopen", lambda *a, **kw: io.BytesIO(body))
