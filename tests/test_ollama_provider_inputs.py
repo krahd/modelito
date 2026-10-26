@@ -32,9 +32,13 @@ def test_ollama_summarize_preserves_roles_and_applies_settings(monkeypatch):
     monkeypatch.setattr("modelito.ollama.server_is_up", lambda *_args: True)
     captured = {}
 
-    def fake_json_post(url, payload, timeout):
+    def fake_json_post(url, payload, timeout, **kwargs):
         captured.update({"url": url, "payload": payload, "timeout": timeout})
-        return {"message": {"role": "assistant", "content": "summary"}}
+        return {
+            "model": "llama3.2:latest",
+            "done": True,
+            "message": {"role": "assistant", "content": "summary"},
+        }
 
     monkeypatch.setattr("modelito.ollama.json_post", fake_json_post)
     provider = OllamaProvider(model="llama3.2")
@@ -89,9 +93,9 @@ def test_ollama_summarize_maps_common_json_and_token_settings(monkeypatch):
     monkeypatch.setattr("modelito.ollama.server_is_up", lambda *_args: True)
     captured_payload = {}
 
-    def fake_json_post(_url, payload, timeout):
+    def fake_json_post(_url, payload, timeout, **kwargs):
         captured_payload.update(payload)
-        return {"message": {"content": "{}"}}
+        return {"model": "llama3.2", "done": True, "message": {"content": "{}"}}
 
     monkeypatch.setattr("modelito.ollama.json_post", fake_json_post)
 
@@ -112,9 +116,9 @@ def test_ollama_generate_applies_only_documented_top_level_settings(monkeypatch)
     monkeypatch.setattr("modelito.ollama.server_is_up", lambda *_args: True)
     captured_payload = {}
 
-    def fake_json_post(_url, payload, timeout):
+    def fake_json_post(_url, payload, timeout, **kwargs):
         captured_payload.update(payload)
-        return {"response": "generated"}
+        return {"model": "code-model", "done": True, "response": "generated"}
 
     monkeypatch.setattr("modelito.ollama.json_post", fake_json_post)
 
@@ -167,9 +171,7 @@ def test_ollama_stream_applies_settings_to_native_options(monkeypatch):
 
     class FakeResponse:
         def __init__(self):
-            self.lines = iter(
-                [b'{"message":{"content":"done"},"done":false}\n', b""]
-            )
+            self.lines = iter([b'{"message":{"content":"done"},"done":false}\n', b""])
 
         def __enter__(self):
             return self
@@ -196,9 +198,7 @@ def test_ollama_stream_applies_settings_to_native_options(monkeypatch):
 
     assert chunks == ["done"]
     assert captured_payload["stream"] is True
-    assert captured_payload["messages"] == [
-        {"role": "system", "content": "Be brief."}
-    ]
+    assert captured_payload["messages"] == [{"role": "system", "content": "Be brief."}]
     assert captured_payload["options"] == {
         "temperature": 0,
         "seed": 9,

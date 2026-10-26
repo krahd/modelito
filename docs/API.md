@@ -41,7 +41,10 @@ surface. The primary exports (also visible via `from modelito import *`) are:
   may not come from a model. With default `strict=True`, `summarize()` and
   `stream()` use native HTTP, honour `timeout`, preserve roles/options, and
   propagate errors without changing transport. Synchronous requests force
-  `stream: false`; streaming requests require a terminal `done` event.
+  `stream: false` and require `done: true`; streaming requests require a terminal
+  `done` event. Strict responses must match the requested model (only omitted
+  tags and `:latest` are equivalent). `settings["timeout"]` overrides the
+  constructor timeout for summary/stream calls; strict summaries do not retry.
   `raw_complete()` and `raw_stream()` retain the OpenAI-compatible endpoint;
   pass native options through `summarize()`/`stream()` instead.
 - `OpenAIProvider` — SDK-backed hosted OpenAI provider; can also target hosted OpenAI-compatible APIs via `base_url`.
@@ -312,16 +315,22 @@ Ollama helpers
 --------------
 
 The `ollama_service` module contains a number of small helpers to interact with
-the Ollama CLI and HTTP API. The most commonly used helpers are:
+the Ollama CLI and HTTP API. See [Ollama lifecycle contracts](OLLAMA-LIFECYCLE.md)
+for effective configuration, ownership-based shutdown, timeouts and strict
+completion/model checks. The most commonly used helpers are:
 
 - `endpoint_url(host: str, port: int, path: str = "/api/generate") -> str`
 - `server_is_up(host: str, port: int) -> bool`
 - `ensure_ollama_running(host: str = "http://127.0.0.1", port: int = 11434, auto_start: bool = False, start_args: Optional[list] = None, timeout: float = 10.0) -> bool`
 - `get_ollama_binary() -> Optional[str]`
-- `list_local_models() -> List[str]`, `list_remote_models() -> List[str]`, and `list_remote_model_catalog(query: Optional[str] = None) -> List[RemoteModelCatalogEntry]`
-- `download_model(model_name: str) -> bool`, `download_model_progress(model_name: str) -> Iterable[ModelLifecycleState]`, and `delete_model(model_name: str) -> bool`
+- Remote discovery reads model-family links from the official public library,
+  independently of the local daemon/CLI. Fetch or parse failures propagate as
+  `ProviderError`; `api_list_remote_envelope` reports them in its error field.
+  No `--remote` flags or `/api/remote-models` route are used.
+- `list_local_models(*, host=None, port=11434, timeout=30) -> List[str]`, `list_remote_models(*, host=None, port=11434, timeout=30) -> List[str]`, and `list_remote_model_catalog(query=None, *, host=None, port=11434, timeout=30, include_installed=True) -> List[RemoteModelCatalogEntry]`
+- `download_model(model_name, timeout=600, *, host=None, port=11434) -> bool`, `download_model_progress(model_name, timeout=600, *, host=None, port=11434) -> Iterable[ModelLifecycleState]`, and `delete_model(model_name, *, host=None, port=11434, timeout=60) -> bool`
 - `serve_model(model_name: Optional[str] = None, start_args: Optional[list] = None, timeout: float = 10.0) -> bool`
-- `ensure_model_available(model_name: str, allow_download: bool = False, timeout: float = 600.0) -> bool` — convenience helper to ensure a model is present locally, optionally downloading it.
+- `ensure_model_available(model_name, allow_download=False, timeout=600, *, host=None, port=11434) -> bool` — convenience helper to ensure a model is present locally, optionally downloading it.
 - `ensure_model_ready(model_name: str, host: str = "http://127.0.0.1", port: int = 11434, auto_start: bool = False, allow_download: bool = False, timeout: float = 120.0) -> bool` — ensure a specific model is downloaded, warmed, and responsive.
 - `ensure_model_ready_detailed(model_name: str, host: str = "http://127.0.0.1", port: int = 11434, auto_start: bool = False, allow_download: bool = False, timeout: float = 120.0) -> ReadinessResult` — like `ensure_model_ready()` but returns a structured `ReadinessResult` object with success status, lifecycle phase, message, source, elapsed_seconds, and error details for cleaner UI integration.
 - `get_model_lifecycle_state(model_name: str) -> Optional[ModelLifecycleState]`, `list_model_lifecycle_states() -> Dict[str, ModelLifecycleState]`, and `clear_model_lifecycle_state(model_name: str) -> bool` — inspect or reset the in-memory per-model lifecycle tracker.
@@ -335,7 +344,7 @@ The module exposes a few additional convenience helpers and CLI entrypoints
 useful for diagnostics and local workflows:
 
 - `detect_install_method(platform_name: Optional[str] = None) -> str` — pick the preferred install backend (`brew`, `apt`, `choco`, or script-based fallback) for the current platform.
-- `pull_model(model_name: str, timeout: float = 600.0) -> bool` — convenience wrapper for `download_model`.
+- `pull_model(model_name, timeout=600, *, host=None, port=11434) -> bool` — convenience wrapper for `download_model`.
 - `preload_model(url: str, port: int, model: str, timeout: float = 120.0) -> None` — warm a model via the HTTP API.
 - `load_remote_timeout_catalog(path: Optional[Path] = None) -> dict` — load the timeout catalog (falls back to the bundled catalog).
 - `common_model_timeout(model_name: str) -> Optional[float]` — returns a conservative timeout in seconds for a given model.

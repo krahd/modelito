@@ -24,15 +24,14 @@ from .exceptions import (
 )
 from .messages import flatten_message_inputs
 from .provider import MessageInput
+from .plumbing import TransportPolicy
 from .ollama_service import (
     endpoint_url,
     server_is_up,
     json_post,
     list_local_models,
-    list_remote_models,
     ollama_installed,
     run_ollama_command,
-    running_model_names,
 )
 
 _OLLAMA_CHAT_TOP_LEVEL_SETTINGS = frozenset(
@@ -163,51 +162,19 @@ class OllamaProvider:
         self.host = host or "http://127.0.0.1"
         self.port = int(port or 11434)
         self.model = model
-        self.timeout = float(timeout)
+        from .ollama_service import _timeout
+
+        self.timeout = _timeout(timeout)
         self.strict = bool(strict)
 
     def list_models(self) -> List[str]:
-        """Return a best-effort list of locally available Ollama models.
-
-        This shim avoids making heavy network calls and instead returns an
-        empty list when a local server is reachable or the check fails.
-
-        Returns:
-            A list of model identifiers (often empty for the compatibility shim).
-        """
+        """Return installed models from this provider's explicit endpoint."""
         try:
-            if server_is_up(self.host, self.port):
-                # Prefer local enumeration via the CLI helper when the HTTP
-                # API is available — this will return a best-effort list and
-                # is resilient when the CLI is missing.
-                models = list_local_models()
-                if models:
-                    return models
-                # if nothing local, try running names reported by `ollama ps`
-                try:
-                    running = running_model_names(
-                        self.host.replace("http://", "").replace("https://", "")
-                    )
-                    if running:
-                        return running
-                except Exception:
-                    pass
+            return list_local_models(
+                host=self.host, port=self.port, timeout=self.timeout
+            )
         except Exception:
-            pass
-
-        # If the HTTP API isn't reachable try probing the CLI directly
-        try:
-            if ollama_installed():
-                models = list_local_models()
-                if models:
-                    return models
-                remote = list_remote_models()
-                if remote:
-                    return remote
-        except Exception:
-            pass
-
-        return []
+            return []
 
     @staticmethod
     def _raise_request_error(exc: Exception) -> NoReturn:
@@ -238,6 +205,27 @@ class OllamaProvider:
             raise ModelitoBadResponseError(str(exc)) from exc
         raise ModelitoProviderError(str(exc)) from exc
 
+    def _request_timeout(self, settings: Optional[dict[str, Any]]) -> float:
+        from .ollama_service import _timeout
+
+        value = (
+            settings["timeout"] if settings and "timeout" in settings else self.timeout
+        )
+        return _timeout(value)
+
+    def _validate_response_model(self, response: dict[str, Any]) -> None:
+        # Ollama expands an omitted tag to :latest. No other alias is inferred.
+        def canonical(name: str) -> str:
+            return name if ":" in name.rsplit("/", 1)[-1] else name + ":latest"
+
+        actual = response.get("model")
+        if self.model and (
+            not isinstance(actual, str) or canonical(actual) != canonical(self.model)
+        ):
+            raise ModelitoBadResponseError(
+                "Ollama response model does not match requested model"
+            )
+
     def _strict_summarize(
         self,
         messages: Iterable[MessageInput],
@@ -253,16 +241,23 @@ class OllamaProvider:
         else:
             payload["prompt"] = ""
         _apply_ollama_settings(payload, settings, endpoint)
+        request_timeout = self._request_timeout(settings)
         try:
             response = json_post(
                 endpoint_url(self.host, self.port, endpoint),
                 payload,
-                timeout=self.timeout,
+                timeout=request_timeout,
+                policy=TransportPolicy(timeout=request_timeout, max_attempts=1),
             )
             if not isinstance(response, dict):
                 raise ModelitoBadResponseError("Ollama returned a non-object response")
             if "error" in response:
                 raise ModelitoProviderError(str(response["error"]))
+            if response.get("done") is not True:
+                raise ModelitoBadResponseError(
+                    "Ollama returned an incomplete completion"
+                )
+            self._validate_response_model(response)
             message = response.get("message")
             content = message.get("content") if isinstance(message, dict) else None
             if not flattened:
@@ -480,8 +475,9 @@ class OllamaProvider:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
+        request_timeout = self._request_timeout(settings)
         try:
-            with urlopen(req, timeout=self.timeout) as resp:
+            with urlopen(req, timeout=request_timeout) as resp:
                 # iterate lines as they arrive
                 while True:
                     chunk = resp.readline()
@@ -518,6 +514,7 @@ class OllamaProvider:
                         if "error" in obj:
                             raise ModelitoProviderError(str(obj["error"]))
                         if self.strict:
+                            self._validate_response_model(obj)
                             message = obj.get("message")
                             content = (
                                 message.get("content")

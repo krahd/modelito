@@ -27,7 +27,7 @@ def test_default_summary_preserves_roles_settings_unicode(monkeypatch, provider_
         {"role": "user", "content": "Resumí la conversación."},
     ]
 
-    def post(url, payload, timeout):
+    def post(url, payload, timeout, **kwargs):
         assert url.endswith("/api/chat")
         assert payload == {
             "model": "local-model",
@@ -36,7 +36,11 @@ def test_default_summary_preserves_roles_settings_unicode(monkeypatch, provider_
             "options": {"temperature": 0, "num_ctx": 8192},
         }
         assert timeout == 7
-        return {"message": {"content": "Conversación en español: áéíóú ñ."}}
+        return {
+            "model": "local-model:latest",
+            "done": True,
+            "message": {"content": "Conversación en español: áéíóú ñ."},
+        }
 
     monkeypatch.setattr("modelito.ollama.json_post", post)
     assert (
@@ -56,7 +60,8 @@ def test_summary_rejects_invalid_response(monkeypatch, response):
 
 def test_empty_summary_is_valid(monkeypatch):
     monkeypatch.setattr(
-        "modelito.ollama.json_post", lambda *a, **kw: {"message": {"content": ""}}
+        "modelito.ollama.json_post",
+        lambda *a, **kw: {"done": True, "message": {"content": ""}},
     )
     assert OllamaProvider().summarize(["hola"]) == ""
 

@@ -56,7 +56,11 @@ Before tagging a release:
 
 1. Ensure required CI checks pass on `main` (`Lint` + unit matrix).
 2. Trigger the self-hosted Ollama integration workflow (or apply
-   `run-integration` on the release PR) and confirm pass.
+   `run-integration` on the release PR) and confirm pass. If no self-hosted
+   runner is registered, run the exact integration test locally against an
+   already-running service and existing model, with installation, download and
+   update disabled. Record the runner unavailability, command, selected model
+   and result in `STATUS.md`; do not install a server on a hosted runner.
 3. Verify build metadata locally with:
 
 ```bash

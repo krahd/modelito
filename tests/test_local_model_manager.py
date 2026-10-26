@@ -3,7 +3,8 @@ from modelito.local_model_manager import LocalModelManager
 
 def test_discover_models(monkeypatch):
     monkeypatch.setattr(
-        "modelito.local_model_manager.list_local_models", lambda: ["foo", "bar"]
+        "modelito.local_model_manager.list_local_models",
+        lambda **kwargs: ["foo", "bar"],
     )
     mgr = LocalModelManager()
     models = mgr.discover_models()

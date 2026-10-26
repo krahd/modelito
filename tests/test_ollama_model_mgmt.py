@@ -7,21 +7,26 @@ from modelito.ollama_api import (
 
 
 def test_api_list_local(monkeypatch):
-    monkeypatch.setattr("modelito.ollama_service.list_local_models", lambda: ["a", "b"])
+    monkeypatch.setattr("modelito.ollama_service.server_is_up", lambda *a: False)
+    monkeypatch.setattr(
+        "modelito.ollama_service.list_local_models", lambda **kwargs: ["a", "b"]
+    )
     res = api_list_local()
     assert res == ["a", "b"]
 
 
 def test_api_list_remote(monkeypatch):
     monkeypatch.setattr(
-        "modelito.ollama_service.list_remote_models", lambda: ["r1", "r2"]
+        "modelito.ollama_service.list_remote_models", lambda **kwargs: ["r1", "r2"]
     )
     res = api_list_remote()
     assert res == ["r1", "r2"]
 
 
 def test_api_delete_model(monkeypatch):
-    monkeypatch.setattr("modelito.ollama_service.delete_model", lambda m: True)
+    monkeypatch.setattr(
+        "modelito.ollama_service.delete_model", lambda m, **kwargs: True
+    )
     assert api_delete_model("foo") is True
 
 

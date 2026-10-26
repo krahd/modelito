@@ -1,7 +1,16 @@
 from modelito import ollama_service as osvc
 
 
-def test_ollama_service_smoke():
+def test_ollama_service_smoke(monkeypatch):
+    import io
+
+    monkeypatch.setattr(osvc, "get_ollama_binary", lambda: None)
+
+    monkeypatch.setattr(
+        osvc,
+        "urlopen",
+        lambda *a, **kw: io.BytesIO(b'<a href="/library/example">example</a>'),
+    )
     # Ensure calls are safe when `ollama` isn't installed; return types verified.
     binp = osvc.get_ollama_binary()
     assert binp is None or isinstance(binp, str)

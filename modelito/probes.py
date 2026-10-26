@@ -216,7 +216,9 @@ def probe_ollama_status(
                 ),
             )
 
-        models = list_local_models()
+        models = list_local_models(
+            host=host_value, port=port_value, timeout=probe_timeout
+        )
         ready = _model_is_available(model, models)
         return _build_status(
             "ollama",

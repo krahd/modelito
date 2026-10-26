@@ -452,3 +452,6 @@ in this README. Prefer the documented `Client`, provider adapters, connector,
 and server entrypoints for application integrations.
 
 See the `tests/` directory for comprehensive coverage and usage examples.
+
+Ollama endpoint configuration, ownership-based shutdown, deadlines and strict
+completion validation are documented in [Ollama lifecycle contracts](docs/OLLAMA-LIFECYCLE.md).

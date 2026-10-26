@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.4.7 - 2026-10-26
+
+- Preserve explicitly resolved Ollama endpoints across lifecycle, inventory,
+  readiness and adapter operations. Lifecycle inspection/start/stop accept an
+  effective configuration mapping without discovering another user config.
+- **Behaviour change:** shutdown requires a persisted Modelito ownership receipt
+  and matching process identity. External servers are preserved; global model
+  unloading and arbitrary listener termination are removed. Optional `psutil`
+  is required for ownership verification.
+- Bound CLI operations and download progress, including blocked output reads.
+  Explicitly closing a progress iterator or adapter stream reaps its child.
+- Honour `settings["timeout"]` for strict summary/stream requests. Strict
+  summaries disable automatic HTTP retries and require `done: true`.
+- Validate strict response model identity; only omitted tags and `:latest` are
+  treated as equivalent. This is consistency checking, not model authentication.
+- Replace unsupported remote-list CLI flags and `/api/remote-models` probes with
+  bounded HTTPS discovery from the official public library. Fetch/parse errors
+  propagate instead of becoming successful empty catalogues. Discovery lists
+  model families and depends on public HTML structure, not a stable API.
+- Add endpoint, timeout, ownership, cancellation and remote-discovery regressions.
+  Document lifecycle contracts and compatibility changes.
+
 ## 1.4.6 - 2026-10-22
 
 - Fix Ollama summaries to force `stream: false`, preserve conversation roles,

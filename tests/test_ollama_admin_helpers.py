@@ -46,11 +46,11 @@ def test_install_command_for_current_platform_uses_detected_backend(monkeypatch)
 def test_list_remote_model_catalog_returns_structured_entries(monkeypatch):
     monkeypatch.setattr(
         "modelito.ollama_service.list_remote_models",
-        lambda: ["llama3.1:8b latest", "mistral:7b instruct"],
+        lambda **kwargs: ["llama3.1:8b latest", "mistral:7b instruct"],
     )
     monkeypatch.setattr(
         "modelito.ollama_service.list_local_models",
-        lambda: ["mistral:7b"],
+        lambda **kwargs: ["mistral:7b"],
     )
 
     entries = list_remote_model_catalog(query="mistral")
@@ -72,6 +72,9 @@ def test_download_model_progress_tracks_state(monkeypatch):
                     "success\n",
                 ]
             )
+
+        def poll(self):
+            return 0
 
         def wait(self, timeout=None):
             return 0
@@ -99,7 +102,7 @@ def test_ensure_model_ready_marks_model_ready(monkeypatch):
     )
     monkeypatch.setattr(
         "modelito.ollama_service.ensure_model_available",
-        lambda model_name, allow_download=False, timeout=600.0: True,
+        lambda model_name, allow_download=False, timeout=600.0, **kwargs: True,
     )
     monkeypatch.setattr(
         "modelito.ollama_service.preload_model",

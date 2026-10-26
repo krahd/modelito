@@ -101,11 +101,8 @@ def api_list_local(host: Optional[str] = None, port: int = 11434) -> List[str]:
 
 
 def api_list_remote(host: Optional[str] = None, port: int = 11434) -> List[str]:
-    client = get_client(host, port)
-    try:
-        return client.list_remote()
-    except Exception:
-        return []
+    """Discover public library models; failures propagate to the envelope layer."""
+    return get_client(host, port).list_remote()
 
 
 def api_delete_model(model: str, host: Optional[str] = None, port: int = 11434) -> bool:

@@ -1,13 +1,12 @@
-"""Small Ollama HTTP helpers (lightweight) used by the calibration tool.
-
-This module intentionally provides only thin helpers (endpoint builder and
-server liveness check) so the package can be used without requiring full
-external lifecycle helpers.
-"""
+"""Lightweight Ollama HTTP, CLI and explicitly configured lifecycle helpers."""
 
 from __future__ import annotations
 
 import socket
+import math
+import hashlib
+import queue
+from urllib.parse import urlsplit
 from urllib.request import urlopen
 from urllib.request import Request
 import time
@@ -19,8 +18,10 @@ import os
 import sys
 import shlex
 import threading
-from typing import Optional, List, Dict, Any, Iterable, cast, Callable, NoReturn
+from typing import Optional, List, Dict, Any, Iterable, Callable, NoReturn, Generator
 from pathlib import Path
+from functools import partial
+from html.parser import HTMLParser
 import json
 import logging
 import argparse
@@ -28,7 +29,6 @@ from dataclasses import dataclass, field
 
 from .errors import ProviderError
 from .plumbing import TransportPolicy, normalize_network_error, retry_with_backoff
-
 
 ROOT = Path(__file__).resolve().parents[1]
 UNIX_INSTALL_URL = "https://ollama.com/install.sh"
@@ -240,7 +240,10 @@ def _catalog_entry(
         name=name,
         family=family or name,
         tag=tag or None,
-        installed=name in installed_models,
+        installed=(
+            name in installed_models
+            or (":" not in name and f"{name}:latest" in installed_models)
+        ),
         raw=str(raw_item or ""),
     )
 
@@ -276,11 +279,37 @@ def endpoint_url(host: str, port: int, path: str = "/api/generate") -> str:
     Returns:
         A string containing the full URL to the requested API path.
     """
-    h = host.rstrip("/")
-    # if host already contains a port, don't append
-    if ":" in h.split("/")[2] if "/" in h else ":" in h:
-        return f"{h}{path}"
-    return f"{h}:{port}{path}"
+    if not isinstance(host, str) or not host.strip():
+        raise ValueError("host must be a non-empty string")
+    parsed = urlsplit(host if "://" in host else f"http://{host}")
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise ValueError("host must be an HTTP endpoint")
+    hostname = parsed.hostname
+    if ":" in hostname:
+        hostname = f"[{hostname}]"
+    authority = f"{hostname}:{parsed.port or int(port)}"
+    return f"{parsed.scheme}://{authority}{parsed.path.rstrip('/')}{path}"
+
+
+def _timeout(value: float) -> float:
+    value = float(value)
+    if not math.isfinite(value) or value <= 0:
+        raise ValueError("timeout must be finite and positive")
+    return value
+
+
+def _remaining(deadline: float, command: List[str], timeout: float) -> float:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise subprocess.TimeoutExpired(command, timeout)
+    return remaining
+
+
+def _cli_env(host: Optional[str], port: int = DEFAULT_PORT) -> Dict[str, str]:
+    env = os.environ.copy()
+    if host is not None:
+        env["OLLAMA_HOST"] = endpoint_url(host, port, "")
+    return env
 
 
 def server_is_up(host: str, port: int) -> bool:
@@ -370,7 +399,7 @@ def ensure_ollama_running_verbose(
         return False, "ollama CLI not found on PATH"
 
     # Build host env string expected by the CLI
-    host_env = f"{host.replace('http://', '').replace('https://', '')}:{port}"
+    host_env = endpoint_url(host, port, "")
 
     # Attempt to start detached serve using the platform helper
     try:
@@ -429,9 +458,7 @@ def install_ollama(
         fallback_method = (
             "script"
             if selected in ("brew", "apt")
-            else "powershell"
-            if selected == "choco"
-            else None
+            else "powershell" if selected == "choco" else None
         )
         if fallback_method and fallback_method not in attempted_methods:
             attempted_methods.append(fallback_method)
@@ -469,54 +496,8 @@ def start_ollama(
 
 
 def stop_ollama(force: bool = False) -> bool:
-    """Attempt to stop running ``ollama`` processes.
-
-    The function prefers using :mod:`psutil` to find and terminate processes
-    gracefully. If ``psutil`` is not available and ``force`` is True, a
-    platform ``pkill`` may be attempted as a best-effort fallback.
-
-    Args:
-        force: When ``True`` attempt a more forceful kill via ``pkill`` if
-            :mod:`psutil` is unavailable.
-
-    Returns:
-        ``True`` on success, ``False`` otherwise.
-    """
-    try:
-        import importlib
-
-        psutil = importlib.import_module("psutil")
-    except Exception:
-        psutil = None
-
-    if psutil:
-        try:
-            for p in psutil.process_iter(["name", "cmdline"]):
-                try:
-                    name = p.info.get("name") or ""
-                    cmdline = " ".join(p.info.get("cmdline") or [])
-                    if "ollama" in name or "ollama" in cmdline:
-                        try:
-                            p.terminate()
-                            p.wait(3)
-                        except Exception:
-                            try:
-                                p.kill()
-                            except Exception:
-                                pass
-                except Exception:
-                    pass
-            return True
-        except Exception:
-            return False
-
-    if force and shutil.which("pkill"):
-        try:
-            subprocess.run(["pkill", "-f", "ollama"], check=False)
-            return True
-        except Exception:
-            return False
-    return False
+    """Stop only the default server owned by Modelito; force never broadens scope."""
+    return stop_service() == 0
 
 
 def update_ollama(allow_upgrade: bool = False, timeout: float = 120.0) -> bool:
@@ -563,7 +544,9 @@ def update_ollama(allow_upgrade: bool = False, timeout: float = 120.0) -> bool:
     return False
 
 
-def list_local_models() -> List[str]:
+def list_local_models(
+    *, host: Optional[str] = None, port: int = DEFAULT_PORT, timeout: float = 30.0
+) -> List[str]:
     """Return a best-effort list of locally installed Ollama models.
 
     The helper attempts common CLI variants (``ollama list``, ``ollama ls``,
@@ -571,6 +554,15 @@ def list_local_models() -> List[str]:
     ``ollama`` binary is not present or the calls fail, an empty list is
     returned.
     """
+
+    timeout = _timeout(timeout)
+    if host is not None:
+        data = json_get(endpoint_url(host, port, "/api/tags"), timeout=timeout)
+        return [
+            str(m["name"])
+            for m in data.get("models", [])
+            if isinstance(m, dict) and isinstance(m.get("name"), str)
+        ]
 
     def _looks_like_error_or_header(line: str) -> bool:
         if not line:
@@ -638,6 +630,7 @@ def list_local_models() -> List[str]:
                         names.append(k)
         return names if names else None
 
+    deadline = time.monotonic() + _timeout(timeout)
     binp = get_ollama_binary()
     if not binp:
         return []
@@ -658,10 +651,13 @@ def list_local_models() -> List[str]:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                timeout=15,
+                timeout=_remaining(deadline, cmd, timeout),
+                env=_cli_env(host, port),
                 check=False,
             )
-            out = (res.stdout or "").strip() or (res.stderr or "").strip()
+            if res.returncode != 0:
+                continue
+            out = (res.stdout or "").strip()
             if not out:
                 continue
             # If JSON flag used try parsing structured output
@@ -682,132 +678,76 @@ def list_local_models() -> List[str]:
             lines = [line.strip() for line in out.splitlines() if line.strip()]
             good = [line for line in lines if not _looks_like_error_or_header(line)]
             if good:
-                return good
+                return [_extract_model_name(line) for line in good]
+        except (subprocess.TimeoutExpired, TimeoutError):
+            raise
         except Exception as exc:
             logger.debug("Exception while listing local models with %s: %s", cmd, exc)
             continue
     return []
 
 
-def list_remote_models() -> List[str]:
-    """Return a best-effort list of remote models available to download.
+class _LibraryModelParser(HTMLParser):
+    """Extract model links from Ollama's public library, not presentation text."""
 
-    Similar to :func:`list_local_models` but queries the remote model listing
-    variants of the CLI (``--remote``). Returns an empty list if the CLI is
-    not available or the calls fail.
-    """
+    def __init__(self) -> None:
+        super().__init__()
+        self.names: set[str] = set()
 
-    def _looks_like_error_or_header(line: str) -> bool:
-        if not line:
-            return True
-        low = line.strip().lower()
-        error_indicators = (
-            "error",
-            "failed",
-            "unable",
-            "not found",
-            "no such",
-            "denied",
-            "unauthorized",
-            "forbidden",
-            "exception",
+    def handle_starttag(self, tag: str, attrs: List[tuple[str, Optional[str]]]) -> None:
+        if tag != "a":
+            return
+        href = dict(attrs).get("href")
+        if not href:
+            return
+        link = urlsplit(href)
+        if link.scheme not in ("", "https") or link.netloc not in ("", "ollama.com"):
+            return
+        match = re.fullmatch(
+            r"/library/([A-Za-z0-9][A-Za-z0-9_.-]*(?::[A-Za-z0-9][A-Za-z0-9_.-]*)?)/?",
+            link.path,
         )
-        for tok in error_indicators:
-            if tok in low:
-                return True
-        first = low.split()[0].rstrip(":")
-        if first in ("name", "model", "models", "llms", "description"):
-            return True
-        return False
+        if match:
+            self.names.add(match.group(1))
 
-    def _try_parse_json_models(out: str) -> Optional[List[str]]:
-        try:
-            data = json.loads(out)
-        except Exception:
-            return None
-        names: List[str] = []
-        if isinstance(data, list):
-            for item in data:
-                if isinstance(item, str):
-                    names.append(item)
-                elif isinstance(item, dict):
-                    if "name" in item:
-                        names.append(str(item.get("name")))
-                    elif "model" in item:
-                        names.append(str(item.get("model")))
-        elif isinstance(data, dict):
-            for key in ("models", "llms", "data"):
-                if key in data and isinstance(data[key], list):
-                    for item in data[key]:
-                        if isinstance(item, str):
-                            names.append(item)
-                        elif isinstance(item, dict):
-                            if "name" in item:
-                                names.append(str(item.get("name")))
-                            elif "model" in item:
-                                names.append(str(item.get("model")))
-                    if names:
-                        break
-            if not names:
-                for k in data.keys():
-                    if isinstance(k, str) and k and not k.lower().startswith("error"):
-                        names.append(k)
-        return names if names else None
 
-    binp = get_ollama_binary()
-    if not binp:
-        return []
+def list_remote_models(
+    *, host: Optional[str] = None, port: int = DEFAULT_PORT, timeout: float = 30.0
+) -> List[str]:
+    """Discover model families from https://ollama.com/library.
 
-    cmds = [
-        [binp, "list", "--remote", "--json"],
-        [binp, "ls", "--remote", "--json"],
-        [binp, "models", "--remote", "--json"],
-        [binp, "llms", "--remote", "--json"],
-        [binp, "list", "--remote"],
-        [binp, "ls", "--remote"],
-        [binp, "models", "--remote"],
-        [binp, "llms", "--remote"],
-    ]
-    for cmd in cmds:
-        try:
-            res = subprocess.run(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                timeout=20,
-                check=False,
-            )
-            out = (res.stdout or "").strip() or (res.stderr or "").strip()
-            if not out:
-                continue
-            if "--json" in cmd:
-                parsed = _try_parse_json_models(out)
-                if parsed:
-                    logger.debug(
-                        "Parsed JSON remote model list from %s: %s", cmd, parsed
-                    )
-                    return parsed
-                else:
-                    logger.debug(
-                        "Failed to parse JSON remote output from %s; stdout/stderr: %s",
-                        cmd,
-                        out[:1000],
-                    )
-                    continue
-
-            lines = [line.strip() for line in out.splitlines() if line.strip()]
-            good = [line for line in lines if not _looks_like_error_or_header(line)]
-            if good:
-                return good
-        except Exception as exc:
-            logger.debug("Exception while listing remote models with %s: %s", cmd, exc)
-            continue
-    return []
+    No local CLI or daemon is required. Retained host/port arguments do not
+    select a registry: the source is Ollama's public library. This is HTML
+    discovery, not a documented catalogue API or an enumeration of all tags.
+    Fetch/format errors propagate rather than masquerading as an empty list.
+    """
+    timeout = _timeout(timeout)
+    request = Request(
+        "https://ollama.com/library",
+        headers={"User-Agent": "modelito", "Accept": "text/html"},
+    )
+    limit = 4 * 1024 * 1024
+    try:
+        with urlopen(request, timeout=timeout) as response:
+            body = response.read(limit + 1)
+        if len(body) > limit:
+            raise ValueError("Ollama library response exceeds 4 MiB")
+        parser = _LibraryModelParser()
+        parser.feed(body.decode("utf-8"))
+        if not parser.names:
+            raise ValueError("Ollama library contains no recognised model links")
+        return sorted(parser.names)
+    except Exception as exc:
+        _raise_normalized_network_error(exc, "list_remote_models")
 
 
 def list_remote_model_catalog(
     query: Optional[str] = None,
+    *,
+    host: Optional[str] = None,
+    port: int = DEFAULT_PORT,
+    timeout: float = 30.0,
+    include_installed: bool = True,
 ) -> List[RemoteModelCatalogEntry]:
     """Return a structured remote model catalog with light metadata.
 
@@ -816,14 +756,22 @@ def list_remote_model_catalog(
     model appears to already be installed locally.
     """
     try:
-        installed = set(list_local_models())
+        installed = (
+            set(list_local_models(host=host, port=port, timeout=timeout))
+            if include_installed
+            else set()
+        )
+    except (subprocess.TimeoutExpired, TimeoutError):
+        raise
     except Exception:
+        if host is not None:
+            raise
         installed = set()
 
     query_text = (query or "").strip().lower()
     entries: List[RemoteModelCatalogEntry] = []
     seen: set[str] = set()
-    for raw_item in list_remote_models():
+    for raw_item in list_remote_models(host=host, port=port, timeout=timeout):
         entry = _catalog_entry(raw_item, installed)
         if entry is None or entry.name in seen:
             continue
@@ -836,13 +784,18 @@ def list_remote_model_catalog(
 
 
 def download_model_progress(
-    model_name: str, timeout: float = 600.0
-) -> Iterable[ModelLifecycleState]:
+    model_name: str,
+    timeout: float = 600.0,
+    *,
+    host: Optional[str] = None,
+    port: int = DEFAULT_PORT,
+) -> Generator[ModelLifecycleState, None, None]:
     """Yield structured lifecycle updates while downloading a model.
 
     The function tracks the latest state in the in-memory lifecycle registry so
     UI or automation can poll by model name while a download is in progress.
     """
+    deadline = time.monotonic() + _timeout(timeout)
     binp = get_ollama_binary()
     if not binp:
         yield _record_model_state(
@@ -865,14 +818,43 @@ def download_model_progress(
         process: Optional[subprocess.Popen[str]] = None
         last_line = ""
         try:
+            _remaining(deadline, cmd, timeout)
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                encoding="utf-8",
+                env=_cli_env(host, port),
             )
             assert process.stdout is not None
-            for raw_line in process.stdout:
+            output: queue.Queue[Any] = queue.Queue()
+
+            def read_output(
+                stream: Any = process.stdout, sink: queue.Queue[Any] = output
+            ) -> None:
+                try:
+                    for line in stream:
+                        sink.put(line)
+                except Exception as exc:
+                    sink.put(exc)
+                finally:
+                    sink.put(None)
+
+            reader = threading.Thread(target=read_output, daemon=True)
+            reader.start()
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(cmd, timeout)
+                try:
+                    raw_line = output.get(timeout=remaining)
+                except queue.Empty:
+                    raise subprocess.TimeoutExpired(cmd, timeout)
+                if raw_line is None:
+                    break
+                if isinstance(raw_line, Exception):
+                    raise raw_line
                 line = raw_line.rstrip("\n")
                 if not line:
                     continue
@@ -887,7 +869,7 @@ def download_model_progress(
                     completed=completed,
                     total=total,
                 )
-            returncode = process.wait(timeout=timeout)
+            returncode = process.wait(timeout=max(0.001, deadline - time.monotonic()))
             if returncode == 0:
                 yield _record_model_state(
                     model_name,
@@ -941,9 +923,25 @@ def download_model_progress(
                 "retrying",
                 message=f"Retrying download for {model_name}: {exc}",
             )
+        finally:
+            if process is not None:
+                try:
+                    if process.poll() is None:
+                        process.kill()
+                    process.wait(timeout=5)
+                finally:
+                    stream = process.stdout
+                    if stream is not None and hasattr(stream, "close"):
+                        stream.close()
 
 
-def download_model(model_name: str, timeout: float = 600.0) -> bool:
+def download_model(
+    model_name: str,
+    timeout: float = 600.0,
+    *,
+    host: Optional[str] = None,
+    port: int = DEFAULT_PORT,
+) -> bool:
     """Download a remote model into the local Ollama cache using the CLI.
 
     Tries common command names (``pull``, ``download``) and returns ``True``
@@ -957,7 +955,9 @@ def download_model(model_name: str, timeout: float = 600.0) -> bool:
         ``True`` on success, else ``False``.
     """
     final_state: Optional[ModelLifecycleState] = None
-    for state in download_model_progress(model_name, timeout=timeout):
+    for state in download_model_progress(
+        model_name, timeout=timeout, host=host, port=port
+    ):
         final_state = state
     if final_state is None:
         logger.debug("download_model produced no lifecycle updates for %s", model_name)
@@ -972,12 +972,19 @@ def download_model(model_name: str, timeout: float = 600.0) -> bool:
     return ok
 
 
-def delete_model(model_name: str) -> bool:
+def delete_model(
+    model_name: str,
+    *,
+    host: Optional[str] = None,
+    port: int = DEFAULT_PORT,
+    timeout: float = 60.0,
+) -> bool:
     """Delete a locally cached model using the Ollama CLI.
 
     Tries multiple possible subcommands (``rm``, ``remove``, ``delete``) and
     returns ``True`` when any of them report success.
     """
+    deadline = time.monotonic() + _timeout(timeout)
     binp = get_ollama_binary()
     if not binp:
         logger.debug("delete_model: ollama binary not found")
@@ -994,7 +1001,8 @@ def delete_model(model_name: str) -> bool:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                timeout=60,
+                timeout=_remaining(deadline, cmd, timeout),
+                env=_cli_env(host, port),
                 check=False,
             )
             if res.returncode == 0:
@@ -1009,6 +1017,8 @@ def delete_model(model_name: str) -> bool:
                     (res.stdout or "")[:1000],
                     (res.stderr or "")[:1000],
                 )
+        except (subprocess.TimeoutExpired, TimeoutError):
+            raise
         except Exception as exc:
             logger.debug(
                 "Exception running delete command %s for %s: %s", cmd, model_name, exc
@@ -1053,7 +1063,12 @@ def serve_model(
 
 
 def ensure_model_available(
-    model_name: str, allow_download: bool = False, timeout: float = 600.0
+    model_name: str,
+    allow_download: bool = False,
+    timeout: float = 600.0,
+    *,
+    host: Optional[str] = None,
+    port: int = DEFAULT_PORT,
 ) -> bool:
     """Ensure a model is available locally, optionally attempting to download it.
 
@@ -1066,14 +1081,14 @@ def ensure_model_available(
         True if the model is available locally (or successfully downloaded), else False.
     """
     try:
-        local = list_local_models()
+        local = list_local_models(host=host, port=port, timeout=timeout)
     except Exception:
         local = []
     if model_name in local:
         return True
     if not allow_download:
         return False
-    return download_model(model_name, timeout=timeout)
+    return download_model(model_name, timeout=timeout, host=host, port=port)
 
 
 def ensure_model_ready(
@@ -1138,7 +1153,11 @@ def ensure_model_ready_detailed(
 
     remaining = max(1.0, deadline - time.time())
     if not ensure_model_available(
-        model_name, allow_download=allow_download, timeout=remaining
+        model_name,
+        allow_download=allow_download,
+        timeout=remaining,
+        host=host,
+        port=port,
     ):
         error = f"Model {model_name} is not available locally"
         _record_model_state(model_name, "error", message=error, error=error)
@@ -1169,7 +1188,7 @@ def ensure_model_ready_detailed(
             error=str(exc),
         )
 
-    host_env = f"{host.replace('http://', '').replace('https://', '')}:{port}"
+    host_env = endpoint_url(host, port, "")
     running = running_model_names(host_env)
     if model_name in running:
         msg = f"Model {model_name} is warmed and running"
@@ -1246,11 +1265,24 @@ def ensure_model_loaded(
 
 
 async def async_ensure_model_available(
-    model_name: str, allow_download: bool = False, timeout: float = 600.0
+    model_name: str,
+    allow_download: bool = False,
+    timeout: float = 600.0,
+    *,
+    host: Optional[str] = None,
+    port: int = DEFAULT_PORT,
 ) -> bool:
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(
-        None, ensure_model_available, model_name, allow_download, timeout
+        None,
+        partial(
+            ensure_model_available,
+            model_name,
+            allow_download,
+            timeout,
+            host=host,
+            port=port,
+        ),
     )
 
 
@@ -1390,7 +1422,10 @@ def ollama_installed() -> bool:
 
 
 def run_ollama_command(
-    *args: str, host: Optional[str] = None, env: Optional[Dict[str, str]] = None
+    *args: str,
+    host: Optional[str] = None,
+    env: Optional[Dict[str, str]] = None,
+    timeout: float = 30.0,
 ) -> subprocess.CompletedProcess[str]:
     """Run an Ollama CLI command and capture the Result.
 
@@ -1403,11 +1438,14 @@ def run_ollama_command(
             environment. The helper also ensures the repository root is
             present in ``PYTHONPATH`` to support entrypoints that import
             local modules via ``python -m``.
+        timeout: Finite positive subprocess deadline; expiry propagates as
+            ``subprocess.TimeoutExpired``.
 
     Returns:
         A :class:`subprocess.CompletedProcess` instance containing stdout/stderr
         and return code.
     """
+    timeout = _timeout(timeout)
     base_env = os.environ.copy()
     if env:
         base_env.update(env)
@@ -1423,6 +1461,7 @@ def run_ollama_command(
         capture_output=True,
         check=False,
         env=base_env,
+        timeout=timeout,
     )
 
 
@@ -1455,32 +1494,60 @@ def start_detached_ollama_serve(
             | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
             | getattr(subprocess, "CREATE_NO_WINDOW", 0)
         )
-        return cast(
-            subprocess.Popen[Any],
-            subprocess.Popen(
-                cmd,
-                cwd=str(ROOT),
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                stdin=subprocess.DEVNULL,
-                env=common_env,
-                text=True,
-                creationflags=creationflags_val,
-            ),
+        process = subprocess.Popen(
+            cmd,
+            cwd=str(ROOT),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            env=common_env,
+            text=True,
+            creationflags=creationflags_val,
         )
     else:
-        return cast(
-            subprocess.Popen[Any],
-            subprocess.Popen(
-                cmd,
-                cwd=str(ROOT),
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                stdin=subprocess.DEVNULL,
-                env=common_env,
-                text=True,
-                start_new_session=True,
-            ),
+        process = subprocess.Popen(
+            cmd,
+            cwd=str(ROOT),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            env=common_env,
+            text=True,
+            start_new_session=True,
+        )
+    _record_owned_server(host, process)
+    return process
+
+
+def _ownership_path(host: str) -> Path:
+    key = hashlib.sha256(endpoint_url(host, DEFAULT_PORT, "").encode()).hexdigest()
+    return Path.home() / ".modelito" / "servers" / f"{key}.json"
+
+
+def _record_owned_server(host: str, process: subprocess.Popen[Any]) -> None:
+    try:
+        import psutil
+
+        if process.poll() is not None:
+            return
+        proc = psutil.Process(process.pid)
+        receipt = {
+            "pid": proc.pid,
+            "created": proc.create_time(),
+            "exe": proc.exe(),
+            "cmdline": proc.cmdline(),
+        }
+        if process.poll() is not None:
+            return
+        path = _ownership_path(host)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(f".{os.getpid()}.tmp")
+        temporary.write_text(json.dumps(receipt), encoding="utf-8")
+        temporary.chmod(0o600)
+        temporary.replace(path)
+    except Exception:
+        logger.warning(
+            "Cannot record Ollama ownership; automatic stop is disabled", exc_info=True
         )
 
 
@@ -1554,7 +1621,7 @@ def ollama_health_check(
 ) -> Dict[str, Any]:
     """Return a best-effort health snapshot for the local Ollama service."""
     started = time.time()
-    host_env = f"{host.replace('http://', '').replace('https://', '')}:{port}"
+    host_env = endpoint_url(host, port, "")
     reachable = server_is_up(host, port)
     version = ""
     http_ok = False
@@ -1620,25 +1687,49 @@ async def async_preload_model(
     await loop.run_in_executor(None, preload_model, url, port, model, timeout)
 
 
-async def async_list_local_models() -> List[str]:
+async def async_list_local_models(
+    *, host: Optional[str] = None, port: int = DEFAULT_PORT, timeout: float = 30.0
+) -> List[str]:
     """Async wrapper for :func:`list_local_models`."""
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, list_local_models)
+    return await loop.run_in_executor(
+        None, partial(list_local_models, host=host, port=port, timeout=timeout)
+    )
 
 
-async def async_list_remote_models() -> List[str]:
+async def async_list_remote_models(
+    *, host: Optional[str] = None, port: int = DEFAULT_PORT, timeout: float = 30.0
+) -> List[str]:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, list_remote_models)
+    return await loop.run_in_executor(
+        None, partial(list_remote_models, host=host, port=port, timeout=timeout)
+    )
 
 
-async def async_download_model(model_name: str, timeout: float = 600.0) -> bool:
+async def async_download_model(
+    model_name: str,
+    timeout: float = 600.0,
+    *,
+    host: Optional[str] = None,
+    port: int = DEFAULT_PORT,
+) -> bool:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, download_model, model_name, timeout)
+    return await loop.run_in_executor(
+        None, partial(download_model, model_name, timeout, host=host, port=port)
+    )
 
 
-async def async_delete_model(model_name: str) -> bool:
+async def async_delete_model(
+    model_name: str,
+    *,
+    host: Optional[str] = None,
+    port: int = DEFAULT_PORT,
+    timeout: float = 60.0,
+) -> bool:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, delete_model, model_name)
+    return await loop.run_in_executor(
+        None, partial(delete_model, model_name, host=host, port=port, timeout=timeout)
+    )
 
 
 async def async_serve_model(
@@ -1666,15 +1757,15 @@ def preload_model(url: str, port: int, model: str, timeout: float = 120.0) -> No
     """Warm the selected model through the local Ollama API."""
     json_post(
         endpoint_url(url, port, "/api/generate"),
-        {"model": model, "keep_alive": "30m"},
+        {"model": model, "keep_alive": "30m", "stream": False},
         timeout=timeout,
     )
 
 
-def running_model_names(host: str) -> List[str]:
+def running_model_names(host: str, timeout: float = 30.0) -> List[str]:
     """Return the names reported by `ollama ps` (best-effort)."""
     try:
-        proc = run_ollama_command("ps", host=host)
+        proc = run_ollama_command("ps", host=host, timeout=timeout)
     except FileNotFoundError:
         return []
     if proc.returncode != 0:
@@ -1758,6 +1849,22 @@ def load_llm_config(path: Optional[str] = None) -> Dict[str, Any]:
     }
 
 
+def _effective_config(
+    path: Optional[str], config: Optional[Dict[str, Any]]
+) -> Dict[str, Any]:
+    if config is None:
+        return load_llm_config(path)
+    if path is not None:
+        raise ValueError("supply config or config_path, not both")
+    return {
+        "url": DEFAULT_URL,
+        "port": DEFAULT_PORT,
+        "model": "",
+        "last_served_model": "",
+        **config,
+    }
+
+
 def preferred_start_model(llm: Dict[str, Any]) -> str:
     last = str(llm.get("last_served_model") or "").strip()
     model = str(llm.get("model") or "").strip()
@@ -1783,9 +1890,9 @@ def save_last_served_model(model: str, path: Optional[str] = None) -> bool:
         return False
 
 
-def ollama_version_text(host: Optional[str] = None) -> str:
+def ollama_version_text(host: Optional[str] = None, timeout: float = 30.0) -> str:
     try:
-        proc = run_ollama_command("--version", host=host)
+        proc = run_ollama_command("--version", host=host, timeout=timeout)
     except FileNotFoundError:
         return ""
     return (proc.stdout or proc.stderr or "").strip()
@@ -1798,12 +1905,17 @@ def install_command_for_current_platform(
     return _install_command_for_method(selected_method)
 
 
-def install_service(reinstall: bool = False) -> tuple[int, str]:
+def install_service(reinstall: bool = False, timeout: float = 600.0) -> tuple[int, str]:
     action = "reinstall" if reinstall else "install"
     command, display = install_command_for_current_platform()
     try:
         proc = subprocess.run(
-            command, cwd=str(ROOT), text=True, capture_output=True, check=False
+            command,
+            cwd=str(ROOT),
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=_timeout(timeout),
         )
         combined = ((proc.stdout or "") + (proc.stderr or "")).strip()
         if proc.returncode == 0:
@@ -1813,11 +1925,13 @@ def install_service(reinstall: bool = False) -> tuple[int, str]:
         return 1, f"Unable to launch the Ollama installer command ({display}): {exc}"
 
 
-def inspect_service_state(config_path: Optional[str] = None) -> Dict[str, Any]:
-    llm = load_llm_config(config_path)
+def inspect_service_state(
+    config_path: Optional[str] = None, *, config: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    llm = _effective_config(config_path, config)
     url = str(llm["url"])
     port = int(llm["port"])
-    host = f"{url.replace('http://', '').replace('https://', '')}:{port}"
+    host = endpoint_url(url, port, "")
     return {
         "installed": ollama_installed(),
         "version": ollama_version_text(host=host),
@@ -1831,7 +1945,11 @@ def inspect_service_state(config_path: Optional[str] = None) -> Dict[str, Any]:
 
 
 def start_service(
-    config_path: Optional[str] = None, warmup_timeout: float = 30.0
+    config_path: Optional[str] = None,
+    warmup_timeout: float = 30.0,
+    *,
+    config: Optional[Dict[str, Any]] = None,
+    timeout: float = 600.0,
 ) -> int:
     """Start Ollama service with optional model preload and configurable warmup timeout.
 
@@ -1842,14 +1960,14 @@ def start_service(
     Returns:
         0 on success, non-zero on failure.
     """
-    llm = load_llm_config(config_path)
+    llm = _effective_config(config_path, config)
     model = preferred_start_model(llm)
     url = str(llm["url"])
     port = int(llm["port"])
-    host = f"{url.replace('http://', '').replace('https://', '')}:{port}"
+    host = endpoint_url(url, port, "")
     # Ensure the CLI is available and responding before attempting to start
     try:
-        version_proc = run_ollama_command("--version", host=host)
+        version_proc = run_ollama_command("--version", host=host, timeout=timeout)
     except FileNotFoundError:
         print("ollama: command not found", file=sys.stderr)
         return 1
@@ -1890,18 +2008,19 @@ def start_service(
             print(f"Completed: ollama already running at {host} (no model configured).")
         return 0
 
-    pull_proc = run_ollama_command("pull", model, host=host)
+    pull_proc = run_ollama_command("pull", model, host=host, timeout=timeout)
     if pull_proc.returncode != 0:
         sys.stderr.write((pull_proc.stdout or "") + (pull_proc.stderr or ""))
         return pull_proc.returncode
 
     try:
         preload_model(url, port, model, timeout=120.0)
-    except Exception:
-        # warming the model is best-effort; do not fail the whole start.
-        pass
+    except Exception as exc:
+        print(f"Failed to warm model {model}: {exc}", file=sys.stderr)
+        return 1
 
-    save_last_served_model(model, config_path)
+    if config is None:
+        save_last_served_model(model, config_path)
 
     if started:
         print(
@@ -1914,12 +2033,18 @@ def start_service(
     return 0
 
 
-def pull_model(model_name: str, timeout: float = 600.0) -> bool:
+def pull_model(
+    model_name: str,
+    timeout: float = 600.0,
+    *,
+    host: Optional[str] = None,
+    port: int = DEFAULT_PORT,
+) -> bool:
     """Pull/download a remote model into the local cache.
 
     This is a small convenience wrapper that delegates to :func:`download_model`.
     """
-    return download_model(model_name, timeout=timeout)
+    return download_model(model_name, timeout=timeout, host=host, port=port)
 
 
 def load_remote_timeout_catalog(path: Optional[Path] = None) -> Dict[str, Any]:
@@ -2065,10 +2190,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     return 2
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
-
-
 def _listener_pids_from_connections(connections: Iterable[Any], port: int) -> List[int]:
     pids: set[int] = set()
     for conn in connections:
@@ -2135,88 +2256,59 @@ def find_ollama_listener_pids(port: int) -> List[int]:
 
 
 def stop_service(
-    host: str = "http://127.0.0.1",
-    port: int = 11434,
+    host: str = DEFAULT_URL,
+    port: int = DEFAULT_PORT,
     verbose: bool = False,
     config_path: Optional[str] = None,
+    *,
+    config: Optional[Dict[str, Any]] = None,
+    timeout: float = 3.0,
 ) -> int:
-    """Stop running models and terminate server processes (best-effort).
+    """Terminate only a server started by Modelito with a matching ownership receipt.
 
-    If `config_path` is provided the function will load the configured URL/port
-    from the LLM config and use that instead of the explicit `host`/`port`
-    values.
-
-    Returns 0 on success, non-zero on failure.
+    Never unload models or discover/kill arbitrary listeners. Missing receipts,
+    unavailable psutil, remote endpoints and changed process identity fail closed.
     """
-    if config_path:
-        try:
-            cfg = load_llm_config(config_path)
-            host = str(cfg.get("url") or host)
-            port = int(cfg.get("port") or port)
-        except Exception:
-            # Fall back to explicit host/port on any load failure
-            pass
-    host_url = host
-    host_env = f"{host_url.replace('http://', '').replace('https://', '')}:{port}"
+    timeout = _timeout(timeout)
+    if config_path is not None or config is not None:
+        cfg = _effective_config(config_path, config)
+        host, port = str(cfg["url"]), int(cfg["port"])
+    endpoint = endpoint_url(host, port, "")
+    if urlsplit(endpoint).hostname not in ("localhost", "127.0.0.1", "::1"):
+        return 1
+    path = _ownership_path(endpoint)
+    if not path.exists():
+        if verbose:
+            print(f"No Modelito ownership receipt for {endpoint}; server preserved.")
+        return 1
     try:
-        run_ollama_command("--version", host=host_env)
-        models = running_model_names(host=host_env)
-        if models and verbose:
-            print(f"Stopping running models: {' '.join(models)}")
-        for model in models:
-            run_ollama_command("stop", model, host=host_env)
-    except FileNotFoundError:
-        if verbose:
-            print("ollama CLI not found; skipping model stop.")
+        import psutil
 
-    pids = find_ollama_listener_pids(port)
-    if not pids:
-        if verbose:
-            print(f"No process is listening on port {port} (already stopped?).")
+        receipt = json.loads(path.read_text(encoding="utf-8"))
+        proc = psutil.Process(receipt["pid"])
+        command = proc.cmdline()
+        if (
+            proc.create_time() != receipt["created"]
+            or proc.exe() != receipt["exe"]
+            or command != receipt["cmdline"]
+            or len(command) < 2
+            or Path(command[0]).stem.lower() != "ollama"
+            or command[1] != "serve"
+        ):
+            return 1
+        proc.terminate()
+        try:
+            proc.wait(timeout=timeout)
+        except psutil.TimeoutExpired:
+            # psutil's process object checks PID reuse before signalling.
+            proc.kill()
+            proc.wait(timeout=timeout)
+        path.unlink(missing_ok=True)
         return 0
-
-    killed = False
-    try:
-        import importlib
-
-        psutil = importlib.import_module("psutil")
     except Exception:
-        psutil = None
+        logger.debug("Owned Ollama shutdown failed", exc_info=True)
+        return 1
 
-    if psutil:
-        for pid in pids:
-            try:
-                proc = psutil.Process(pid)
-            except psutil.Error:
-                continue
-            name = proc.name().lower()
-            if "ollama" not in name:
-                continue
-            if verbose:
-                print(f"Stopping ollama serve PID {pid} (port {port})")
-            try:
-                proc.terminate()
-                killed = True
-            except psutil.Error:
-                continue
 
-        # wait and kill survivors
-        try:
-            _gone, alive = psutil.wait_procs(
-                [psutil.Process(pid) for pid in pids if psutil.pid_exists(pid)],
-                timeout=3.0,
-            )
-            for proc in alive:
-                try:
-                    proc.kill()
-                except psutil.Error:
-                    continue
-        except Exception:
-            pass
-
-    if verbose:
-        if killed:
-            print(f"Ollama server on {host_env} stopped.")
-        else:
-            print(f"No ollama serve process found on {host_env}.")
-    return 0
+if __name__ == "__main__":
+    raise SystemExit(main())

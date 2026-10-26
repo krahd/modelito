@@ -19,7 +19,7 @@ class LocalModelManager:
 
     def discover_models(self) -> List[str]:
         """Auto-discover local models (Ollama)."""
-        self.models = list_local_models()
+        self.models = list_local_models(host=self.host, port=self.port)
         return self.models
 
     def health_check(self) -> Dict[str, Any]:

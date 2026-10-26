@@ -79,7 +79,7 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -e ".[dev]"
       - name: Check native requests and UTF-8 CLI handling
-        run: python -m pytest -q tests/test_ollama_strict.py tests/test_ollama_provider_inputs.py tests/test_ollama_raw_provider.py tests/test_ollama_cli_helpers.py
+        run: python -m pytest -q tests/test_ollama_strict.py tests/test_ollama_provider_inputs.py tests/test_ollama_raw_provider.py tests/test_ollama_cli_helpers.py tests/test_ollama_audit.py tests/test_ollama_remote_catalog.py
 
   docs:
     name: Docs build

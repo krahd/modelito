@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-10-22 19:48
+Last updated: 2026-10-26 15:56
 
 ## Project purpose
 
@@ -12,10 +12,12 @@ test fallbacks.
 
 ## Current state
 
-- Package metadata and latest PyPI version: `1.4.6`.
-- Release tag `v1.4.6` points to `0ecf54e`; trusted PyPI publication completed.
-- Active focus: Ollama request-fidelity repair and release verification are complete;
-  follow-up provider work remains listed below.
+- Package metadata: `1.4.7`; release validation is in progress.
+- Published baseline: `1.4.6`; the audit repairs are prepared for the authorised
+  `1.4.7` release. Publication has not yet occurred.
+- Active focus: the five upstream audit findings and the additional remote
+  catalogue discovery defect are repaired and validated locally. Live lifecycle
+  acceptance remains separate.
 - Python: 3.10–3.12.
 - Licence: MIT.
 - Hosted providers include OpenAI, Anthropic/Claude, Gemini, and Grok.
@@ -175,7 +177,66 @@ python -m build
 Local runtime policy, benchmark usage, capability caveats, and upstream sources
 are documented in `docs/LOCAL-RUNTIMES.md`.
 
-## Current validation
+## Release 1.4.7 validation
+
+- `main` was fetched and matched `origin/main` before release preparation.
+- Public PyPI reports 1.4.6; version 1.4.7 was not present before preparation.
+- The repository has zero registered self-hosted runners. The integration gate
+  used its exact test locally against existing `smollm2:latest`: 1 passed.
+  Command: `RUN_OLLAMA_INTEGRATION=1 ALLOW_OLLAMA_INSTALL=0
+  ALLOW_OLLAMA_DOWNLOAD=0 ALLOW_OLLAMA_UPDATE=0 OLLAMA_MODEL=smollm2:latest
+  python -m pytest tests/integration/test_integration_ollama_stream.py -q`.
+- Final source suite: 463 passed, 1 skipped on Python 3.12.15. Ruff, mypy,
+  changed-file Black checks, documentation example checks and diff checks passed.
+- Isolated 1.4.7 wheel/sdist build and twine metadata validation passed. A fresh
+  dependency-free wheel installation passed version/default-strict checks, live
+  summary and complete streaming, native roles/options capture, per-call timeout
+  override, missing-model HTTP 404 and incomplete-response rejection. Live remote
+  discovery returned 260 model families.
+- Hosted CI, commit/push and publication are pending. No service shutdown,
+  model download/deletion or Ollama installation/update was performed.
+- Windows CI now includes the new audit and remote-catalogue regression files.
+
+## Remote discovery validation (pre-release repair)
+
+- Live read-only HTTPS discovery from `https://ollama.com/library` returned 260
+  unique model families without invoking the local daemon or CLI.
+- Regression tests cover independent discovery, filtering/deduplication,
+  explicit installed-state endpoints, default-tag matching, fetch/parse failures,
+  response size bounds and timeout validation: 20 focused tests passed.
+- Final full non-live suite on Python 3.12.15 and 3.14.9: 463 passed, 1 skipped
+  on each interpreter (`python -m pytest -q --ignore=tests/integration tests`).
+- Ruff, mypy (43 source files), Black on the changed Python files, the legacy-dict
+  documentation check and `git diff --check` passed. The existing no-CLI smoke
+  test now isolates the public fetch and local CLI state from the environment.
+- Changes remain local and unreleased; hosted CI and native Windows acceptance
+  were not run. Packaging evidence below predates this remote-discovery change.
+
+## Previous five-finding repair validation
+
+- Full non-live suite on macOS, independently on Python 3.12.15 and 3.14.9:
+  `python -m pytest -q --ignore=tests/integration tests` — 452 passed, 1 skipped
+  on each interpreter; the 10 warnings are expected legacy-fallback warnings.
+- Added 45 regressions for completion/model identity, timeout overrides,
+  endpoint routing, blocked download output, cancellation cleanup, receipt
+  creation and shutdown ownership. Synthetic loopback HTTP tests verify the
+  native request body and one-attempt timeout failure. Real Python subprocesses
+  verify execution deadlines and child cleanup. HTTP tests required expanded
+  sandbox permissions for loopback binding.
+- `ruff check .`, `mypy modelito --ignore-missing-imports` (43 source files),
+  Black checks on all changed Python files, the legacy-dict documentation check
+  and `git diff --check` passed.
+- Isolated wheel/sdist build and `python -m twine check` passed. A fresh
+  dependency-free wheel installation passed import/default-strict and completed/
+  incomplete response smoke checks; wheel package bytes match the current source.
+  Build dependencies were installed into temporary isolated environments; no
+  release was published.
+- No deliberate real Ollama inference, service shutdown, model download/deletion,
+  installation/update or native Windows execution was performed. Existing smoke
+  tests may inspect the installed CLI/service; the repaired inventory fallback
+  regression is isolated from that machine state. Hosted CI was not run.
+
+## Published 1.4.6 validation (historical)
 
 - [Release-source CI](https://github.com/krahd/modelito/actions/runs/39885685585)
   passed for commit `0ecf54e`: lint, Python 3.10/3.11/3.12 tests, Windows Ollama
@@ -203,6 +264,24 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
   `28e7b6cdc1570834236c55ca1dcda9ac608d920d65e467fff4c9e13013be7c87`.
 
 ## Recent changes
+
+- Replaced unsupported remote-list CLI flags and the adapter's unsupported HTTP
+  route with bounded HTTPS parsing of the official Ollama library. Results are
+  model families; fetch/parse failures propagate through the helper, adapter and
+  API instead of becoming empty catalogues. Installed-state inventory retains
+  its explicit endpoint. Public HTML structure remains an upstream dependency.
+
+- Added explicit effective configuration for lifecycle inspection/start/stop and
+  endpoint arguments for inventory, catalogue, pull/download, deletion and async
+  wrappers. Provider, readiness, manager and adapter call sites retain endpoints.
+- Shutdown requires a persisted process ownership receipt and exact identity;
+  arbitrary listener termination and global model unloading are removed.
+- CLI operations expose deadlines; download deadlines cover blocked stdout reads
+  and iterator closure cleans up the child process.
+- Strict summary and streaming honour per-request timeout overrides and check
+  response model identity. Synchronous summaries require `done: true` and disable
+  automatic HTTP retries so timed-out generations are not replayed.
+- Added `docs/OLLAMA-LIFECYCLE.md` documenting contracts and compatibility changes.
 
 - Ollama defaults to `strict=True`: native summary/streaming HTTP errors raise
   explicitly, with no CLI or deterministic fallback. Both paths preserve roles
@@ -258,7 +337,8 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
    instead of guessing model- or version-specific support.
 9. Speech/VAD/TTS/ASR orchestration does not belong in Modelito's LLM runtime
    abstraction.
-10. Release 1.4.6 to PyPI is explicitly authorised for this task.
+10. The user authorised testing, committing, pushing and releasing these repairs
+    as 1.4.7 on 26 October 2026.
 11. Ollama must fail explicitly by default; legacy offline fallback is opt-in.
 
 ## Pending tasks
@@ -286,16 +366,18 @@ winner table.
 
 ## Next steps
 
-1. Monitor reports from consumers upgrading to 1.4.6, particularly applications
+1. Complete release 1.4.7 validation, commit/push, hosted CI and publication, then
+   verify a fresh installation from public PyPI.
+2. Monitor reports from consumers upgrading to 1.4.6, particularly applications
    that relied on silent Ollama fallbacks; document explicit `strict=False`
    only for intentional legacy/offline use.
-2. Run the conversational benchmark on the target Apple-Silicon machine with
+3. Run the conversational benchmark on the target Apple-Silicon machine with
    equivalent models/configurations and record results separately from runtime
    marketing benchmarks.
-3. Keep reviewing provider additions against the portable-common-surface rule.
-4. Continue monitoring Ollama raw passthrough behaviour and keep docs/tests
+4. Keep reviewing provider additions against the portable-common-surface rule.
+5. Continue monitoring Ollama raw passthrough behaviour and keep docs/tests
    aligned with OpenAI-compatible payload expectations.
-5. Address Claude raw passthrough and Gemini/Grok chat surfaces in dedicated,
+6. Address Claude raw passthrough and Gemini/Grok chat surfaces in dedicated,
    bounded follow-ups rather than expanding the local-runtime PR.
 
 ## Longer-term steps
@@ -306,6 +388,17 @@ winner table.
    well-contained.
 
 ## Risks and constraints
+
+- Remote catalogue discovery parses official public-library HTML, not a stable
+  catalogue API. It enumerates listed families, not every tag or user namespace.
+
+- Owned shutdown requires optional `psutil` and a matching persisted receipt.
+  External servers and servers predating receipts must be stopped by their owner.
+- Response model matching permits only omitted-tag/`:latest` equivalence; it is
+  a consistency check, not authentication of the serving binary or model weights.
+- Async executor cancellation does not terminate its worker; the configured
+  subprocess deadline still bounds that work. Direct progress iterators and
+  adapter streams clean up their children on explicit close.
 
 - Local backend performance and model support change quickly upstream.
 - Model identifiers and formats differ between runtimes.
@@ -328,4 +421,4 @@ winner table.
 - CI intentionally excludes integration tests by path/flags to keep default
   hosted CI fast and safe.
 
-Last updated: 2026-10-22 19:48
+Last updated: 2026-10-26 15:56
