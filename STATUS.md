@@ -196,7 +196,9 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
 - Release-source commit `a37477a` is pushed to `origin/main`; hosted CI and
   publication are pending. The expanded Windows test step stalled; per-test
   output and a 45-second traceback/exit limit are added to identify the blocked
-  regression. No service shutdown,
+  regression. The diagnostic Windows run also stalled without returning logs;
+  an outer 120-second process-tree watchdog now captures and prints test output
+  even when pytest cannot finish. No service shutdown,
   model download/deletion or Ollama installation/update was performed.
 - Windows CI now includes the new audit and remote-catalogue regression files.
 

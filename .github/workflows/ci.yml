@@ -79,7 +79,18 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -e ".[dev]"
       - name: Check native requests and UTF-8 CLI handling
-        run: python -m pytest -vv -o faulthandler_timeout=45 -o faulthandler_exit_on_timeout=true tests/test_ollama_strict.py tests/test_ollama_provider_inputs.py tests/test_ollama_raw_provider.py tests/test_ollama_cli_helpers.py tests/test_ollama_audit.py tests/test_ollama_remote_catalog.py
+        shell: pwsh
+        run: |
+          $testArgs = "-m pytest -vv -o faulthandler_timeout=45 -o faulthandler_exit_on_timeout=true tests/test_ollama_strict.py tests/test_ollama_provider_inputs.py tests/test_ollama_raw_provider.py tests/test_ollama_cli_helpers.py tests/test_ollama_audit.py tests/test_ollama_remote_catalog.py"
+          $testProcess = Start-Process -FilePath (Get-Command python).Source -ArgumentList $testArgs -PassThru -RedirectStandardOutput windows-pytest.log -RedirectStandardError windows-pytest-errors.log
+          if (-not $testProcess.WaitForExit(120000)) {
+            taskkill /PID $testProcess.Id /T /F | Out-Host
+            Get-Content windows-pytest.log, windows-pytest-errors.log
+            throw "Windows regressions exceeded the 120-second process-tree deadline."
+          }
+          $testProcess.WaitForExit()
+          Get-Content windows-pytest.log, windows-pytest-errors.log
+          exit $testProcess.ExitCode
 
   docs:
     name: Docs build
