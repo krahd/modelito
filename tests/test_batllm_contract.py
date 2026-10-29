@@ -162,7 +162,7 @@ def test_total_deadline_interrupts_trickling_bytes(phase):
                     self.wfile.write(bytes([byte]))
                     self.wfile.flush()
                     time.sleep(0.01)
-            except (BrokenPipeError, ConnectionResetError):
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
                 disconnected.set()
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)

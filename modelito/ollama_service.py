@@ -1745,9 +1745,10 @@ async def async_serve_model(
 
 def wait_until_ready(url: str, port: int, timeout_seconds: float = 60.0) -> None:
     """Wait for a valid Ollama version response within a total time budget."""
-    deadline = time.monotonic() + _timeout(timeout_seconds)
+    budget = _timeout(timeout_seconds)
+    deadline = time.monotonic() + budget
     while True:
-        remaining = deadline - time.monotonic()
+        remaining = min(budget, deadline - time.monotonic())
         if remaining <= 0:
             break
         try:
