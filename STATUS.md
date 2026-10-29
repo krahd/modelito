@@ -186,7 +186,9 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
 - Release-source Linux CI passed Python 3.10–3.12. The initial Windows job
   exposed `ConnectionAbortedError` in the disconnect fixture, clock-rounding
   overshoot in a readiness budget and pre-dispatch timeout assumptions. Those
-  cases are corrected; a fresh complete CI run is required before tagging.
+  cases are corrected. Disconnect regressions observe the peer FIN directly;
+  Windows can buffer successful writes after client closure. A fresh complete
+  CI run is required before tagging.
 
 - Repair candidate: `.venv-ci/bin/python -m pytest -q --ignore=tests/integration tests`:
   **486 passed, 1 skipped**, including test-owned loopback slow-header, trickling-body,

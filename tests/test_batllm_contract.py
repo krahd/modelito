@@ -142,6 +142,18 @@ def test_total_deadline_interrupts_trickling_bytes(phase):
 
         def do_POST(self):
             requests.append(self.rfile.read(int(self.headers["Content-Length"])))
+
+            def observe_disconnect():
+                # Read the client's FIN directly. Windows may buffer successful
+                # writes after peer shutdown, so write errors are not a reliable
+                # measure of when the client closed its socket.
+                try:
+                    if self.connection.recv(1) == b"":
+                        disconnected.set()
+                except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+                    disconnected.set()
+
+            threading.Thread(target=observe_disconnect, daemon=True).start()
             body = (
                 json.dumps(
                     {"model": "foo", "message": {"content": "ok"}, "done": True}
