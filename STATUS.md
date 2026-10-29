@@ -187,8 +187,10 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
   exposed `ConnectionAbortedError` in the disconnect fixture, clock-rounding
   overshoot in a readiness budget and pre-dispatch timeout assumptions. Those
   cases are corrected. Disconnect regressions observe the peer FIN directly;
-  Windows can buffer successful writes after client closure. A fresh complete
-  CI run is required before tagging.
+  Windows can buffer successful writes after client closure. Per-request TLS
+  trust-store loading was also consuming short plain-HTTP budgets on Windows;
+  a shared verified context removes that redundant setup. Fresh complete CI is
+  required before tagging.
 
 - Repair candidate: `.venv-ci/bin/python -m pytest -q --ignore=tests/integration tests`:
   **486 passed, 1 skipped**, including test-owned loopback slow-header, trickling-body,

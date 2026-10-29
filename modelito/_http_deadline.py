@@ -6,6 +6,7 @@ import math
 import ipaddress
 import queue
 import socket
+import ssl
 import threading
 import time
 from urllib.request import (
@@ -18,6 +19,10 @@ from urllib.request import (
 
 # Match urllib's cached default opener: do not repeat OS proxy discovery per request.
 _PROXIES = getproxies()
+# HTTPSHandler otherwise reloads the trust store even for plain HTTP requests.
+# Share an immutable verified context, as urllib's cached default opener does.
+_TLS_CONTEXT = ssl.create_default_context()
+_TLS_CONTEXT.set_alpn_protocols(["http/1.1"])
 
 
 @contextmanager
@@ -128,9 +133,9 @@ def urlopen(url, timeout=60.0):
     timer.daemon = True
     timer.start()
     try:
-        with build_opener(ProxyHandler(_PROXIES), HTTP(), HTTPS()).open(
-            url, timeout=timeout
-        ) as response:
+        with build_opener(
+            ProxyHandler(_PROXIES), HTTP(), HTTPS(context=_TLS_CONTEXT)
+        ).open(url, timeout=timeout) as response:
             yield response
             if expired.is_set() or time.monotonic() >= deadline:
                 raise TimeoutError("HTTP request deadline exceeded")
