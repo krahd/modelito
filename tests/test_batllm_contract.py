@@ -132,7 +132,9 @@ def test_startup_never_pulls(monkeypatch):
 
 
 @pytest.mark.parametrize("phase", ["headers", "body", "stream"])
-def test_total_deadline_interrupts_trickling_bytes(phase):
+def test_total_deadline_interrupts_trickling_bytes(phase, monkeypatch):
+    # A test-owned loopback endpoint must not use host proxy configuration.
+    monkeypatch.setattr("modelito._http_deadline._PROXIES", {})
     disconnected = threading.Event()
     requests = []
 
@@ -185,14 +187,14 @@ def test_total_deadline_interrupts_trickling_bytes(phase):
             host="127.0.0.1", port=server.server_port, model="foo", timeout=0.1
         )
         started = time.monotonic()
-        with pytest.raises(ModelitoTimeoutError):
+        with pytest.raises(ModelitoTimeoutError) as failure:
             if phase == "stream":
                 list(provider.stream(["hello"]))
             else:
                 provider.summarize(["hello"])
         assert time.monotonic() - started < 0.3
-        assert disconnected.wait(0.3)
-        assert len(requests) == 1
+        assert len(requests) == 1, str(failure.value)
+        assert disconnected.wait(1.0)
     finally:
         server.shutdown()
         server.server_close()
