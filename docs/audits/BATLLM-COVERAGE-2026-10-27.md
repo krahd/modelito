@@ -249,3 +249,29 @@ The built wheel was installed without dependencies into a disposable target;
 its 1.4.8 version/import path were verified and BatLLM's full suite passed again:
 **307 passed, 2 skipped**. Fresh public-PyPI installation and supported-platform
 CI remain release gates. Native test processes were closed after validation.
+
+## Publication verification — 29 October 2026
+
+Modelito **1.4.8** is published on public PyPI and GitHub. Tag `v1.4.8` points to
+`58b9a41af4a3be0301a6ca896688bf80602fd8b9`.
+
+- [Release-source CI](https://github.com/krahd/modelito/actions/runs/40834302530):
+  Python 3.10, 3.11 and 3.12 each **486 passed, 1 skipped**; Windows **125 passed**;
+  lint, mypy and docs passed. Windows exposed per-request TLS trust-store setup,
+  budget-rounding and disconnect-observation portability issues; all are repaired.
+- [Trusted publication](https://github.com/krahd/modelito/actions/runs/40834488142)
+  succeeded; [GitHub release](https://github.com/krahd/modelito/releases/tag/v1.4.8)
+  is public.
+- Fresh uncached public-PyPI installation and `pip check` passed. All 44 installed
+  package Python files match release source bytes. Both published artefact hashes
+  match PyPI metadata:
+  - Wheel: `09862d9e7a0b0f222a5efece5405e135681130597ecb225432683b20190a8da9`.
+  - Sdist: `2f992156e494c20cf8edc83732d87a2f2104286cd775bcc4779f771021c7a54a`.
+- Public-package readiness, strict warm-up, synchronous output, complete streaming
+  and catalogue discovery (264 families) passed with existing `smollm2:latest`.
+- BatLLM's complete isolated suite against that fresh public package passed:
+  **307 passed, 2 skipped**, Python 3.12; version and import path verified.
+
+No service start/stop, model download/deletion or platform-native gameplay
+rehearsal was performed during publication. BatLLM integration proceeds through
+its separate migration branch and pull request; no BatLLM release is implied.

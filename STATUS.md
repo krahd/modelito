@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-10-29 01:05
+Last updated: 2026-10-29 01:19
 
 ## Project purpose
 
@@ -12,16 +12,17 @@ test fallbacks.
 
 ## Current state
 
-- Package metadata: `1.4.8` repair candidate; published PyPI version remains `1.4.7`.
-- Release tag `v1.4.7` points to `3a0d67c`; trusted PyPI publication and the
-  GitHub release completed. A fresh uncached public-PyPI installation is verified.
+- Package metadata and public PyPI version: `1.4.8`.
+- Release tag `v1.4.8` points to `58b9a41af4a3be0301a6ca896688bf80602fd8b9`.
+  Trusted PyPI publication and the GitHub release completed. A fresh uncached
+  public-PyPI installation, package source equality and live checks are verified.
 - Active focus: bounded BatLLM contract repairs and consumer migration. Warm-up
   validates completion/model identity without replay; native HTTP uses total
   deadlines; terminal stream fields are validated; readiness checks Ollama's
   version endpoint within budget; generic startup no longer downloads models.
 - BatLLM migration is prepared on `fix/modelito-consumer-contract-20261027`:
   both pins target 1.4.8, catalogue discovery is restored in both interfaces,
-  and successful fixtures carry request model identity. Release, commit and push authorised on 29 October 2026.
+  and successful fixtures carry request model identity. Modelito publication completed on 29 October 2026.
 - Python: 3.10–3.12.
 - Licence: MIT.
 - Hosted providers include OpenAI, Anthropic/Claude, Gemini, and Grok.
@@ -183,16 +184,13 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
 
 ## Current validation
 
-- Release-source Linux CI passed Python 3.10–3.12. The initial Windows job
-  exposed `ConnectionAbortedError` in the disconnect fixture, clock-rounding
-  overshoot in a readiness budget and pre-dispatch timeout assumptions. Those
-  cases are corrected. Disconnect regressions observe the peer FIN directly;
-  Windows can buffer successful writes after client closure. Per-request TLS
-  trust-store loading was also consuming short plain-HTTP budgets on Windows;
-  a shared verified context removes that redundant setup. Fresh complete CI is
-  required before tagging.
+- [Release-source CI](https://github.com/krahd/modelito/actions/runs/40834302530)
+  passed: Python 3.10–3.12 each **486 passed, 1 skipped**; Windows Ollama/contract
+  regressions **125 passed**; lint, typing and docs passed. Windows validation
+  corrected disconnect observation, clock-rounding budget overshoot and repeated
+  TLS trust-store setup. The final verified context is shared across requests.
 
-- Repair candidate: `.venv-ci/bin/python -m pytest -q --ignore=tests/integration tests`:
+- Local repair validation: `.venv-ci/bin/python -m pytest -q --ignore=tests/integration tests`:
   **486 passed, 1 skipped**, including test-owned loopback slow-header, trickling-body,
   partial-stream, socket-disconnection and DNS-budget regressions (Python 3.14.9).
   Ruff, mypy (44 files), focused Black, legacy-message checks and diff checks pass.
@@ -209,8 +207,14 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
 - Supported Python 3.12 contract/audit regressions: **68 passed** (one existing
   pytest configuration warning). BatLLM also passed **307 tests, 2 skipped** against
   the built 1.4.8 wheel installed into an isolated target; import path/version verified.
-- 1.4.8 is unpublished. Consumer pins require publication before ordinary install;
-  public-PyPI installation and new Windows/CI matrix runs remain pending.
+- [Trusted publication](https://github.com/krahd/modelito/actions/runs/40834488142)
+  and [GitHub release](https://github.com/krahd/modelito/releases/tag/v1.4.8) passed.
+  Fresh uncached PyPI install and `pip check` passed; all 44 package Python files
+  match release source. Public wheel/sdist SHA-256 hashes match PyPI metadata.
+  Public-package readiness, warm-up, summary, stream and remote discovery (264
+  families) passed with installed `smollm2:latest`; no downloads/service control.
+- BatLLM complete isolated suite against the fresh public 1.4.8 package:
+  **307 passed, 2 skipped** (Python 3.12, import path/version verified).
 
 Historical release/audit evidence below is retained with its original scope.
 
@@ -350,11 +354,10 @@ Historical release/audit evidence below is retained with its original scope.
 
 ## Pending tasks
 
-- Publish the authorised 1.4.8 candidate after release validation, then
-  integrate BatLLM's coordinated pins and verify a fresh public-PyPI installation.
-- Run supported Python/platform CI, including Windows, before release sign-off.
-  F1–F6 source repairs and local consumer validation are complete; publication and
-  public-package/platform acceptance remain separate gates.
+- Review and integrate BatLLM's coordinated migration branch after consumer CI.
+  Modelito 1.4.8 publication, fresh public installation and supported Python/Windows
+  regression gates are complete. Native cross-platform/install-level application
+  acceptance remains distinct from these automated checks.
 
 These repository-wide tasks remain open and are not superseded by the local
 runtime work:
@@ -437,4 +440,4 @@ consumer upgrade. Do not expand Modelito to address application-owned concerns.
 - CI intentionally excludes integration tests by path/flags to keep default
   hosted CI fast and safe.
 
-Last updated: 2026-10-29 01:05
+Last updated: 2026-10-29 01:19
