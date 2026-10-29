@@ -98,7 +98,7 @@ def test_default_stream_preserves_native_settings(monkeypatch):
             ).encode("utf-8")
         )
 
-    monkeypatch.setattr("urllib.request.urlopen", open_stream)
+    monkeypatch.setattr("modelito.ollama.urlopen", open_stream)
     assert list(
         OllamaProvider(timeout=7).stream(
             [{"role": "system", "content": "Español"}],
@@ -118,7 +118,7 @@ def test_default_stream_preserves_native_settings(monkeypatch):
     ],
 )
 def test_default_stream_raises_without_replaying(monkeypatch, body, error):
-    monkeypatch.setattr("urllib.request.urlopen", lambda *a, **kw: io.BytesIO(body))
+    monkeypatch.setattr("modelito.ollama.urlopen", lambda *a, **kw: io.BytesIO(body))
     provider = OllamaProvider()
     monkeypatch.setattr(
         provider, "summarize", lambda *a, **kw: pytest.fail("must not replay")
@@ -131,7 +131,7 @@ def test_default_stream_connection_failure(monkeypatch):
     def fail(*a, **kw):
         raise URLError("offline")
 
-    monkeypatch.setattr("urllib.request.urlopen", fail)
+    monkeypatch.setattr("modelito.ollama.urlopen", fail)
     with pytest.raises(ModelitoConnectionError):
         list(OllamaProvider().stream(["hola"]))
 

@@ -111,7 +111,8 @@ environment concerns:
     subprocesses.
 
 - `start_service(config_path=None)` — Attempts to start `ollama serve`
-    using the configured host/port. If no model is configured the helper
+    using the configured host/port, then warms an already-installed model without
+    downloading. Explicit download confirmation belongs to the caller. If no model is configured the helper
     will still start the server and return `0` on success; non-zero
     return codes indicate failures such as a missing CLI, CLI startup
     failure, or a startup timeout.

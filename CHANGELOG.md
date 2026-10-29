@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.4.8 - 2026-10-29
+
+- Validate Ollama warm-up completion, errors and model identity; never retry its
+  timed-out POST. Empty warm-up text remains valid.
+- Enforce total native HTTP deadlines across DNS wait, connection, TLS, headers
+  and partial body/stream reads; close request sockets on expiry.
+- Reject malformed explicit text/message fields in terminal streaming events.
+- **Behaviour change:** generic startup no longer downloads models. Download
+  remains an explicit caller action before warming a missing model.
+- Validate readiness through `/api/version` within the remaining startup budget;
+  keep liveness separate from readiness.
+- Add BatLLM contract regressions and document the coordinated consumer migration.
+  No public API expansion.
+
 ## 1.4.7 - 2026-10-26
 
 - Preserve explicitly resolved Ollama endpoints across lifecycle, inventory,

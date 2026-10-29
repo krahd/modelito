@@ -7,12 +7,12 @@ utilities used by downstream projects.
 try:
     from importlib.metadata import PackageNotFoundError, version
 except Exception:
-    __version__ = "1.4.7"
+    __version__ = "1.4.8"
 else:
     try:
         __version__ = version("modelito")
     except PackageNotFoundError:
-        __version__ = "1.4.7"
+        __version__ = "1.4.8"
 
 from .basert import BaseRTProvider
 from .claude import ClaudeProvider

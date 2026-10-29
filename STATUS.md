@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-10-26 16:15
+Last updated: 2026-10-29 01:05
 
 ## Project purpose
 
@@ -12,12 +12,16 @@ test fallbacks.
 
 ## Current state
 
-- Package metadata and published PyPI version: `1.4.7`.
+- Package metadata: `1.4.8` repair candidate; published PyPI version remains `1.4.7`.
 - Release tag `v1.4.7` points to `3a0d67c`; trusted PyPI publication and the
   GitHub release completed. A fresh uncached public-PyPI installation is verified.
-- Active focus: the five upstream audit findings and additional remote catalogue
-  discovery defect are released. Monitor consumer reports and preserve explicit
-  endpoint, ownership and strict-response contracts.
+- Active focus: bounded BatLLM contract repairs and consumer migration. Warm-up
+  validates completion/model identity without replay; native HTTP uses total
+  deadlines; terminal stream fields are validated; readiness checks Ollama's
+  version endpoint within budget; generic startup no longer downloads models.
+- BatLLM migration is prepared on `fix/modelito-consumer-contract-20261027`:
+  both pins target 1.4.8, catalogue discovery is restored in both interfaces,
+  and successful fixtures carry request model identity. Release, commit and push authorised on 29 October 2026.
 - Python: 3.10–3.12.
 - Licence: MIT.
 - Hosted providers include OpenAI, Anthropic/Claude, Gemini, and Grok.
@@ -179,6 +183,34 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
 
 ## Current validation
 
+- Repair candidate: `.venv-ci/bin/python -m pytest -q --ignore=tests/integration tests`:
+  **486 passed, 1 skipped**, including test-owned loopback slow-header, trickling-body,
+  partial-stream, socket-disconnection and DNS-budget regressions (Python 3.14.9).
+  Ruff, mypy (44 files), focused Black, legacy-message checks and diff checks pass.
+- Wheel and sdist build plus twine checks pass; artefacts are outside the checkout.
+  The initial isolated build was blocked by sandbox DNS; the permitted rerun passed.
+- Existing Ollama / `smollm2:latest`: synchronous and streaming integration passed
+  with install/download/update disabled. Native BatLLM catalogue selection loaded
+  264 model families; selecting and warming the installed model succeeded and
+  saved only the disposable profile. Native control recovered after an attachment
+  stall and a transient screen-capture failure. No server start/stop or pull occurred.
+- BatLLM complete isolated non-live suite against local repair source:
+  **307 passed, 2 skipped** (Python 3.12); documentation validation passed.
+  Native scope covers configuration/catalogue/warm-up, not a repeated gameplay audit.
+- Supported Python 3.12 contract/audit regressions: **68 passed** (one existing
+  pytest configuration warning). BatLLM also passed **307 tests, 2 skipped** against
+  the built 1.4.8 wheel installed into an isolated target; import path/version verified.
+- 1.4.8 is unpublished. Consumer pins require publication before ordinary install;
+  public-PyPI installation and new Windows/CI matrix runs remain pending.
+
+Historical release/audit evidence below is retained with its original scope.
+
+- 27 October consumer audit: existing non-live suite totals 463 passed, 1 skipped
+  on Python 3.14.9 after rerunning two sandbox-blocked loopback tests with
+  permission. Ruff and mypy passed. Targeted reproductions confirmed additional
+  defects despite the green existing suite. BatLLM test collection aborted in
+  Kivy; adapter-only HTTP compatibility passed. No native acceptance is claimed.
+
 - [Release-source CI](https://github.com/krahd/modelito/actions/runs/40410387950)
   passed at `3a0d67c`: lint, Python 3.10/3.11/3.12 suites (463 passed, 1 skipped
   each), Windows Ollama regressions (102 passed), and documentation build.
@@ -215,6 +247,16 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
   not a Windows Ollama daemon. Response model matching is not model authentication.
 
 ## Recent changes
+
+- Repaired consumer-audit F1–F5 using existing public methods. A private standard-
+  library HTTP transport enforces total deadlines and shuts down sockets on expiry;
+  DNS wait is bounded (an OS resolver may finish later without sending a request).
+  Warm-up allows empty text but requires successful completion and model identity.
+  Terminal streaming events reject malformed explicit text/message fields.
+- Startup warms installed models without pulling. Readiness validates `/api/version`
+  with single-attempt probes and clamped sleeps; liveness keeps its separate meaning.
+- Prepared the separate BatLLM F6 migration and added behavioural regressions.
+  Correctness for the consumer remains the focus; no public API expansion.
 
 - Released 1.4.7 with the Ollama audit repairs and remote catalogue fix. Added
   bounded Windows diagnostic execution and short oversized-response case IDs.
@@ -299,6 +341,12 @@ are documented in `docs/LOCAL-RUNTIMES.md`.
 
 ## Pending tasks
 
+- Publish the authorised 1.4.8 candidate after release validation, then
+  integrate BatLLM's coordinated pins and verify a fresh public-PyPI installation.
+- Run supported Python/platform CI, including Windows, before release sign-off.
+  F1–F6 source repairs and local consumer validation are complete; publication and
+  public-package/platform acceptance remain separate gates.
+
 These repository-wide tasks remain open and are not superseded by the local
 runtime work:
 
@@ -321,6 +369,9 @@ candidate order with an explicit `prefer=` override rather than an empirical
 winner table.
 
 ## Next steps
+
+Priority: close the bounded BatLLM correctness findings above, then validate the
+consumer upgrade. Do not expand Modelito to address application-owned concerns.
 
 1. Monitor consumers upgrading to 1.4.7, especially explicit endpoint management,
    ownership-based shutdown and remote-library discovery.
@@ -377,4 +428,4 @@ winner table.
 - CI intentionally excludes integration tests by path/flags to keep default
   hosted CI fast and safe.
 
-Last updated: 2026-10-26 16:15
+Last updated: 2026-10-29 01:05

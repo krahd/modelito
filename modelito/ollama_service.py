@@ -7,7 +7,7 @@ import math
 import hashlib
 import queue
 from urllib.parse import urlsplit
-from urllib.request import urlopen
+from ._http_deadline import urlopen
 from urllib.request import Request
 import time
 import asyncio
@@ -1744,22 +1744,51 @@ async def async_serve_model(
 
 
 def wait_until_ready(url: str, port: int, timeout_seconds: float = 60.0) -> None:
-    """Wait until the Ollama HTTP API becomes reachable."""
-    deadline = time.time() + float(timeout_seconds)
-    while time.time() < deadline:
-        if server_is_up(url, port):
-            return
-        time.sleep(1)
+    """Wait for a valid Ollama version response within a total time budget."""
+    deadline = time.monotonic() + _timeout(timeout_seconds)
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        try:
+            data = json_get(
+                endpoint_url(url, port, "/api/version"),
+                policy=TransportPolicy(timeout=remaining, max_attempts=1),
+            )
+            if (
+                time.monotonic() < deadline
+                and isinstance(data, dict)
+                and isinstance(data.get("version"), str)
+                and data["version"].strip()
+                and "error" not in data
+            ):
+                return
+        except Exception:
+            pass
+        time.sleep(max(0.0, min(0.1, deadline - time.monotonic())))
     raise RuntimeError(f"ollama serve did not become ready at {url}:{port}/api/version")
 
 
 def preload_model(url: str, port: int, model: str, timeout: float = 120.0) -> None:
-    """Warm the selected model through the local Ollama API."""
-    json_post(
+    """Warm a model once and require a completed, identity-bearing response."""
+    from .ollama import OllamaProvider
+    from .exceptions import ModelitoBadResponseError, ModelitoProviderError
+
+    response = json_post(
         endpoint_url(url, port, "/api/generate"),
         {"model": model, "keep_alive": "30m", "stream": False},
         timeout=timeout,
+        policy=TransportPolicy(timeout=_timeout(timeout), max_attempts=1),
     )
+    if not isinstance(response, dict):
+        raise ModelitoBadResponseError("Ollama warm-up returned a non-object response")
+    if "error" in response:
+        raise ModelitoProviderError(str(response["error"]))
+    if response.get("done") is not True:
+        raise ModelitoBadResponseError("Ollama warm-up is incomplete")
+    OllamaProvider(model=model)._validate_response_model(response)
+    if "response" in response and not isinstance(response["response"], str):
+        raise ModelitoBadResponseError("Ollama warm-up returned malformed text")
 
 
 def running_model_names(host: str, timeout: float = 30.0) -> List[str]:
@@ -1985,14 +2014,7 @@ def start_service(
         print(f"Starting ollama serve at {host} ...")
         start_detached_ollama_serve(host)
         try:
-            deadline = time.time() + float(warmup_timeout)
-            while time.time() < deadline:
-                if server_is_up(url, port):
-                    break
-                time.sleep(0.5)
-            if not server_is_up(url, port):
-                print(f"Timeout waiting for ollama serve at {host}", file=sys.stderr)
-                return 1
+            wait_until_ready(url, port, warmup_timeout)
         except Exception as exc:
             print(f"Failed to start ollama serve: {exc}", file=sys.stderr)
             return 1
@@ -2008,11 +2030,6 @@ def start_service(
             print(f"Completed: ollama already running at {host} (no model configured).")
         return 0
 
-    pull_proc = run_ollama_command("pull", model, host=host, timeout=timeout)
-    if pull_proc.returncode != 0:
-        sys.stderr.write((pull_proc.stdout or "") + (pull_proc.stderr or ""))
-        return pull_proc.returncode
-
     try:
         preload_model(url, port, model, timeout=120.0)
     except Exception as exc:
@@ -2023,13 +2040,9 @@ def start_service(
         save_last_served_model(model, config_path)
 
     if started:
-        print(
-            f"Completed: started ollama at {host}, pulled and warmed model '{model}'."
-        )
+        print(f"Completed: started ollama at {host}, warmed model '{model}'.")
     else:
-        print(
-            f"Completed: ollama already running at {host}; pulled and warmed model '{model}'."
-        )
+        print(f"Completed: ollama already running at {host}; warmed model '{model}'.")
     return 0
 
 

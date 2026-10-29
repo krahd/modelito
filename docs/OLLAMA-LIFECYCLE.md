@@ -82,7 +82,8 @@ stopped by their owner.
 `run_ollama_command(..., timeout=30)` bounds subprocess execution and propagates
 `subprocess.TimeoutExpired`. CLI inventory and deletion accept a total timeout
 across command variants (defaults: 30 and 60 seconds). Pull/download defaults
-to 600 seconds; `start_service(timeout=...)` applies it to the pull step.
+to 600 seconds. `start_service` never pulls models; use an explicit download
+action before warming a missing model. Its `timeout` bounds the CLI version probe.
 `install_service(timeout=600)` also bounds its installer subprocess.
 
 Download progress uses a deadline across stdout reading, command variants and
@@ -114,3 +115,9 @@ Malformed, incomplete and mismatched responses raise `ModelitoBadResponseError`;
 strict requests never replay through CLI or synthetic inference fallbacks.
 Strict synchronous summaries also disable automatic HTTP retries to avoid
 replaying a generation after a timeout.
+
+Native Ollama HTTP requests enforce a total monotonic deadline across connection,
+headers and body/stream reads; expiry shuts down the request socket. Warm-up uses
+one POST attempt and requires completion and matching model identity (empty text
+is valid). Readiness validates `/api/version` within the remaining startup budget;
+`server_is_up` remains a liveness probe.

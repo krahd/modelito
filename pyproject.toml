@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modelito"
-version = "1.4.7"
+version = "1.4.8"
 description = "Lightweight Python abstractions and connectors for hosted and local LLM providers."
 readme = "README.md"
 requires-python = ">=3.10"

@@ -29,7 +29,7 @@ def test_strict_model_mismatch(monkeypatch, actual, stream):
     response = {"model": actual, "done": True, "message": {"content": "wrong"}}
     monkeypatch.setattr("modelito.ollama.json_post", lambda *a, **kw: response)
     monkeypatch.setattr(
-        "urllib.request.urlopen",
+        "modelito.ollama.urlopen",
         lambda *a, **kw: io.BytesIO((json.dumps(response) + "\n").encode()),
     )
     provider = OllamaProvider(model="foo")
@@ -55,7 +55,7 @@ def test_timeout_override_and_latest_alias(monkeypatch, stream):
         return io.BytesIO((json.dumps(response) + "\n").encode())
 
     monkeypatch.setattr("modelito.ollama.json_post", post)
-    monkeypatch.setattr("urllib.request.urlopen", open_stream)
+    monkeypatch.setattr("modelito.ollama.urlopen", open_stream)
     provider = OllamaProvider(model="foo", timeout=99)
     result = (
         "".join(provider.stream(["hello"], {"timeout": 0.25}))
@@ -262,7 +262,7 @@ def test_provider_invalid_timeout_does_not_send(monkeypatch, timeout, stream):
     monkeypatch.setattr(
         "modelito.ollama.json_post", lambda *a, **kw: pytest.fail("sent")
     )
-    monkeypatch.setattr("urllib.request.urlopen", lambda *a, **kw: pytest.fail("sent"))
+    monkeypatch.setattr("modelito.ollama.urlopen", lambda *a, **kw: pytest.fail("sent"))
     provider = OllamaProvider()
     with pytest.raises(ValueError, match="finite and positive"):
         if stream:

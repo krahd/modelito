@@ -14,7 +14,8 @@ import time
 import uuid
 import warnings
 from typing import Any, Iterable, List, NoReturn, Optional
-from urllib.request import Request, urlopen
+from urllib.request import Request
+from ._http_deadline import urlopen
 
 from .exceptions import (
     ModelitoBadResponseError,
@@ -195,7 +196,9 @@ class OllamaProvider:
             raise exc
         if isinstance(cause, HTTPError):
             raise ModelitoProviderError(f"HTTP {cause.code}: {exc}") from exc
-        if isinstance(cause, (TimeoutError, socket.timeout)):
+        if isinstance(exc, (TimeoutError, socket.timeout)) or isinstance(
+            cause, (TimeoutError, socket.timeout)
+        ):
             raise ModelitoTimeoutError(str(exc)) from exc
         if isinstance(cause, URLError):
             if "timed out" in str(cause.reason).lower():
@@ -445,7 +448,7 @@ class OllamaProvider:
                 stacklevel=2,
             )
         import json
-        from urllib.request import Request, urlopen
+        from urllib.request import Request
 
         # Build payload and determine endpoint
         payload: dict[str, Any] = {"stream": True}
@@ -521,6 +524,22 @@ class OllamaProvider:
                                 if isinstance(message, dict)
                                 else obj.get("response")
                             )
+                            if "message" in obj and (
+                                not isinstance(message, dict)
+                                or (
+                                    "content" in message
+                                    and not isinstance(message["content"], str)
+                                )
+                            ):
+                                raise ModelitoBadResponseError(
+                                    "Malformed Ollama stream message"
+                                )
+                            if "response" in obj and not isinstance(
+                                obj["response"], str
+                            ):
+                                raise ModelitoBadResponseError(
+                                    "Malformed Ollama stream text"
+                                )
                             if isinstance(content, str) and content:
                                 yield content
                             if obj.get("done") is True:

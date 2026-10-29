@@ -33,7 +33,7 @@ def test_ollama_stream_monkeypatch(monkeypatch):
     def _fake_urlopen(req, timeout=60):
         return _FakeResp(lines)
 
-    monkeypatch.setattr("urllib.request.urlopen", _fake_urlopen)
+    monkeypatch.setattr("modelito.ollama.urlopen", _fake_urlopen)
     prov = OllamaProvider(host="http://127.0.0.1", port=11434, strict=False)
     from modelito.messages import Message
 

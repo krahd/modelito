@@ -158,7 +158,7 @@ def test_ollama_stream_dict_message_input_falls_back_without_raising(monkeypatch
     def _raise_urlopen(*_args, **_kwargs):
         raise RuntimeError("offline")
 
-    monkeypatch.setattr("urllib.request.urlopen", _raise_urlopen)
+    monkeypatch.setattr("modelito.ollama.urlopen", _raise_urlopen)
     provider = OllamaProvider(strict=False)
 
     chunks = list(provider.stream([{"role": "user", "content": "hello"}]))
@@ -186,7 +186,7 @@ def test_ollama_stream_applies_settings_to_native_options(monkeypatch):
         captured_payload.update(json.loads(request.data.decode("utf-8")))
         return FakeResponse()
 
-    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr("modelito.ollama.urlopen", fake_urlopen)
     provider = OllamaProvider(model="llama3.2", strict=False)
 
     chunks = list(
