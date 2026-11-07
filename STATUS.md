@@ -1,6 +1,6 @@
 # modelito – Project Status
 
-Last updated: 2026-10-29 01:19
+Last updated: 2026-11-07 01:45
 
 ## Project purpose
 
@@ -20,9 +20,11 @@ test fallbacks.
   validates completion/model identity without replay; native HTTP uses total
   deadlines; terminal stream fields are validated; readiness checks Ollama's
   version endpoint within budget; generic startup no longer downloads models.
-- BatLLM migration is prepared on `fix/modelito-consumer-contract-20261027`:
+- BatLLM's 1.4.8 migration is merged into canonical `main` through PR #66:
   both pins target 1.4.8, catalogue discovery is restored in both interfaces,
-  and successful fixtures carry request model identity. Modelito publication completed on 29 October 2026.
+  and successful fixtures carry request model identity. Modelito publication
+  completed on 29 October 2026. No new package release is needed for the
+  workshop test-isolation repair.
 - Python: 3.10–3.12.
 - Licence: MIT.
 - Hosted providers include OpenAI, Anthropic/Claude, Gemini, and Grok.
@@ -183,6 +185,14 @@ Local runtime policy, benchmark usage, capability caveats, and upstream sources
 are documented in `docs/LOCAL-RUNTIMES.md`.
 
 ## Current validation
+
+- Workshop pre-fork check (6 November 2026, America/Denver): fresh Python 3.12
+  development installation; **486 passed, 1 skipped** with the default non-live
+  suite. Ruff, mypy (44 source files) and `pip check` passed. The DNS-budget test
+  now clears cached host proxy settings so it exercises its deliberately
+  unresolved hostname, consistently with the existing loopback regressions.
+  Package runtime code and version remain unchanged. No live model, native
+  runtime, build, tag or publication was performed in this review.
 
 - [Release-source CI](https://github.com/krahd/modelito/actions/runs/40834302530)
   passed: Python 3.10–3.12 each **486 passed, 1 skipped**; Windows Ollama/contract
@@ -354,10 +364,10 @@ Historical release/audit evidence below is retained with its original scope.
 
 ## Pending tasks
 
-- Review and integrate BatLLM's coordinated migration branch after consumer CI.
-  Modelito 1.4.8 publication, fresh public installation and supported Python/Windows
-  regression gates are complete. Native cross-platform/install-level application
-  acceptance remains distinct from these automated checks.
+- BatLLM's coordinated migration is integrated. Keep its workshop fork on the
+  published 1.4.8 pin unless deliberately testing a Modelito source change.
+  Native cross-platform/install-level application acceptance remains distinct
+  from these automated checks and is tracked in BatLLM's own `STATUS.md`.
 
 These repository-wide tasks remain open and are not superseded by the local
 runtime work:
@@ -382,10 +392,10 @@ winner table.
 
 ## Next steps
 
-Priority: close the bounded BatLLM correctness findings above, then validate the
-consumer upgrade. Do not expand Modelito to address application-owned concerns.
+Priority: maintain the verified 1.4.8 consumer contract and keep application-owned
+workshop/layout/download concerns in BatLLM.
 
-1. Monitor consumers upgrading to 1.4.7, especially explicit endpoint management,
+1. Monitor consumers upgrading to 1.4.8, especially explicit endpoint management,
    ownership-based shutdown and remote-library discovery.
 2. Monitor reports from consumers upgrading from releases before 1.4.6, particularly applications
    that relied on silent Ollama fallbacks; document explicit `strict=False`
@@ -440,4 +450,4 @@ consumer upgrade. Do not expand Modelito to address application-owned concerns.
 - CI intentionally excludes integration tests by path/flags to keep default
   hosted CI fast and safe.
 
-Last updated: 2026-10-29 01:19
+Last updated: 2026-11-07 01:45

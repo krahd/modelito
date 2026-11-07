@@ -205,6 +205,8 @@ def test_dns_resolution_cannot_exceed_request_budget(monkeypatch):
     from modelito._http_deadline import urlopen
     import socket
 
+    # Exercise the unresolved hostname, not a proxy inherited from the host.
+    monkeypatch.setattr("modelito._http_deadline._PROXIES", {})
     release = threading.Event()
     finished = threading.Event()
 
